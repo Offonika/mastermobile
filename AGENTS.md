@@ -7,8 +7,8 @@
 
 **Нормативные ссылки** (актуальные версии):  
 - **API‑Contracts v1.1.3 — Unified**  
-- **SRS Core Sync v1.0.1** / **PRD Core Sync v1.1.1**  
-- **SRS «Курьерская доставка» v0.3** / **PRD «Ходячий склад» v1.3.1**  
+- **SRS Core Sync v1.0.1** / **PRD Core Sync v1.1.2**
+- **SRS «Курьерская доставка» v0.3.1** / **PRD «Ходячий склад» v1.3.2**
 - **ER + DDL v0.6.4 — Unified (PostgreSQL 14+)**  
 - **00‑Core v1.3** (Core‑API‑Style, Status‑Dictionary, Metrics/Alerts, Retention, Envs/Flags)
 
