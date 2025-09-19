@@ -150,8 +150,9 @@ UI‑требования: чек‑листы по фото, кнопки «З�
 
 
 6. API‑контракты (anchors v1.1.3)
-Общие заголовки (см. 00‑Core §2; API‑Contracts v1.1.3):
- Idempotency-Key: <uuid> (для модифицирующих), X-Correlation-Id: <uuid>, X-Api-Version: 1.1.3, Authorization: Bearer <JWT>.
+ Общие заголовки (см. 00‑Core §2; API‑Contracts v1.1.3):
+ Idempotency-Key: <uuid> (для модифицирующих), X-Correlation-Id: <uuid>, X-Api-Version: v1, Authorization: Bearer <JWT>.
+ Ответ содержит заголовок API-Version: 1.1.3 с текущей минорной версией контракта.
 6.1 POST /api/v1/orders/{id}/ready
 Создать задачу в B24, записать task_id_b24.
  Request
