@@ -15,7 +15,7 @@ ER‑диаграмма и DDL (PostgreSQL) — v0.6.4 Unified
 task_events(task_id_b24, ts desc) where type='status';
 
 
-returns(status, updated_at desc) where status in ('ready','accepted').
+returns(status, updated_at desc) where status in ('return_ready','accepted').
 
 
 Дедуп фото: функциональный индекс по payload_json->>'checksum' для task_events с type='photo'.
@@ -117,7 +117,7 @@ create index if not exists idx_task_events_status_ts
   on task_events(task_id_b24, ts desc) where type='status';
 
 create index if not exists idx_returns_status_uat
-  on returns(status, updated_at desc) where status in ('ready','accepted');
+  on returns(status, updated_at desc) where status in ('return_ready','accepted');
 
 -- Дедуп фото по контрольной сумме
 create index if not exists idx_task_events_photo_checksum
@@ -158,7 +158,7 @@ create index if not exists idx_idem_expires on idempotency_key(expires_at) where
 create unique index if not exists uq_task_events_corr on task_events(correlation_id) where correlation_id is not null;
 
 -- 2.3 Очереди возвратов (уточнение)
-create index if not exists idx_returns_ready on returns(return_id) where status='ready';
+create index if not exists idx_returns_ready on returns(return_id) where status='return_ready';
 
 -- 2.4 Обязательные телефоны (уже были), оставляем как есть
 -- orders.phone ru_phone not null; instant_orders.client_phone ru_phone not null
@@ -166,6 +166,7 @@ create index if not exists idx_returns_ready on returns(return_id) where status=
 -- 2.5 Комментарии‑подсказки по статусам (привязка к Status‑Dictionary v1)
 comment on column orders.status is 'Status‑Dictionary v1 (READY|PICKED_UP|...); изменения — через приложение, не DDL';
 comment on column instant_orders.status is 'DRAFT|PENDING_APPROVAL|APPROVED|REJECTED|TIMEOUT_ESCALATED|CANCELLED';
+comment on column returns.status is 'Status‑Dictionary v1 (return_ready|accepted|rejected); фиксация статусов возвратов';
 
 -- 2.6 Ретенции (операторские заметки)
 comment on table integration_log is 'Retention: 90d';
