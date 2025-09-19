@@ -32,7 +32,10 @@ X-Correlation-Id: <uuid> — корреляция логов и трассиро
 Content-Type: application/json; charset=utf-8, Accept: application/json.
 
 
-X-Api-Version: v1 (дублирует версию в пути /v1/...).
+Запросы к API v1 передают заголовок X-Api-Version: 1.1.3 (актуальная минорная версия контракта).
+
+
+Ответы middleware возвращают заголовок API-Version: 1.1.3 (тот же номер контракта, см. API-Contracts v1.1.3).
 
 
 2.2. Версионирование API
@@ -479,7 +482,7 @@ RB‑INT‑02
 
 Схемы (draft): Order, OrderLine, InstantOrder, Return, ReturnLine, Task, TaskEvent, NsiItem, Price, Compatibility.
  Ответы: 200/201/204, 4xx по Error Registry, 429 по rate‑limit, 5xx/504 для интеграций.
- Заголовки: обязательны Idempotency-Key (mod), X-Correlation-Id, X-Api-Version.
+ Заголовки: обязательны Idempotency-Key (mod), X-Correlation-Id, X-Api-Version: 1.1.3.
 
 18. 1С ↔ MW Mapping (v1)
 1С объект

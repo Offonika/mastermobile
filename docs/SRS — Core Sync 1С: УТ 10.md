@@ -151,8 +151,9 @@ FR‑IDEMP‑010. Очереди/ретраи. Экспоненциальный 
 
 8. Внешние интерфейсы (API MW)
 Обязательные заголовки:
- Authorization: Bearer <JWT> • Idempotency-Key: <uuid> • X-Correlation-Id: <uuid> • X-Api-Version: v1
- Ответ MW возвращает заголовок API-Version: 1.1.3 с текущей минорной версией контракта.
+ Authorization: Bearer <JWT> • Idempotency-Key: <uuid> • X-Correlation-Id: <uuid> • X-Api-Version: 1.1.3 (см. 00‑Core §2.1 / API-Contracts v1.1.3).
+
+Запросы к API v1 передают заголовок X-Api-Version: 1.1.3 (актуальная минорная версия контракта). Ответы middleware возвращают заголовок API-Version: 1.1.3.
  Кеш‑валидация: ETag/If-None-Match для GET/HEAD; weak‑ETag для списков.
  Идемпотентность PATCH: PATCH‑вызовы считаются идемпотентными и требуют Idempotency-Key.
 НСИ (примеры):
