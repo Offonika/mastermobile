@@ -63,10 +63,10 @@ X-Api-Version: v1 (дублирует версию в пути /v1/...).
 
 Коды групп: validation.*, auth.*, conflict.*, not_found.*, rate_limit.*, integration.*, timeout.*.
 2.4. Пагинация и фильтры
-Курсор: next_cursor/prev_cursor; лимит по умолчанию 50, максимум 200.
+Параметры limit/offset/page: limit (1..100, по умолчанию 50); offset ≥ 0 или page ≥ 1 (взаимоисключительны); ответы содержат X-Total-Count и Link (rel="next"/"prev").
 
 
-Фильтры по времени: ISO‑8601 с таймзоной.
+Фильтры передаются как filter[field]=value; для диапазонов — filter[date_from]/filter[date_to] в ISO‑8601 с таймзоной.
 
 
 2.5. Идемпотентность и ретраи
