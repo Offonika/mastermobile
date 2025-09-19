@@ -47,9 +47,6 @@ Uploads: лимит 15 МБ → 413, требуемые Content-Type/Accept; о�
 Rate limiting / Исходящие в Bitrix24
  Квоты по умолчанию: 600 rpm / 30 rps; бурст 2×/10 c; ответы: X-RateLimit-Limit/Remaining/Reset
  При 429 — Retry-After (сек/дата). Исходящие в B24: backoff 5s→15s→30s→… до 15 мин; максимум 20 попыток или 24 ч
- / Исходящие в Bitrix24**
- Квоты по умолчанию: 600 rpm / 30 rps; бурст 2×/10 c; ответы: X-RateLimit-Limit/Remaining/Reset
- При 429 — Retry-After (сек/дата). Исходящие в B24: backoff 5s→15s→30s→… до 15 мин; максимум 20 попыток или 24 ч
 Коды ответов (правило)
  Создание — 201 Created + Location
  Изменение/частичное — 200 OK / 204 No Content
@@ -242,7 +239,13 @@ Rate limit (429)
 Integration timeout (504)
 
 
-{ "type":"/timeout", "title":"Upstream Timeout", "status":504, "code":"integration.timeout_1c", "detail":"1C did not respond in 10s" }
+{
+  "type":"/timeout",
+  "title":"Upstream Timeout",
+  "status":504,
+  "code":"integration.timeout_1c",
+  "detail":"1C did not respond in 10s"
+}
 
 Таксономия (симметрично Error Code Registry): validation.*, auth.*, forbidden, not_found.*, conflict.duplicate, rate_limit.exceeded, integration.*, timeout.*.
 
