@@ -188,12 +188,14 @@ GET поддерживает ETag/If-None-Match.
   "courier_id": 7,
   "client_phone": "+79991234567",
   "lines": [{"sku":"IP15PM-GLASS","qty":1}],
-  "task_id_b24": 123456,
+  "source_task_id": 123456,
   "currency_code": "RUB"
 }
 
 Response 201
 { "id": 4321, "draft_order_id_1c": "000123", "total": 990 }
+
+Поле `source_task_id` передаёт идентификатор задачи Bitrix24 (`task_id_b24`).
 
 6.5 POST /api/v1/tasks/{id}/photos
 Привязать фото (ID файла B24 Диска) к событию.

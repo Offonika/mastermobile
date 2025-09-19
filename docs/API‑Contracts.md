@@ -146,7 +146,7 @@ amount, breakdown:{goods, delivery}, currency_code
 POST
 /api/v1/instant-orders
 Создать мгновенный заказ
-courier_id, client_phone, lines[{sku, qty}], source_task_id
+courier_id, client_phone, lines[{sku, qty}], source_task_id (ID задачи B24)
 201 {"id":4321,"draft_order_id_1c":"000123","total":990} + Location
 400, 404, 409, 5xx
 Да
