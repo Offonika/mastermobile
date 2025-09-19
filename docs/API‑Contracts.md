@@ -212,6 +212,7 @@ POST
 Без изменений по сравнению с v1.1.2, см. раздел 5 исходника. Дополнение: во всех денежных схемах — currency_code обязателен; для фото допускается heic.
 
 6) Ошибки — application/problem+json
+Базовые требования и формат описаны в 00‑Core §2.3.
 {
   "type": "https://api.example.com/errors/validation",
   "title": "Validation failed",

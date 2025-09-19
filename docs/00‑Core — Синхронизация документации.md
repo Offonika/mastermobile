@@ -55,16 +55,21 @@ Content-Type: application/json; charset=utf-8, Accept: application/json.
 }
 
 2.3. Формат ошибок
+Ответы об ошибках возвращаются с `Content-Type: application/problem+json` и соответствуют RFC 7807.
+Минимальный набор полей:
 {
-  "error": {
-    "code": "string",          // machine-readable
-    "message": "string",       // human-readable
-    "correlation_id": "uuid",
-    "details": [ { "field": "...", "issue": "..." } ]
-  }
+  "type": "https://api.example.com/errors/validation",
+  "title": "Validation failed",
+  "status": 400,
+  "detail": "client_phone: must match +7XXXXXXXXXX",
+  "instance": "/api/v1/instant-orders",
+  "code": "validation.format",
+  "errors": [{"field": "client_phone", "reason": "pattern"}]
 }
 
-Коды групп: validation.*, auth.*, conflict.*, not_found.*, rate_limit.*, integration.*, timeout.*.
+`type`, `title`, `status`, `detail`, `instance` и `code` присутствуют всегда; `errors[]` используется для структурированных деталей (валидация полей, ограничения и т. п.). Корреляция ответа обеспечивается заголовком `X-Correlation-Id`.
+
+Таксономия кодов: `validation.*`, `auth.*`, `forbidden`, `not_found.*`, `conflict.duplicate`, `rate_limit.exceeded`, `integration.*`, `timeout.*` (см. Error Code Registry).
 2.4. Пагинация и фильтры
 Параметры limit/offset/page: limit (1..100, по умолчанию 50); offset ≥ 0 или page ≥ 1 (взаимоисключительны); ответы содержат X-Total-Count и Link (rel="next"/"prev").
 
