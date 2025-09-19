@@ -137,8 +137,17 @@ Circuit breaker для интеграций: порог отказов 50% за 
 Status‑Dictionary v1
  Единый словарь статусов и допустимых переходов для обоих проектов. Хранится в справочнике status_dict и используется фронтом/интеграциями.
 3.1. Доставка (task / delivery_order)
- NEW → READY → PICKED_UP → ON_ROUTE → DELIVERED → CASH_RETURNED|NON_CASH_CONFIRMED → CLOSED
- Исключения: CANCELLED (только из NEW|READY|PICKED_UP), FAILED (по SLA, из ON_ROUTE).
+ Основная цепочка: NEW → PICKING → READY → PICKED_UP → ON_ROUTE → DELIVERED → CASH_RETURNED → DONE.
+ Курьер может выставлять: PICKED_UP, ON_ROUTE, DELIVERED, CASH_RETURNED, FAILED (при невыполнении SLA).
+ READY/DONE/REFUSED проставляются MW/менеджером; переходы валидируются по матрице (см. API‑Contracts §7).
+ Ветви:
+ - FAILED — допускается из ON_ROUTE или DELIVERED (нарушение SLA, требуется ручная обработка).
+ - REFUSED — допускается из READY (отказ клиента/менеджера, заказ возвращается в 1С).
+ Устаревшие статусы:
+ - CANCELLED — заменён на REFUSED; в status_dict помечается deprecated=true, новые интеграции его не используют.
+ - NON_CASH_CONFIRMED — сверка безналичных оплат закрывается статусом DONE; значение выводится из справочника.
+ - CLOSED — финальный статус объединён с DONE, исторические записи мигрируют на новый код.
+ Статусы и переходы согласованы с владельцами API‑Contracts v1.1.3 (docs/API‑Contracts.md).
 3.2. Instant Orders (быстрые продажи курьера)
  DRAFT → PENDING_APPROVAL → APPROVED → (DELIVERED|CANCELLED)
  Отказы: REJECTED, эскалация тайм‑аута: TIMEOUT_ESCALATED.
