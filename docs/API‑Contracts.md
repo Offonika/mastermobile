@@ -1,6 +1,7 @@
 API‑Contracts v1.1.3 — Unified (Walking Warehouse + Core Sync)
 Статус: финал для v1 (единый для обоих проектов)
- Основание: выровнено с 00‑Core v1.3; PRD «Ходячий склад» v1.3.2; SRS «Рюкзак» v0.3; PRD Core Sync v1.1.2; SRS Core Sync v1.0.1; ER Freeze v0.6.1
+ Основание: выровнено с 00‑Core v1.3; PRD «Ходячий склад» v1.3.2; SRS «Рюкзак» v0.3; PRD Core Sync v1.1.2; SRS Core Sync v1.0.1; ER Freeze v0.6.4
+ Примечание по совместимости: контракт согласован с ER Freeze v0.6.4 и совместим с инсталляциями, мигрированными с v0.6.1 посредством актуальных SQL‑миграций (`db/migrations`).
 Изменения в v1.1.3 против v1.1.2
 Добавлены единые Pagination & Filtering параметры (limit/offset/page/sort/filter[*]) и правила валидации
 
