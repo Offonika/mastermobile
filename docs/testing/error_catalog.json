@@ -1,10 +1,118 @@
 {
+  "metadata": {
+    "file": "docs/testing/error_catalog.json",
+    "version": "0.2.0",
+    "updated_at": "2024-08-20T00:00:00Z",
+    "owner": "@team-api",
+    "source_of_truth": "docs/testing/strategy.md",
+    "notes": "Каждая ошибка должна иметь тесты на уровне unit/contract/E2E"
+  },
   "errors": {
-    "VALIDATION_ERROR": {"code": "VALIDATION_ERROR", "http": 422, "message": "Invalid input"},
-    "UNAUTHORIZED": {"code": "UNAUTHORIZED", "http": 401, "message": "Unauthorized"},
-    "FORBIDDEN": {"code": "FORBIDDEN", "http": 403, "message": "Forbidden"},
-    "NOT_FOUND": {"code": "NOT_FOUND", "http": 404, "message": "Not found"},
-    "CONFLICT": {"code": "CONFLICT", "http": 409, "message": "Conflict"},
-    "INTERNAL": {"code": "INTERNAL", "http": 500, "message": "Internal server error"}
+    "VALIDATION_ERROR": {
+      "code": "VALIDATION_ERROR",
+      "http_status": 422,
+      "title": "Ошибка валидации входных данных",
+      "category": "client",
+      "severity": "major",
+      "user_message": "Переданы некорректные данные. Исправьте ошибки и повторите запрос.",
+      "developer_message": "Pydantic validation failed: {details}",
+      "recommended_checks": [
+        "Unit: pydantic schemas",
+        "Contract: schemathesis negative cases"
+      ]
+    },
+    "AUTHENTICATION_FAILED": {
+      "code": "AUTHENTICATION_FAILED",
+      "http_status": 401,
+      "title": "Ошибка аутентификации",
+      "category": "security",
+      "severity": "critical",
+      "user_message": "Сессия недействительна. Войдите повторно.",
+      "developer_message": "Token verification failed or expired",
+      "recommended_checks": [
+        "Unit: auth utils",
+        "Integration: token refresh flow",
+        "Smoke: protected endpoint"
+      ]
+    },
+    "AUTHORIZATION_DENIED": {
+      "code": "AUTHORIZATION_DENIED",
+      "http_status": 403,
+      "title": "Нет прав доступа",
+      "category": "security",
+      "severity": "major",
+      "user_message": "Недостаточно прав для выполнения операции.",
+      "developer_message": "Role/permission mismatch",
+      "recommended_checks": [
+        "Unit: RBAC policies",
+        "Contract: forbidden responses"
+      ]
+    },
+    "RESOURCE_NOT_FOUND": {
+      "code": "RESOURCE_NOT_FOUND",
+      "http_status": 404,
+      "title": "Ресурс не найден",
+      "category": "client",
+      "severity": "minor",
+      "user_message": "Запрошенный ресурс не найден или был удалён.",
+      "developer_message": "Entity with provided identifier is missing",
+      "recommended_checks": [
+        "Unit: repository get",
+        "Contract: 404 schema"
+      ]
+    },
+    "CONFLICT": {
+      "code": "CONFLICT",
+      "http_status": 409,
+      "title": "Конфликт состояния",
+      "category": "client",
+      "severity": "major",
+      "user_message": "Ресурс уже существует или состояние изменилось.",
+      "developer_message": "Idempotency or optimistic lock failure",
+      "recommended_checks": [
+        "Unit: domain services",
+        "Integration: concurrent requests"
+      ]
+    },
+    "RATE_LIMITED": {
+      "code": "RATE_LIMITED",
+      "http_status": 429,
+      "title": "Превышен лимит запросов",
+      "category": "client",
+      "severity": "major",
+      "user_message": "Слишком много запросов. Повторите позже.",
+      "developer_message": "Rate limiter threshold exceeded",
+      "recommended_checks": [
+        "Integration: throttling tests",
+        "E2E: burst traffic scenario"
+      ]
+    },
+    "DEPENDENCY_TIMEOUT": {
+      "code": "DEPENDENCY_TIMEOUT",
+      "http_status": 504,
+      "title": "Таймаут внешнего сервиса",
+      "category": "dependency",
+      "severity": "critical",
+      "user_message": "Внешний сервис не отвечает. Повторите попытку позже.",
+      "developer_message": "Downstream timeout after {timeout_ms}ms",
+      "recommended_checks": [
+        "Integration: httpx timeout handling",
+        "E2E: dependency failure simulation"
+      ]
+    },
+    "INTERNAL_ERROR": {
+      "code": "INTERNAL_ERROR",
+      "http_status": 500,
+      "title": "Внутренняя ошибка сервиса",
+      "category": "server",
+      "severity": "critical",
+      "user_message": "Мы уже разбираемся с проблемой. Попробуйте позже.",
+      "developer_message": "Unhandled exception: {error}",
+      "recommended_checks": [
+        "Unit: critical paths",
+        "Integration: rollback/transactions",
+        "Observability: loguru alerts"
+      ]
+    }
   }
 }
