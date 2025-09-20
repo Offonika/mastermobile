@@ -166,7 +166,7 @@ create index if not exists idx_returns_ready on returns(return_id) where status=
 -- 2.5 Комментарии‑подсказки по статусам (привязка к Status‑Dictionary v1)
 comment on column orders.status is 'Status‑Dictionary v1 (READY|PICKED_UP|...); изменения — через приложение, не DDL';
 comment on column instant_orders.status is 'DRAFT|PENDING_APPROVAL|APPROVED|REJECTED|TIMEOUT_ESCALATED|CANCELLED';
-comment on column returns.status is 'Status‑Dictionary v1 (return_ready|accepted|rejected); фиксация статусов возвратов';
+comment on column returns.status is 'Status‑Dictionary v1 (return_ready|accepted|return_rejected); фиксация статусов возвратов';
 
 -- 2.6 Ретенции (операторские заметки)
 comment on table integration_log is 'Retention: 90d';
