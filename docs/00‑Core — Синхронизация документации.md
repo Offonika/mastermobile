@@ -1,4 +1,6 @@
-00‑Core — Синхронизация документации (v1.3.1)
+00‑Core — Синхронизация документации (v1.3.2)
+Дата обновления: 20.09.2025
+Связанные артефакты: API‑Contracts v1.0.0, SRS Core Sync v1.0.2
 Назначение. Единая «шина» правил и ссылочный пакет для двух проектов — «Ходячий рюкзак» (мобильная доставка и возвраты) и «Обмен между конфигурациями» (Core Sync 1С УТ 10.3↔11). Документ фиксирует общий стиль API, словари статусов, версионирование, источники истины (SoT), цельную ER‑модель и ворота релизов. Все продуктовые PRD/SRS ссылаются на данный документ и не дублируют его содержимое.
 
 1. Ссылочные документы
@@ -26,16 +28,16 @@ Traceability & UAT v1 (раздел 7)
 Idempotency-Key: <uuid> — обязателен для всех модифицирующих запросов (POST/PUT/PATCH/DELETE).
 
 
-X-Correlation-Id: <uuid> — корреляция логов и трассировка через все контуры.
+X-Request-Id: <uuid> — передаётся опционально; при отсутствии клиентского значения middleware генерирует идентификатор и возвращает его в ответе.
 
 
-Content-Type: application/json; charset=utf-8, Accept: application/json.
+Authorization: Bearer <JWT> — требуется для всех вызовов `/api/v1/returns*`.
 
 
-Запросы к API v1 передают заголовок X-Api-Version: 1.1.3 (актуальная минорная версия контракта).
+Content-Type: application/json; charset=utf-8. Accept: application/json.
 
 
-Ответы middleware возвращают заголовок API-Version: 1.1.3 (тот же номер контракта, см. API-Contracts v1.1.3).
+Заголовок `X-Api-Version` во v1.0.0 не используется; контроль версии выполняется путём `/api/v1/...`.
 
 
 2.2. Версионирование API
@@ -56,20 +58,19 @@ Content-Type: application/json; charset=utf-8, Accept: application/json.
 
 2.3. Формат ошибок
 Ответы об ошибках возвращаются с `Content-Type: application/problem+json` и соответствуют RFC 7807.
-Минимальный набор полей:
+Минимальный набор полей v1.0.0:
 {
-  "type": "https://api.example.com/errors/validation",
+  "type": "https://api.mastermobile.app/errors/validation",
   "title": "Validation failed",
   "status": 400,
-  "detail": "client_phone: must match +7XXXXXXXXXX",
-  "instance": "/api/v1/instant-orders",
-  "code": "validation.format",
-  "errors": [{"field": "client_phone", "reason": "pattern"}]
+  "detail": "items[0].sku: must not be empty",
+  "errors": [{"field": "items[0].sku", "message": "Required field"}],
+  "request_id": "7b1c9945-70ab-4170-9c7e-4d6e9de5a0f9"
 }
 
-`type`, `title`, `status`, `detail`, `instance` и `code` присутствуют всегда; `errors[]` используется для структурированных деталей (валидация полей, ограничения и т. п.). Корреляция ответа обеспечивается заголовком `X-Correlation-Id`.
+Поля `type`, `title`, `status`, `detail` и `request_id` обязательны; `errors[]` используется для детальной валидации. Поля `code` и `instance` в текущем контракте отсутствуют.
 
-Таксономия кодов: `validation.*`, `auth.*`, `forbidden`, `not_found.*`, `conflict.duplicate`, `rate_limit.exceeded`, `integration.*`, `timeout.*` (см. Error Code Registry).
+Таксономия кодов фиксируется в Error Registry отдельно; до появления справочника используем человекочитаемый `detail` и описания в `errors[]`.
 2.4. Пагинация и фильтры
 Параметры limit/offset/page: limit (1..100, по умолчанию 50); offset ≥ 0 или page ≥ 1 (взаимоисключительны); ответы содержат X-Total-Count и Link (rel="next"/"prev").
 
@@ -487,7 +488,7 @@ RB‑INT‑02
 
 Схемы (draft): Order, OrderLine, InstantOrder, Return, ReturnLine, Task, TaskEvent, NsiItem, Price, Compatibility.
  Ответы: 200/201/204, 4xx по Error Registry, 429 по rate‑limit, 5xx/504 для интеграций.
- Заголовки: обязательны Idempotency-Key (mod), X-Correlation-Id, X-Api-Version: 1.1.3.
+ Заголовки: обязательны Idempotency-Key (mod) и X-Request-Id; `X-Correlation-Id` допускается опционально для внутренних интеграций.
 
 18. 1С ↔ MW Mapping (v1)
 1С объект
@@ -531,3 +532,5 @@ nsi_counterparty
  — Статус‑маппинги должны ссылаться на Status‑Dictionary v1.
  — Любое изменение маппинга — через RFC и версионирование API.
 
+## Changelog
+- 20.09.2025 — Синхронизировано с API-Contracts v1.0.0: обновлены базовые заголовки, формат ошибок и убран `X-Api-Version`.
