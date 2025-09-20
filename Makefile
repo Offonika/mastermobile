@@ -1,4 +1,4 @@
-.PHONY: init up down logs lint typecheck test fmt openapi run seed
+.PHONY: init up down logs lint typecheck test fmt openapi db-upgrade db-downgrade run seed
 
 VENV_DIR := .venv
 VENV_BIN := $(VENV_DIR)/bin
@@ -40,6 +40,12 @@ test: $(VENV_SENTINEL)
 
 openapi:
 	@echo "OpenAPI: ./openapi.yaml"
+
+db-upgrade: $(VENV_SENTINEL)
+	$(VENV_BIN)/alembic -c apps/mw/migrations/alembic.ini upgrade head
+
+db-downgrade: $(VENV_SENTINEL)
+	$(VENV_BIN)/alembic -c apps/mw/migrations/alembic.ini downgrade -1
 
 run:
 	docker compose up app
