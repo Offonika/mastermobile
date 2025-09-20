@@ -32,6 +32,7 @@ erDiagram
         text direction "Направление: inbound|outbound"
         text external_system "Внешняя система: 1c|b24|warehouse"
         text endpoint "REST-метод или шина"
+        text status "Статус обработки: success|error|retry"
         integer status_code "HTTP/бизнес-статус результата"
         text correlation_id "X-Correlation-Id для трассировки"
         text resource_ref "Ссылка на сущность (например, return_id)"
@@ -41,7 +42,7 @@ erDiagram
         integer retry_count "Ретраи (nullable)"
     }
 
-    TASK_EVENT {
+    TASK_EVENTS {
         bigserial id PK "Суррогатный ключ события"
         text task_id_b24 "Связанная задача Bitrix24"
         uuid return_id FK "FK → returns.return_id (nullable, события ветки возврата)"
@@ -55,4 +56,4 @@ erDiagram
 
     RETURNS ||--o{ RETURN_LINES : "содержит"
     RETURNS ||--o{ INTEGRATION_LOG : "логирует через resource_ref"
-    RETURNS ||--o{ TASK_EVENT : "формирует события"
+    RETURNS ||--o{ TASK_EVENTS : "формирует события"
