@@ -29,6 +29,9 @@
 ## Подробный сценарий
 ### 1. Подготовка окружения
 - Создайте `.env` из примера и дополните секреты при необходимости.
+- Проверьте новые переменные конфигурации: `JWT_SECRET`, `JWT_ISSUER`, `CORS_ORIGINS`,
+  `MAX_PAGE_SIZE`, `REQUEST_TIMEOUT_S`, `ENABLE_TRACING`, а также флаги
+  `PII_MASKING_ENABLED` и `DISK_ENCRYPTION_FLAG` для сценариев безопасности.
 - Выполните `make init` — создаст `.venv`, установит `ruff`, `mypy`, `pytest`, Alembic и runtime-зависимости.
 - Для чистого старта удалите контейнеры/volumes: `make down`.
 
