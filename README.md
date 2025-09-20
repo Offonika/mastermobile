@@ -31,6 +31,14 @@
 | `REDIS_HOST`    | `redis`                | Хост Redis                          |
 | `REDIS_PORT`    | `6379`                 | Порт Redis                          |
 | `LOG_LEVEL`     | `INFO`                 | Уровень логирования приложения      |
+| `JWT_SECRET`    | `changeme`             | Секрет для подписи JWT-токенов      |
+| `JWT_ISSUER`    | `mastermobile`         | Значение `iss` в выданных JWT       |
+| `CORS_ORIGINS`  | `http://localhost:3000` | Разрешённые источники CORS (через запятую) |
+| `MAX_PAGE_SIZE` | `100`                   | Максимальный размер страницы для пагинации |
+| `REQUEST_TIMEOUT_S` | `30`                | Таймаут исходящих запросов (секунды) |
+| `ENABLE_TRACING` | `false`                | Включение экспорта трассировок OpenTelemetry |
+| `PII_MASKING_ENABLED` | `false`           | Маскирование персональных данных в логах |
+| `DISK_ENCRYPTION_FLAG` | `false`          | Флаг шифрования томов/дисков (prod → `true`) |
 
 > Все значения можно переопределить в `.env` перед запуском `docker compose` / `make up`.
 
