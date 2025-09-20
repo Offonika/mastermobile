@@ -164,9 +164,9 @@ create index if not exists idx_returns_ready on returns(return_id) where status=
 -- orders.phone ru_phone not null; instant_orders.client_phone ru_phone not null
 
 -- 2.5 Комментарии‑подсказки по статусам (привязка к Status‑Dictionary v1)
-comment on column orders.status is 'Status‑Dictionary v1 (READY|PICKED_UP|...); изменения — через приложение, не DDL';
-comment on column instant_orders.status is 'DRAFT|PENDING_APPROVAL|APPROVED|REJECTED|TIMEOUT_ESCALATED|CANCELLED';
-comment on column returns.status is 'Status‑Dictionary v1 (return_ready|accepted|return_rejected); фиксация статусов возвратов';
+comment on column orders.status is 'Status‑Dictionary v1 (полный список см. 00‑Core §3.1: READY|PICKED_UP|...); изменения — через приложение, не DDL';
+comment on column instant_orders.status is 'Status‑Dictionary v1 (полный список: DRAFT|PENDING_APPROVAL|APPROVED|DELIVERED|CANCELLED|REJECTED|TIMEOUT_ESCALATED; см. 00‑Core §3.2)';
+comment on column returns.status is 'Status‑Dictionary v1 (полный список: return_ready|accepted|return_rejected); фиксация статусов возвратов';
 
 -- 2.6 Ретенции (операторские заметки)
 comment on table integration_log is 'Retention: 90d';
@@ -177,7 +177,8 @@ comment on table idempotency_key is 'TTL: 72h';
 Базовые блоки остаются как в v0.6.2. В новых средах сразу создавайте таблицы с timestamptztz и добавленными CHECK/индексами; на уже развёрнутых — применяйте миграции §2.2.
  Не изменены относительно v0.6.1 за исключением блока идемпотентности и комментариев — см. исходный документ.
 4) Совместимость и политика статус‑энумов
-В БД оставлены CHECK‑ограничения для статусов v1. При additive‑изменениях расширяем списки через миграцию.
+В БД оставлены CHECK‑ограничения для статусов v1; используем полный список из Status‑Dictionary v1 (см. 00‑Core §3). При additive‑изменениях расширяем списки через миграцию.
+Для instant_orders.status проверьте, что CHECK/enum уже включает DELIVERED; окружения со старым набором статусов требуют отдельной миграции.
 
 
 Ломающие изменения статусов запрещены в v1 (см. API‑Contracts §12).
