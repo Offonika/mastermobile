@@ -156,6 +156,10 @@ class ReturnLine(Base):
             "quality IN ('new', 'defect')",
             name="chk_return_lines_quality",
         ),
+        CheckConstraint(
+            "quality <> 'defect' OR reason_id IS NOT NULL",
+            name="chk_return_lines_defect_reason",
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)

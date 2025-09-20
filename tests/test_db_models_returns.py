@@ -5,7 +5,9 @@ from __future__ import annotations
 from decimal import Decimal
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import create_engine, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from apps.mw.src.db.models import (
@@ -71,5 +73,38 @@ def test_return_roundtrip_matches_schema() -> None:
         assert line.reason_id == reason_id
         assert line.photos is None
         assert line.serial == "SN123456789"
+
+    engine.dispose()
+
+
+def test_return_line_defect_requires_reason() -> None:
+    """Ensure DB refuses defect lines without linked reason."""
+
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    Base.metadata.create_all(engine, tables=[Return.__table__, ReturnLine.__table__])
+
+    with Session(engine) as session:
+        return_obj = Return(
+            return_id=uuid4(),
+            status=ReturnStatus.RETURN_READY,
+            source=ReturnSource.WAREHOUSE,
+            courier_id="courier-13",
+        )
+        return_obj.lines.append(
+            ReturnLine(
+                line_id="line-defect",
+                sku="sku-defect",
+                qty=Decimal("1.000"),
+                quality=ReturnLineQuality.DEFECT,
+                reason_id=None,
+            )
+        )
+
+        session.add(return_obj)
+
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+        session.rollback()
 
     engine.dispose()
