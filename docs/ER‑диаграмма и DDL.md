@@ -1,6 +1,6 @@
 ER‑диаграмма и DDL (PostgreSQL) — v0.6.4 Unified
 Проекты: «Ходячий склад» и Core Sync (единая БД Middleware)
- Основано на: v0.6.1; выровнено с 00‑Core v1.3 и API‑Contracts v1.1.3
+ Основано на: v0.6.1; выровнено с 00‑Core v1.3.1 и API‑Contracts v1.1.3
  Дата: 18.09.2025
 Что изменилось в v0.6.4 против v0.6.3
 Добавлены поля валюты: orders.currency_code, instant_orders.currency_code (currency_code, по умолчанию RUB).
