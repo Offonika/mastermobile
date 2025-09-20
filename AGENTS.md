@@ -239,11 +239,14 @@ PR template (.github/pull_request_template.md)
 
 CODEOWNERS (.github/CODEOWNERS)
 
-/docs/00-*                  @team-arch
-/docs/api-*                 @team-api
-/docs/er*                   @team-db
-/docs/prd* /docs/srs*       @team-product
-/docs/one-pager* /docs/ux/* @team-ww
+docs/00*                     @team-arch
+docs/API*                    @team-api
+docs/ER*                     @team-db
+docs/PRD*                    @team-product
+docs/SRS*                    @team-product
+docs/Software Requirements Specification SRS.md @team-product
+docs/ONE-PAGER*              @team-ww
+docs/UX*                     @team-ww
 
 🔗 Прямые ссылки на документы
 
