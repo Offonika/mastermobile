@@ -9,8 +9,8 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
-    CheckConstraint,
     BigInteger,
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Integer,
@@ -23,7 +23,8 @@ from sqlalchemy import (
 from sqlalchemy import (
     Enum as SqlEnum,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
