@@ -50,6 +50,7 @@
 - CI: .github/workflows/ci.yml
 
 ## Полезное
+- Архитектура: [docs/architecture/overview.md](docs/architecture/overview.md)
 - Документация: ./docs
 - Контрибьютинг: ./CONTRIBUTING.md
 - Лицензия: ./LICENSE
