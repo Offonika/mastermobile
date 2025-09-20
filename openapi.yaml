@@ -1,27 +1,543 @@
 openapi: 3.0.3
 info:
   title: MasterMobile API
-  version: 0.1.0
+  version: 1.0.0
 servers:
+  - url: https://api.mastermobile.app
+    description: Production environment
+  - url: https://staging.mastermobile.app
+    description: Staging environment
   - url: http://localhost:8000
+    description: Local development
+tags:
+  - name: system
+    description: Service monitoring and diagnostic endpoints.
+  - name: returns
+    description: Endpoints for managing merchandise returns.
 paths:
   /health:
     get:
-      tags: [system]
+      tags:
+        - system
       summary: Health check
       operationId: getHealth
       responses:
-        "200":
-          description: OK
+        '200':
+          description: Service is healthy.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: ok
+                $ref: '#/components/schemas/Health'
+  /api/v1/system/ping:
+    get:
+      tags:
+        - system
+      summary: Ping the middleware
+      description: Returns the current status of the middleware together with a UTC timestamp.
+      operationId: pingSystem
+      responses:
+        '200':
+          description: Service responded to ping.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ping'
+        '503':
+          description: Service is unavailable.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/returns:
+    get:
+      tags:
+        - returns
+      summary: List returns
+      operationId: listReturns
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: A paginated collection of returns.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedReturns'
+        '400':
+          description: Invalid filters supplied.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - returns
+      summary: Create a return request
+      operationId: createReturn
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReturnCreate'
+      responses:
+        '201':
+          description: Return request was created.
+          headers:
+            Location:
+              description: URL of the created return resource.
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Return'
+        '400':
+          description: Payload validation error.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: A return with the provided idempotency key already exists.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/returns/{returnId}:
+    parameters:
+      - $ref: '#/components/parameters/ReturnId'
+    get:
+      tags:
+        - returns
+      summary: Retrieve a return
+      operationId: getReturn
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+      responses:
+        '200':
+          description: Return details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Return'
+        '404':
+          description: Return was not found.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - returns
+      summary: Update a return
+      operationId: updateReturn
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReturnCreate'
+      responses:
+        '200':
+          description: Updated return details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Return'
+        '400':
+          description: Payload validation error.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Return was not found.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict caused by idempotency mismatch.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - returns
+      summary: Delete a return
+      operationId: deleteReturn
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204':
+          description: Return was deleted.
+        '404':
+          description: Return was not found.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
+  schemas:
+    Health:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          description: Overall health status of the middleware.
+          example: ok
+        version:
+          type: string
+          description: Currently deployed API version.
+          example: 1.0.0
+        uptime_seconds:
+          type: integer
+          description: Uptime of the service in seconds.
+          example: 86400
+    Ping:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          description: Short status indicator.
+          example: pong
+        timestamp:
+          type: string
+          format: date-time
+          description: UTC timestamp of the ping response.
+          example: '2024-08-01T12:34:56Z'
+        service:
+          type: string
+          description: Identifier of the service responding to the ping.
+          example: master-mobile-middleware
+    Error:
+      type: object
+      required:
+        - type
+        - title
+        - status
+      properties:
+        type:
+          type: string
+          format: uri
+          description: Link to a document describing the error type.
+          example: https://api.mastermobile.app/errors/validation
+        title:
+          type: string
+          description: Short human-readable summary of the error.
+          example: Validation failed
+        status:
+          type: integer
+          description: HTTP status code applicable to this problem.
+          example: 400
+        detail:
+          type: string
+          description: Human-readable explanation specific to this occurrence of the problem.
+          example: Source must be one of widget, call_center, warehouse.
+        errors:
+          type: array
+          description: List of field level validation errors.
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                description: Field path related to the error.
+                example: items[0].sku
+              message:
+                type: string
+                description: Description of the validation issue.
+                example: SKU is required.
+    Return:
+      type: object
+      required:
+        - id
+        - status
+        - source
+        - courier_id
+        - items
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          description: Unique identifier of the return.
+          example: ret_501
+        status:
+          type: string
+          description: Current status of the return.
+          enum:
+            - pending
+            - accepted
+            - rejected
+          example: pending
+        source:
+          type: string
+          description: Channel that initiated the return.
+          enum:
+            - widget
+            - call_center
+            - warehouse
+          example: widget
+        courier_id:
+          type: string
+          description: Identifier of the courier handling the order.
+          example: cour_123
+        order_id_1c:
+          type: string
+          nullable: true
+          description: Optional reference to the order in 1C.
+          example: '000123'
+        manager_id:
+          type: string
+          nullable: true
+          description: Identifier of the manager who processed the return.
+          example: mgr_42
+        comment:
+          type: string
+          nullable: true
+          description: Additional notes about the return.
+        created_at:
+          type: string
+          format: date-time
+          description: When the return was created.
+          example: '2024-08-01T12:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          description: When the return was last updated.
+          example: '2024-08-01T13:45:00Z'
+        items:
+          type: array
+          minItems: 1
+          description: Items included in the return.
+          items:
+            type: object
+            required:
+              - line_id
+              - sku
+              - qty
+              - quality
+              - reason_code
+            properties:
+              line_id:
+                type: string
+                description: Identifier of the line item inside the return.
+                example: line_1
+              sku:
+                type: string
+                description: Stock keeping unit of the returned product.
+                example: SKU-1001
+              qty:
+                type: integer
+                minimum: 1
+                description: Quantity being returned.
+                example: 1
+              quality:
+                type: string
+                description: Quality of the returned item.
+                enum:
+                  - new
+                  - defect
+                example: defect
+              reason_code:
+                type: string
+                description: Machine-readable reason code.
+                example: damaged_package
+              reason_note:
+                type: string
+                nullable: true
+                description: Additional human-readable note for the reason.
+              photos:
+                type: array
+                description: Bitrix24 file identifiers for related photos.
+                items:
+                  type: string
+                  example: 9f3c2a44
+              imei:
+                type: string
+                nullable: true
+                description: IMEI of the returned device when applicable.
+              serial:
+                type: string
+                nullable: true
+                description: Serial number of the returned device.
+    ReturnCreate:
+      type: object
+      required:
+        - source
+        - courier_id
+        - items
+      properties:
+        source:
+          type: string
+          description: Channel that initiated the return.
+          enum:
+            - widget
+            - call_center
+            - warehouse
+          example: widget
+        courier_id:
+          type: string
+          description: Identifier of the courier who collected the items from the customer.
+          example: cour_123
+        order_id_1c:
+          type: string
+          nullable: true
+          description: Optional reference to the original order in 1C.
+          example: '000123'
+        comment:
+          type: string
+          nullable: true
+          description: Additional notes for operators.
+        items:
+          type: array
+          minItems: 1
+          description: Items being returned.
+          items:
+            type: object
+            required:
+              - sku
+              - qty
+              - quality
+              - reason_code
+            properties:
+              sku:
+                type: string
+                description: Stock keeping unit of the returned product.
+                example: SKU-1001
+              qty:
+                type: integer
+                minimum: 1
+                description: Quantity being returned.
+                example: 1
+              quality:
+                type: string
+                description: Quality of the returned item.
+                enum:
+                  - new
+                  - defect
+                example: defect
+              reason_code:
+                type: string
+                description: Machine-readable reason code.
+                example: damaged_package
+              reason_note:
+                type: string
+                nullable: true
+                description: Additional human-readable note for the reason.
+              photos:
+                type: array
+                description: Bitrix24 file identifiers for related photos.
+                items:
+                  type: string
+                  example: 9f3c2a44
+              imei:
+                type: string
+                nullable: true
+                description: IMEI of the returned device when applicable.
+              serial:
+                type: string
+                nullable: true
+                description: Serial number of the returned device.
+    PaginatedReturns:
+      type: object
+      required:
+        - items
+        - page
+        - page_size
+        - total_items
+        - total_pages
+      properties:
+        items:
+          type: array
+          description: Page of returns.
+          items:
+            $ref: '#/components/schemas/Return'
+        page:
+          type: integer
+          minimum: 1
+          description: Current page number.
+          example: 1
+        page_size:
+          type: integer
+          minimum: 1
+          description: Number of items per page.
+          example: 20
+        total_items:
+          type: integer
+          minimum: 0
+          description: Total number of returns available.
+          example: 125
+        total_pages:
+          type: integer
+          minimum: 0
+          description: Total number of pages available.
+          example: 7
+        has_next:
+          type: boolean
+          description: Indicates if there is another page after the current one.
+          example: true
+  parameters:
+    XRequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      description: Correlates logs across services. When omitted, the server generates a value.
+      schema:
+        type: string
+        maxLength: 128
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Unique key ensuring idempotent handling of unsafe operations.
+      schema:
+        type: string
+        maxLength: 128
+    Page:
+      name: page
+      in: query
+      required: false
+      description: Page number to return. Defaults to 1.
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: page_size
+      in: query
+      required: false
+      description: Number of items per page. Defaults to 20.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    ReturnId:
+      name: returnId
+      in: path
+      required: true
+      description: Identifier of the return.
+      schema:
+        type: string
   securitySchemes:
     bearerAuth:
       type: http
