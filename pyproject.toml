@@ -44,6 +44,13 @@ disallow_incomplete_defs = true
 no_implicit_optional = true
 plugins = []
 
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["apps*", "httpx*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q --maxfail=1"

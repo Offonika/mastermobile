@@ -5,6 +5,7 @@
 
 ## Быстрый старт (локально)
 ```bash
+cp .env.example .env
 make init
 make up
 make seed   # по мере появления
