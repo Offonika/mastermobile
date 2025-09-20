@@ -68,8 +68,8 @@ paths:
       security:
         - bearerAuth: []
       x-roles:
+        - 1c
         - admin
-        - integration
       parameters:
         - $ref: '#/components/parameters/XRequestId'
         - $ref: '#/components/parameters/Page'
@@ -102,8 +102,8 @@ paths:
       security:
         - bearerAuth: []
       x-roles:
-        - admin
         - courier
+        - admin
       parameters:
         - $ref: '#/components/parameters/XRequestId'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -157,9 +157,9 @@ paths:
       security:
         - bearerAuth: []
       x-roles:
-        - admin
-        - integration
+        - 1c
         - courier
+        - admin
       parameters:
         - $ref: '#/components/parameters/XRequestId'
       responses:
@@ -189,8 +189,8 @@ paths:
       security:
         - bearerAuth: []
       x-roles:
+        - 1c
         - admin
-        - integration
       parameters:
         - $ref: '#/components/parameters/XRequestId'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -631,6 +631,7 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: >-
-        JWT access token containing role claims. Supported roles: `admin`,
-        `integration`, `courier`.
+        JWT access token containing role claims. Supported roles: `1c`,
+        `courier`, `admin`. See «00‑Core — Синхронизация документации», §2.6
+        for canonical definitions.
 security: []

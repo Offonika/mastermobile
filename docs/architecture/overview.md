@@ -12,7 +12,7 @@
 ## Контейнерный уровень
 | Контейнер | Технологии / хостинг | Ответственность | Особые требования |
 | --- | --- | --- | --- |
-| **Middleware (FastAPI)** | Python 3.11, FastAPI, Uvicorn, Docker/K8s | REST API `/api/v1`, вебхуки интеграций, журналирование IntegrationLog, публикация событий | JWT Bearer с ролями `admin`, `integration`, `courier`; заголовки `X-Request-Id`, `Idempotency-Key`, трассировка OpenTelemetry |
+| **Middleware (FastAPI)** | Python 3.11, FastAPI, Uvicorn, Docker/K8s | REST API `/api/v1`, вебхуки интеграций, журналирование IntegrationLog, публикация событий | JWT Bearer с ролями `1c`, `courier`, `admin` (см. «00‑Core — Синхронизация документации», §2.6); заголовки `X-Request-Id`, `Idempotency-Key`, трассировка OpenTelemetry |
 | **PostgreSQL 16** | Managed PaaS / VM | Персистентное хранилище бизнес-объектов, идемпотентных ключей и аудита | Репликация, шифрование «на покое», миграции Alembic, хранение логов ≥ 90 дней |
 | **Redis 7** | Managed cache/queue | Очереди исходящих событий, отложенные ретраи, кэш конфигураций | Экспоненциальный backoff, DLQ, TTL ключей 24 ч |
 | **Обработчики интеграций** | Celery/Async workers | Коннекторы к 1С и Bitrix24, нормализация payload, валидация схем | Повторяемость задач, ограничение по квотам API, Circuit Breaker |
