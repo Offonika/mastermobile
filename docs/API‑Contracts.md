@@ -160,7 +160,9 @@ PATCH
 POST
 /api/v1/tasks/{id}/photos
 Привязать фото
-Режим A: { type:pickup|handout|cash, b24_file_id }; Режим B: multipart/form-data (fallback) + checksum (опц., sha256)
+Режим A: { type:pickup|handout|cash, b24_file_id }; Режим B: multipart/form-data (fallback) + checksum (опц., sha256).
+Поле `type` ограничено значениями `pickup`, `handout`, `cash`. Фото для возвратов прикладываются через `/api/v1/returns`
+(`items[].photos`).
 201 {"photo_id":"ph_123"} + Location
 400, 404, 409, 413, 415, 5xx
 Да
