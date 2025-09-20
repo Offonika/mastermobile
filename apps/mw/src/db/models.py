@@ -9,21 +9,20 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
-    CheckConstraint,
     BigInteger,
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Integer,
     Numeric,
-    String,
     Text,
     func,
-    text,
 )
 from sqlalchemy import (
     Enum as SqlEnum,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -60,6 +59,22 @@ class IntegrationDirection(str, Enum):
 
     INBOUND = "inbound"
     OUTBOUND = "outbound"
+
+
+class IntegrationExternalSystem(str, Enum):
+    """External systems participating in integrations."""
+
+    ONE_C = "1c"
+    B24 = "b24"
+    WAREHOUSE = "warehouse"
+
+
+class IntegrationStatus(str, Enum):
+    """Outcome status of the integration interaction."""
+
+    SUCCESS = "success"
+    ERROR = "error"
+    RETRY = "retry"
 
 
 JSONBType = JSONB().with_variant(SQLiteJSON(), "sqlite")
@@ -169,28 +184,48 @@ class IntegrationLog(Base):
     """Structured integration log entry persisted in PostgreSQL."""
 
     __tablename__ = "integration_log"
+    __table_args__ = (
+        CheckConstraint(
+            "direction IN ('inbound', 'outbound')",
+            name="chk_integration_log_direction",
+        ),
+        CheckConstraint(
+            "external_system IN ('1c', 'b24', 'warehouse')",
+            name="chk_integration_log_external_system",
+        ),
+        CheckConstraint(
+            "status IN ('success', 'error', 'retry')",
+            name="chk_integration_log_status",
+        ),
+        CheckConstraint(
+            "retry_count IS NULL OR retry_count >= 0",
+            name="chk_integration_log_retry_count",
+        ),
+    )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     ts: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),
     )
     direction: Mapped[IntegrationDirection] = mapped_column(
-        SqlEnum(IntegrationDirection, name="integration_direction"),
+        _enum_type(IntegrationDirection, name="integration_direction", length=16),
         nullable=False,
     )
-    system: Mapped[str] = mapped_column(String(64), nullable=False)
-    endpoint: Mapped[str] = mapped_column(String(255), nullable=False)
-    status_code: Mapped[int] = mapped_column(Integer, nullable=False)
-    correlation_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    request: Mapped[dict[str, Any]] = mapped_column(
-        JSONBType,
+    external_system: Mapped[IntegrationExternalSystem] = mapped_column(
+        _enum_type(IntegrationExternalSystem, name="integration_external_system", length=32),
         nullable=False,
-        default=dict,
-        server_default=text("'{}'::jsonb"),
     )
+    endpoint: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[IntegrationStatus] = mapped_column(
+        _enum_type(IntegrationStatus, name="integration_status", length=32),
+        nullable=False,
+    )
+    status_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    correlation_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resource_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+    request: Mapped[dict[str, Any] | None] = mapped_column(JSONBType, nullable=True)
     response: Mapped[dict[str, Any] | None] = mapped_column(JSONBType, nullable=True)
-    error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    error_code: Mapped[str | None] = mapped_column(Text, nullable=True)
+    retry_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
