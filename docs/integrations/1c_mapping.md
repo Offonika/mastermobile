@@ -1,39 +1,51 @@
 # Маппинг интеграции с 1С:УТ
 
 ## Область действия
-- Поддерживаются версии 1С:УТ 10.3 (источник) и 1С:УТ 11 (приёмник).
-- Middleware выступает посредником: принимает REST/CommerceML события от 1С:УТ 10.3, нормализует данные и транслирует их в целевую 1С:УТ 11 и внутренние модели.
-- Основные домены: НСИ, документы движения товаров, денежные операции и статусы задач доставки.
+- Поддерживаемая конфигурация: 1С:Управление торговлей 10.3 (источник данных) ⇄ MasterMobile middleware.
+- На стороне MW в эксплуатации только поток возвратов, смежные сущности описаны миграцией `apps/mw/migrations/versions/0001_init.py`.
+- Бизнес-цель: зафиксировать заявки на возврат, строки возврата и связанные события курьерских задач, сохраняя трассировку обмена с 1С.
 
-## НСИ
-| Объект 1С | Таблица MW | Ключевые поля | Примечания |
+## Сущности MW
+| Объект 1С | Таблица MW | Ключевые поля | Комментарии |
 | --- | --- | --- | --- |
-| Номенклатура | `catalog.items` | `external_id`, `sku`, `barcode`, `vat_rate`, `uom_code`, `is_batch_tracked` | Поддерживаются партии и серийные номера; ссылка на категорию из `catalog.categories` |
-| Контрагенты | `core.partners` | `external_id`, `inn`, `kpp`, `full_name`, `status` | Статусы маппятся: `Действует` → `active`, `Не обслуживается` → `inactive`, `Черный список` → `blocked` |
-| Склады | `logistics.warehouses` | `external_id`, `name`, `type`, `address`, `geo_point`, `responsible_user_id` | При отсутствии координат запускается сервис геокодирования; поле `type` нормализуется (main, transit, courier) |
-| Пользователи | `core.users` | `external_id`, `full_name`, `email`, `role` | Используется для привязки задач и ответственности |
+| Возврат товаров от покупателя | `returns` | `return_id` (UUID MW), `order_id_1c`, `courier_id`, `status`, `source` | `status` ∈ {`return_ready`, `accepted`, `return_rejected`}; `source` ∈ {`widget`, `call_center`, `warehouse`}. Таймстемпы `created_at`/`updated_at` проставляются СУБД. |
+| Строки возврата | `return_lines` | `id`, `return_id`, `line_id`, `sku`, `qty`, `quality` | `quality` ∈ {`new`, `defect`}. Колонка `photos` хранит массив URL/идентификаторов, `reason_id` — UUID внешнего справочника причин возвратов. |
+| Журнал интеграций | `integration_log` | `direction`, `external_system`, `endpoint`, `correlation_id` | `direction` ∈ {`inbound`, `outbound`}; `external_system` ∈ {`1c`, `b24`, `warehouse`}. Поля `request`/`response` содержат JSONB-дампы, `retry_count` ведётся для исходящих вызовов. |
+| События задач | `task_event` | `task_id_b24`, `type`, `actor_id`, `payload_json` | `type` ∈ {`status`, `photo`, `geo`, `comment`}. `correlation_id` уникален и используется для дедупликации событий Bitrix24. `return_id` связывается с `returns.return_id` (ON DELETE SET NULL). |
 
-## Документы
-| Документ 1С | Модель MW | Поля | Особенности |
-| --- | --- | --- | --- |
-| Реализация товаров и услуг | `sales.shipments` | `document_number`, `document_date`, `customer_id`, `total_amount`, `currency_code`, `lines[]` | Каждая строка содержит `sku`, `qty`, `price`, `vat_rate`; суммы пересчитываются в RUB по курсу ЦБ |
-| Поступление товаров | `inventory.incoming` | `supplier_id`, `contract_id`, `planned_receipt_at`, `lines[]` | После приёма создаётся задача в walking warehouse, статус `pending_quality_check` |
-| Перемещение товаров | `inventory.transfers` | `source_warehouse_id`, `target_warehouse_id`, `reason_code`, `lines[]` | Поддерживаются межфилиальные перемещения; дополнительные уведомления для `reason_code = interbranch` |
-| Возвраты от клиентов | `returns.requests` | `source_system`, `order_id`, `items[]`, `status`, `compensation_amount` | Синхронизируется с API `/api/v1/returns`; Idempotency-Key формируется как SHA256 от `document_number` |
-| Денежные документы (ПКО/РКО) | `finance.cash_documents` | `document_number`, `document_date`, `amount`, `cashier_id`, `operation_type` | Используется для сверки наличных и задач курьеров |
+### Статусы и справочники
+- Статус возврата `return_ready` ставит 1С после регистрации документа; `accepted` и `return_rejected` — результат обработки склада/курьера.
+- `return_lines.reason_id` резервируется под справочник причин в 1С, `reason_note` — свободное поле для операторов.
+- `task_event.payload_json` хранит оригинальный payload виджета/Bitrix24 (например, координаты или ссылку на фото).
 
-## Статусы и справочники
-- Единый словарь статусов хранится в `core.statuses`. Сопоставление выполняется при загрузке, непонятные статусы отправляются в очередь расхождений.
-- Валюты приводятся к ISO-4217. В случае неизвестного кода документ блокируется и требует ручного вмешательства.
-- Все даты конвертируются в UTC и хранятся в RFC-3339.
+## Потоки обмена
+### Регистрация возврата
+1. 1С формирует документ «Возврат товаров от покупателя» и вызывает `POST /api/v1/returns`.
+2. Middleware записывает строку в `returns`, дочерние записи в `return_lines`, а также журналирует запрос/ответ в `integration_log` (`direction = 'inbound'`, `external_system = '1c'`).
+3. Ответ включает созданный `return_id` и текущий статус (`return_ready` по умолчанию).
 
-## Правила обмена
-- Документы передаются пакетами ≤ 500 строк, сортировка по `document_date` ASC.
-- Для REST-запросов 1С обязательно передаёт `Idempotency-Key`, `X-Request-Id`, `X-Api-Version`.
-- Повторные запросы с другим телом → `409 Conflict` и запись в `integration_conflicts`.
-- Ошибки `422` включают массив `errors[]` с указанием поля и причины; повторная отправка возможна после исправления.
+### Обновление решения по возврату
+1. После проверки склада/курьера 1С вызывает `PUT /api/v1/returns/{returnId}` с обновлёнными полями и статусом `accepted` или `return_rejected`.
+2. MW обновляет запись, фиксируя изменения в `returns.updated_at`. Для каждой строки допускается корректировка `quality`, `reason_id`, `photos`.
+3. Все модификации протоколируются в `integration_log` и помечаются `correlation_id` из заголовка `Idempotency-Key`.
 
-## Ретраи и очереди
-- 1С повторяет запросы 3 раза (1с, 5с, 30с) при сетевых ошибках.
-- Middleware ставит документы в очередь повторной обработки (Redis) с шагами 5 мин → 30 мин → 2 ч; после 6 попыток задача попадает в DLQ.
-- Все события фиксируются в `integration_log` с привязкой к `X-Request-Id` и `Idempotency-Key`.
+### Отмена возврата
+- `DELETE /api/v1/returns/{returnId}` доступен администраторам MW. При успешном удалении строка из `returns` удаляется, связанные `return_lines` каскадно удаляются, а связанные `task_event` теряют ссылку (становятся `NULL`).
+
+### События задач
+- Курьерский виджет и Bitrix24 публикуют изменения (фото, гео, статусы) в MW, записи попадают в `task_event` с уникальным `correlation_id`.
+- Для событий, привязанных к возврату, заполняется `return_id`, что позволяет 1С отслеживать прогресс курьера. Отдельный поток экспорта в 1С использует эти данные для актуализации задач.
+
+## Заголовки и идемпотентность
+- `Idempotency-Key` обязателен для `POST`, `PUT` и `DELETE` `/api/v1/returns*` и записывается в `integration_log.correlation_id`. Повтор с тем же ключом возвращает исходный ответ, расхождение payload → `409 Conflict`.
+- `X-Request-Id` необязателен: если 1С его не передаёт, MW генерирует значение и возвращает в заголовке ответа (см. `openapi.yaml`).
+- `Authorization: Bearer <JWT>` требуется для всех защищённых эндпоинтов; роли `1c`, `courier`, `admin` см. `openapi.yaml`.
+- Заголовок `X-Api-Version` не используется; версионирование обеспечивается префиксом пути `/api/v1`.
+
+## Ретраи и наблюдаемость
+- 1С инициирует повтор через 1с → 5с → 30с при сетевых ошибках/5xx. MW использует `integration_log.retry_count` только для исходящих запросов; для входящих повторов опорным остаётся `Idempotency-Key`.
+- Все ответы MW содержат `X-Request-Id` и поле `request_id` в теле ошибки (формат RFC 7807), что позволяет сопоставить записи логов и журнал `integration_log`.
+- Для статистики доступен индекс `ix_integration_log_resource_ref`, позволяющий фильтровать журнал по идентификатору ресурса (`returns/{return_id}`).
+
+## Версионные примечания
+- 2024-05-09: документ синхронизирован с миграцией `0001_init` (таблицы `returns`, `return_lines`, `integration_log`, `task_event`) и актуальными требованиями к заголовкам/идемпотентности из `openapi.yaml`.
