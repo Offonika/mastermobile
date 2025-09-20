@@ -4,6 +4,7 @@
 - Используется CloudEvents v1.0 в представлении `application/cloudevents+json`.
 - Обязательные атрибуты: `id` (UUID v4), `source` (`urn:mastermobile:<system>`), `type`, `specversion`, `time` (RFC-3339 UTC), `subject`, `data_content_type`, `data`, `data_schema`.
 - Заголовки транспорта: `X-Request-Id`, `X-Correlation-Id`, `Idempotency-Key`, `X-Signature` (для HMAC-подписей вебхуков).
+- `Idempotency-Key` формируется по шаблону `{source}:{type}:{external_id}` (например, `urn:mastermobile:integration:bitrix24:integration.return.created:ret_501`); ключ сохраняется вместе с событием и повторно используется в заголовке API `Idempotency-Key` (см. «00‑Core — Синхронизация документации») и записях `integration_log` (см. `integrations/1c_mapping.md`). Клиенты обязаны хранить ключ минимум 72 часа, переиспользовать его при ретраях и не менять payload при повторных попытках.
 - Payload версионируется полем `data_version`. Клиенты обязаны обрабатывать только известные версии и публиковать обратную совместимость в ADR.
 
 ## Категории событий
