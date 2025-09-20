@@ -16,7 +16,8 @@ RETURNS_SOURCE_CHECK = "source IN ('widget', 'call_center', 'warehouse')"
 RETURN_LINES_QUALITY_CHECK = "quality IN ('new', 'defect')"
 INTEGRATION_LOG_DIRECTION_CHECK = "direction IN ('inbound', 'outbound')"
 INTEGRATION_LOG_SYSTEM_CHECK = "external_system IN ('1c', 'b24', 'warehouse')"
-TASK_EVENT_TYPE_CHECK = "type IN ('status', 'photo', 'geo', 'comment')"
+INTEGRATION_LOG_STATUS_CHECK = "status IN ('success', 'error', 'retry')"
+TASK_EVENTS_TYPE_CHECK = "type IN ('status', 'photo', 'geo', 'comment')"
 
 
 def upgrade() -> None:
@@ -91,6 +92,7 @@ def upgrade() -> None:
         sa.Column("direction", sa.String(length=16), nullable=False),
         sa.Column("external_system", sa.String(length=32), nullable=False),
         sa.Column("endpoint", sa.Text(), nullable=False),
+        sa.Column("status", sa.String(length=32), nullable=False),
         sa.Column("status_code", sa.Integer(), nullable=True),
         sa.Column("correlation_id", sa.Text(), nullable=True),
         sa.Column("resource_ref", sa.Text(), nullable=True),
@@ -107,13 +109,17 @@ def upgrade() -> None:
             name="chk_integration_log_external_system",
         ),
         sa.CheckConstraint(
+            INTEGRATION_LOG_STATUS_CHECK,
+            name="chk_integration_log_status",
+        ),
+        sa.CheckConstraint(
             "retry_count IS NULL OR retry_count >= 0",
             name="chk_integration_log_retry_count",
         ),
     )
 
     op.create_table(
-        "task_event",
+        "task_events",
         sa.Column("id", sa.BigInteger(), primary_key=True, autoincrement=True),
         sa.Column("task_id_b24", sa.Text(), nullable=False),
         sa.Column("return_id", postgresql.UUID(as_uuid=True), nullable=True),
@@ -132,9 +138,9 @@ def upgrade() -> None:
             ["return_id"],
             ["returns.return_id"],
             ondelete="SET NULL",
-            name="task_event_return_id_fkey",
+            name="task_events_return_id_fkey",
         ),
-        sa.CheckConstraint(TASK_EVENT_TYPE_CHECK, name="chk_task_event_type"),
+        sa.CheckConstraint(TASK_EVENTS_TYPE_CHECK, name="chk_task_events_type"),
     )
 
     op.create_index(
@@ -153,22 +159,35 @@ def upgrade() -> None:
         ["resource_ref"],
     )
     op.create_index(
-        "ix_task_event_return_id",
-        "task_event",
+        "ix_integration_log_ts",
+        "integration_log",
+        ["ts"],
+    )
+    op.create_index(
+        "ix_integration_log_status_error",
+        "integration_log",
+        ["status"],
+        postgresql_where=sa.text("status = 'error'"),
+    )
+    op.create_index(
+        "ix_task_events_return_id",
+        "task_events",
         ["return_id"],
     )
     op.create_index(
-        "ix_task_event_task_id_b24",
-        "task_event",
+        "ix_task_events_task_id_b24",
+        "task_events",
         ["task_id_b24"],
     )
 
 
 def downgrade() -> None:
-    op.drop_index("ix_task_event_task_id_b24", table_name="task_event")
-    op.drop_index("ix_task_event_return_id", table_name="task_event")
-    op.drop_table("task_event")
+    op.drop_index("ix_task_events_task_id_b24", table_name="task_events")
+    op.drop_index("ix_task_events_return_id", table_name="task_events")
+    op.drop_table("task_events")
 
+    op.drop_index("ix_integration_log_status_error", table_name="integration_log")
+    op.drop_index("ix_integration_log_ts", table_name="integration_log")
     op.drop_index("ix_integration_log_resource_ref", table_name="integration_log")
     op.drop_table("integration_log")
 
