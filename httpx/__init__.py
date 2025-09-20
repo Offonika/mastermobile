@@ -11,7 +11,7 @@ import asyncio
 import http.client
 import json
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 from urllib.parse import urlsplit
 
 __all__ = ["AsyncClient", "Response"]
@@ -22,16 +22,16 @@ class Response:
     status_code: int
     _body: bytes
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return json.loads(self._body.decode("utf-8"))
 
 
 class AsyncClient:
-    def __init__(self, base_url: str, timeout: Optional[float] = None) -> None:
+    def __init__(self, base_url: str, timeout: float | None = None) -> None:
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout
 
-    async def __aenter__(self) -> "AsyncClient":
+    async def __aenter__(self) -> AsyncClient:
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> None:
@@ -51,7 +51,8 @@ class AsyncClient:
     def _request(self, method: str, url: str) -> Response:
         parts = urlsplit(url)
         if parts.scheme != "http":
-            raise ValueError("Only http scheme is supported by the lightweight client")
+            msg = "Only http scheme is supported by the lightweight client"
+            raise ValueError(msg)
         connection = http.client.HTTPConnection(parts.hostname, parts.port or 80, timeout=self._timeout)
         target = parts.path or "/"
         if parts.query:

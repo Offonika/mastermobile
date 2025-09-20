@@ -1,6 +1,6 @@
-# MasterMobile root Dockerfile
-# См. также apps/mw/Dockerfile — основной образ приложения.
-FROM python:3.11-slim
+# syntax=docker/dockerfile:1.6
+# Dockerfile for the MasterMobile middleware application
+FROM python:3.11-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
@@ -8,13 +8,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends curl build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml README.md ./
-COPY apps ./apps
 COPY httpx ./httpx
-COPY openapi.yaml ./
+COPY apps ./apps
+COPY openapi.yaml ./openapi.yaml
 
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -e .[dev]

@@ -9,13 +9,15 @@ from typing import Any
 from sqlalchemy import (
     CheckConstraint,
     DateTime,
-    Enum as SqlEnum,
     ForeignKey,
     Integer,
     String,
     Text,
     func,
     text,
+)
+from sqlalchemy import (
+    Enum as SqlEnum,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -87,7 +89,7 @@ class Return(Base):
         onupdate=func.now(),
     )
 
-    lines: Mapped[list["ReturnLine"]] = relationship(
+    lines: Mapped[list[ReturnLine]] = relationship(
         back_populates="return_",
         cascade="all, delete-orphan",
     )

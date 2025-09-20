@@ -1,10 +1,12 @@
+# docker-compose.yml
 services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: apps/mw/Dockerfile
     image: mastermobile-app:local
-    command: uvicorn apps.mw.src.app:app --host 0.0.0.0 --port ${APP_PORT:-8000} --reload
+    command: >-
+      uvicorn apps.mw.src.app:app --host 0.0.0.0 --port ${APP_PORT:-8000} --reload
     environment:
       APP_ENV: ${APP_ENV:-local}
       APP_HOST: ${APP_HOST:-0.0.0.0}
@@ -22,6 +24,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    init: true
     ports:
       - "${APP_PORT:-8000}:8000"
     volumes:
