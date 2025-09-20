@@ -1,3 +1,4 @@
+# filename: .github/workflows/openapi-validate.yml
 name: OpenAPI validation
 
 on:

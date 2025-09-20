@@ -1,3 +1,5 @@
+<!-- filename: docs/security/threat-model.md -->
+
 # Threat Model
 
 ## Активы и цели защиты

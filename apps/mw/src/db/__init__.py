@@ -1,3 +1,4 @@
+# filename: apps/mw/src/db/__init__.py
 """Database models exposed for seed scripts and tests."""
 
 from .models import Base, IntegrationLog, Return, ReturnLine

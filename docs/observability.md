@@ -1,3 +1,5 @@
+<!-- filename: docs/observability.md -->
+
 # Обсервабилити
 
 ## Цели

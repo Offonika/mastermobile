@@ -1,3 +1,5 @@
+<!-- filename: docs/PRD Ходячий склад.md -->
+
 PRD «Ходячий склад» — v1.3.2 (синхронизировано)
 Основано на: ONE-PAGER v1.3, 00‑Core v1.3.1, API‑Contracts v1.1.3, ER Freeze v0.6.4
  Дата: 18.09.2025

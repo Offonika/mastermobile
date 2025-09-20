@@ -1,3 +1,5 @@
+<!-- filename: docs/integrations/1c_mapping.md -->
+
 # Маппинг интеграции с 1С:УТ
 
 ## Область действия

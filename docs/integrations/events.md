@@ -1,3 +1,5 @@
+<!-- filename: docs/integrations/events.md -->
+
 # События интеграций
 
 ## Формат

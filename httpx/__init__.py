@@ -1,3 +1,4 @@
+# filename: httpx/__init__.py
 """Minimal subset of the httpx API used by smoke tests.
 
 This fallback client issues synchronous HTTP requests in a background thread

@@ -1,3 +1,4 @@
+# filename: apps/mw/migrations/versions/0001_init.py
 """Initial database schema for MasterMobile returns flow."""
 from __future__ import annotations
 

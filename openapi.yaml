@@ -1,3 +1,4 @@
+# filename: openapi.yaml
 openapi: 3.0.3
 info:
   title: MasterMobile API

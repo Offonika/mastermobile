@@ -1,3 +1,5 @@
+<!-- filename: CONTRIBUTING.md -->
+
 # Контрибьютинг
 
 ## Бранчинг

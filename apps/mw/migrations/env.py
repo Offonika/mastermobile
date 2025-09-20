@@ -1,3 +1,4 @@
+# filename: apps/mw/migrations/env.py
 """Alembic environment configuration for MasterMobile."""
 from __future__ import annotations
 

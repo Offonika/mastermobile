@@ -1,3 +1,5 @@
+<!-- filename: docs/nfr.md -->
+
 # NFR — MasterMobile Middleware
 
 ## Производительность и латентность

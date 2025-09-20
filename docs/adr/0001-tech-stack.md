@@ -1,3 +1,5 @@
+<!-- filename: docs/adr/0001-tech-stack.md -->
+
 # ADR-0001: Технологический стек
 
 - **Статус:** Accepted

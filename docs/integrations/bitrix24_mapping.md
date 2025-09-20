@@ -1,3 +1,5 @@
+<!-- filename: docs/integrations/bitrix24_mapping.md -->
+
 # Маппинг интеграции с Bitrix24
 
 ## Область действия

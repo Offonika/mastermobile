@@ -1,3 +1,4 @@
+# filename: Dockerfile
 # MasterMobile root Dockerfile
 # См. также apps/mw/Dockerfile — основной образ приложения.
 FROM python:3.11-slim

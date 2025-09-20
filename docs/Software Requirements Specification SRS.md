@@ -1,3 +1,5 @@
+<!-- filename: docs/Software Requirements Specification SRS.md -->
+
 Software Requirements Specification (SRS)
 Проект: Курьерская доставка с «Ходячим складом»
  Версия: v0.3.3 (синхронизировано с 00‑Core v1.3.1)

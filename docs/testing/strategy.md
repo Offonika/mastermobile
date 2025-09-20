@@ -1,3 +1,5 @@
+<!-- filename: docs/testing/strategy.md -->
+
 <!-- docs/testing/strategy.md -->
 # Тестовая стратегия MasterMobile
 

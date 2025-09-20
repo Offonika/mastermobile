@@ -1,3 +1,4 @@
+# filename: .dockerignore
 .git
 .gitignore
 __pycache__

@@ -1,3 +1,4 @@
+# filename: Makefile
 .PHONY: init up down logs lint typecheck test fmt openapi db-upgrade db-downgrade run seed
 
 VENV_DIR := .venv

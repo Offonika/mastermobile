@@ -1,3 +1,4 @@
+# filename: apps/mw/Dockerfile
 # syntax=docker/dockerfile:1.6
 # Dockerfile for the MasterMobile middleware application
 FROM python:3.11-slim AS base

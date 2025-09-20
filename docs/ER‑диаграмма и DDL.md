@@ -1,3 +1,5 @@
+<!-- filename: docs/ER‑диаграмма и DDL.md -->
+
 ER‑диаграмма и DDL (PostgreSQL) — v0.6.4 Unified
 Проекты: «Ходячий склад» и Core Sync (единая БД Middleware)
  Основано на: v0.6.1; выровнено с 00‑Core v1.3.1 и API‑Contracts v1.1.3

@@ -1,3 +1,4 @@
+# filename: tests/test_smoke.py
 import pytest
 
 import httpx

@@ -1,3 +1,4 @@
+# filename: tests/test_placeholder.py
 """Placeholder test suite for initial project scaffolding."""
 
 

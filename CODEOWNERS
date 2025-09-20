@@ -1,3 +1,4 @@
+# filename: CODEOWNERS
 # Формат: <path>  @githubUserOrTeam
 /docs/           @Offonika
 /apps/mw/        @Offonika

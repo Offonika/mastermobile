@@ -1,3 +1,5 @@
+<!-- filename: AGENTS.md -->
+
 # MasterMobile — Handbook for Autonomous Agents
 
 > Репозиторий проходит переход от «docs-first» к полноценному middleware. Этот файл —

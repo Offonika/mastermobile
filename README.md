@@ -1,3 +1,5 @@
+<!-- filename: README.md -->
+
 # MasterMobile — Middleware & Integrations (FastAPI)
 
 ## Что это

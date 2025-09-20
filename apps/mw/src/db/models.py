@@ -1,3 +1,4 @@
+# filename: apps/mw/src/db/models.py
 """SQLAlchemy models for MasterMobile middleware."""
 
 from __future__ import annotations

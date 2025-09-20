@@ -1,3 +1,4 @@
+# filename: apps/mw/src/health.py
 """Domain-level helpers for health-check responses."""
 
 HEALTH_PAYLOAD: dict[str, str] = {"status": "ok"}
