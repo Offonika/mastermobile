@@ -15,7 +15,7 @@
 ## Метрики
 | Метрика | Тип | Labels | Цель |
 | --- | --- | --- | --- |
-| `http_requests_duration_seconds` | Histogram | `method`, `path_template`, `status_code`, `role` | p95 ≤ 250 мс (чтение), p95 ≤ 400 мс (запись) |
+| `http_requests_duration_seconds` | Histogram | `method`, `path_template`, `status_code`, `role` | p95 ≤ 400 мс (чтение), p95 ≤ 700 мс (модификации) — базовый SLO из 00‑Core §2.7 |
 | `http_requests_total` | Counter | `method`, `path_template`, `status_code`, `role` | Контроль объёма вызовов, rate limit |
 | `background_tasks_duration_seconds` | Histogram | `task_name`, `status` | SLA фоновых процессов |
 | `integration_failures_total` | Counter | `system`, `reason`, `retry_stage` | Алерты при росте ошибок внешних систем |
@@ -23,6 +23,7 @@
 | `events_dlq_total` | Counter | `event_type` | Триггер для ручного разбора |
 
 - Экспортер: Prometheus `/metrics`, scrape interval 15с.
+- Усиленные цели (например, удерживать p99 ≤ 2×p95 для сценариев Bitrix24) фиксируются в PRD и считаются stretch-метриками поверх базовых значений 00‑Core.
 - Alertmanager правила: p95 > SLO 5 мин подряд, `integration_failures_total` +50% за 10 мин, `queue_lag_seconds` > 60с.
 
 ## Трассировки
