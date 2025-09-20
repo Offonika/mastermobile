@@ -1,15 +1,15 @@
 {
   "metadata": {
     "file": "docs/testing/error_catalog.json",
-    "version": "0.2.0",
-    "updated_at": "2024-08-20T00:00:00Z",
+    "version": "0.3.0",
+    "updated_at": "2025-09-20T17:32:51Z",
     "owner": "@team-api",
     "source_of_truth": "docs/testing/strategy.md",
     "notes": "Каждая ошибка должна иметь тесты на уровне unit/contract/E2E"
   },
   "errors": {
-    "VALIDATION_ERROR": {
-      "code": "VALIDATION_ERROR",
+    "VALIDATION": {
+      "code": "VALIDATION",
       "http_status": 422,
       "title": "Ошибка валидации входных данных",
       "category": "client",
@@ -21,8 +21,8 @@
         "Contract: schemathesis negative cases"
       ]
     },
-    "AUTHENTICATION_FAILED": {
-      "code": "AUTHENTICATION_FAILED",
+    "UNAUTHORIZED": {
+      "code": "UNAUTHORIZED",
       "http_status": 401,
       "title": "Ошибка аутентификации",
       "category": "security",
@@ -35,8 +35,8 @@
         "Smoke: protected endpoint"
       ]
     },
-    "AUTHORIZATION_DENIED": {
-      "code": "AUTHORIZATION_DENIED",
+    "FORBIDDEN": {
+      "code": "FORBIDDEN",
       "http_status": 403,
       "title": "Нет прав доступа",
       "category": "security",
@@ -48,8 +48,8 @@
         "Contract: forbidden responses"
       ]
     },
-    "RESOURCE_NOT_FOUND": {
-      "code": "RESOURCE_NOT_FOUND",
+    "NOT_FOUND": {
+      "code": "NOT_FOUND",
       "http_status": 404,
       "title": "Ресурс не найден",
       "category": "client",
@@ -74,8 +74,8 @@
         "Integration: concurrent requests"
       ]
     },
-    "RATE_LIMITED": {
-      "code": "RATE_LIMITED",
+    "TOO_MANY_REQUESTS": {
+      "code": "TOO_MANY_REQUESTS",
       "http_status": 429,
       "title": "Превышен лимит запросов",
       "category": "client",
@@ -87,8 +87,8 @@
         "E2E: burst traffic scenario"
       ]
     },
-    "DEPENDENCY_TIMEOUT": {
-      "code": "DEPENDENCY_TIMEOUT",
+    "GATEWAY_TIMEOUT": {
+      "code": "GATEWAY_TIMEOUT",
       "http_status": 504,
       "title": "Таймаут внешнего сервиса",
       "category": "dependency",
@@ -100,8 +100,8 @@
         "E2E: dependency failure simulation"
       ]
     },
-    "INTERNAL_ERROR": {
-      "code": "INTERNAL_ERROR",
+    "INTERNAL": {
+      "code": "INTERNAL",
       "http_status": 500,
       "title": "Внутренняя ошибка сервиса",
       "category": "server",
