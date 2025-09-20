@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from enum import Enum
 from typing import Any
+from uuid import UUID, uuid4
 
 from sqlalchemy import (
     CheckConstraint,
+    BigInteger,
     DateTime,
     ForeignKey,
     Integer,
+    Numeric,
     String,
     Text,
     func,
@@ -19,7 +23,8 @@ from sqlalchemy import (
 from sqlalchemy import (
     Enum as SqlEnum,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
+from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -57,25 +62,56 @@ class IntegrationDirection(str, Enum):
     OUTBOUND = "outbound"
 
 
+JSONBType = JSONB().with_variant(SQLiteJSON(), "sqlite")
+
+
+def _enum_type(enum_cls: type[Enum], *, name: str, length: int) -> SqlEnum:
+    """Create a string-backed SQL enum preserving explicit values."""
+
+    return SqlEnum(
+        enum_cls,
+        name=name,
+        native_enum=False,
+        create_constraint=False,
+        length=length,
+        values_callable=lambda obj: [member.value for member in obj],
+        validate_strings=True,
+    )
+
+
 class Return(Base):
     """Return document acknowledged by the middleware."""
 
     __tablename__ = "returns"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('return_ready', 'accepted', 'return_rejected')",
+            name="chk_returns_status",
+        ),
+        CheckConstraint(
+            "source IN ('widget', 'call_center', 'warehouse')",
+            name="chk_returns_source",
+        ),
+    )
 
-    return_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    return_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+    )
     status: Mapped[ReturnStatus] = mapped_column(
-        SqlEnum(ReturnStatus, name="return_status"),
+        _enum_type(ReturnStatus, name="return_status", length=32),
         nullable=False,
         default=ReturnStatus.RETURN_READY,
         server_default=ReturnStatus.RETURN_READY.value,
     )
     source: Mapped[ReturnSource] = mapped_column(
-        SqlEnum(ReturnSource, name="return_source"),
+        _enum_type(ReturnSource, name="return_source", length=32),
         nullable=False,
     )
-    courier_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    order_id_1c: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    manager_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    courier_id: Mapped[str] = mapped_column(Text, nullable=False)
+    order_id_1c: Mapped[str | None] = mapped_column(Text, nullable=True)
+    manager_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -100,33 +136,31 @@ class ReturnLine(Base):
 
     __tablename__ = "return_lines"
     __table_args__ = (
-        CheckConstraint("qty >= 0", name="chk_return_qty_nonneg"),
-        CheckConstraint("quality <> 'defect' OR reason_id IS NOT NULL", name="chk_return_defect_reason"),
+        CheckConstraint("qty >= 0", name="chk_return_lines_qty_non_negative"),
+        CheckConstraint(
+            "quality IN ('new', 'defect')",
+            name="chk_return_lines_quality",
+        ),
     )
 
-    line_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    return_id: Mapped[int] = mapped_column(
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    line_id: Mapped[str] = mapped_column(Text, nullable=False)
+    return_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
         ForeignKey("returns.return_id", ondelete="CASCADE"),
         nullable=False,
     )
-    sku: Mapped[str] = mapped_column(String(64), nullable=False)
-    qty: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default=text("1"))
+    sku: Mapped[str] = mapped_column(Text, nullable=False)
+    qty: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
     quality: Mapped[ReturnLineQuality] = mapped_column(
-        SqlEnum(ReturnLineQuality, name="return_line_quality"),
+        _enum_type(ReturnLineQuality, name="return_line_quality", length=16),
         nullable=False,
-        default=ReturnLineQuality.NEW,
-        server_default=ReturnLineQuality.NEW.value,
     )
-    reason_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    reason_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
     reason_note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    photos: Mapped[list[str]] = mapped_column(
-        JSONB,
-        nullable=False,
-        default=list,
-        server_default=text("'[]'::jsonb"),
-    )
-    imei: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    serial_number: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    photos: Mapped[list[str] | None] = mapped_column(JSONBType, nullable=True)
+    imei: Mapped[str | None] = mapped_column(Text, nullable=True)
+    serial: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     return_: Mapped[Return] = relationship(back_populates="lines")
 
@@ -151,12 +185,12 @@ class IntegrationLog(Base):
     status_code: Mapped[int] = mapped_column(Integer, nullable=False)
     correlation_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     request: Mapped[dict[str, Any]] = mapped_column(
-        JSONB,
+        JSONBType,
         nullable=False,
         default=dict,
         server_default=text("'{}'::jsonb"),
     )
-    response: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    response: Mapped[dict[str, Any] | None] = mapped_column(JSONBType, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
