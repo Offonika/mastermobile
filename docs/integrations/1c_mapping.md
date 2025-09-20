@@ -19,7 +19,7 @@
 | Реализация товаров и услуг | `sales.shipments` | `document_number`, `document_date`, `customer_id`, `total_amount`, `currency_code`, `lines[]` | Каждая строка содержит `sku`, `qty`, `price`, `vat_rate`; суммы пересчитываются в RUB по курсу ЦБ |
 | Поступление товаров | `inventory.incoming` | `supplier_id`, `contract_id`, `planned_receipt_at`, `lines[]` | После приёма создаётся задача в walking warehouse, статус `pending_quality_check` |
 | Перемещение товаров | `inventory.transfers` | `source_warehouse_id`, `target_warehouse_id`, `reason_code`, `lines[]` | Поддерживаются межфилиальные перемещения; дополнительные уведомления для `reason_code = interbranch` |
-| Возвраты от клиентов | `returns.requests` | `source_system`, `order_id`, `items[]`, `status`, `compensation_amount` | Синхронизируется с API `/api/v1/returns`; Idempotency-Key формируется как SHA256 от `document_number` |
+| Возвраты от клиентов | `returns.requests` | `source_system`, `order_id`, `status` (`return_ready`\|`accepted`\|`return_rejected`), `items[]` (`quality` = `new`\|`defect`, `reason_id`?) | Синхронизируется с API `/api/v1/returns`; Idempotency-Key формируется как SHA256 от `document_number`; `reason_id` хранится как UUID, может отсутствовать |
 | Денежные документы (ПКО/РКО) | `finance.cash_documents` | `document_number`, `document_date`, `amount`, `cashier_id`, `operation_type` | Используется для сверки наличных и задач курьеров |
 
 ## Статусы и справочники

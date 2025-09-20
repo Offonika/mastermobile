@@ -186,7 +186,7 @@ POST
 POST
 /api/v1/returns
 Инициировать возврат (return_ready)
-{ source:widget, courier_id, order_id_1c?, items:[{sku, qty, quality:new|defect, reason_code, reason_note?, photos:[b24_file_id], imei?, serial?}] }
+{ source:widget, courier_id, order_id_1c?, items:[{sku, qty, quality:new|defect, reason_id? (UUID), reason_note?, photos:[b24_file_id], imei?, serial?}] }
 201 {"return_id":501} + Location
 400, 401, 404, 409
 Да

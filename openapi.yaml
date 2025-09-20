@@ -363,11 +363,10 @@ components:
           type: string
           description: Current status of the return.
           enum:
-            - pending
+            - return_ready
             - accepted
-            - rejected
-            - cancelled
-          example: pending
+            - return_rejected
+          example: return_ready
         source:
           type: string
           description: Channel that initiated the return.
@@ -415,7 +414,6 @@ components:
               - sku
               - qty
               - quality
-              - reason_code
             properties:
               line_id:
                 type: string
@@ -436,12 +434,13 @@ components:
                 enum:
                   - new
                   - defect
-                  - unknown
                 example: defect
-              reason_code:
+              reason_id:
                 type: string
-                description: Machine-readable reason code.
-                example: damaged_package
+                format: uuid
+                nullable: true
+                description: Identifier of the predefined reason for the return when supplied.
+                example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
               reason_note:
                 type: string
                 nullable: true
@@ -498,7 +497,6 @@ components:
               - sku
               - qty
               - quality
-              - reason_code
             properties:
               sku:
                 type: string
@@ -515,12 +513,12 @@ components:
                 enum:
                   - new
                   - defect
-                  - unknown
                 example: defect
-              reason_code:
+              reason_id:
                 type: string
-                description: Machine-readable reason code.
-                example: damaged_package
+                format: uuid
+                description: Optional reference to the predefined reason for the return.
+                example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
               reason_note:
                 type: string
                 nullable: true

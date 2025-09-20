@@ -216,7 +216,7 @@ POST /api/v1/returns — инициировать возврат (return_ready):
   "source": "widget",
   "courier_id": 7,
   "order_id_1c": "000123",
-  "items": [{"sku":"IP15PM-GLASS","qty":1,"quality":"defect","reason_code":"cracked","photos":["disk:123"],"imei":null,"serial":null}]
+  "items": [{"sku":"IP15PM-GLASS","qty":1,"quality":"defect","reason_id":"3fa85f64-5717-4562-b3fc-2c963f66afa6","photos":["disk:123"],"imei":null,"serial":null}]
 }
 
 POST /api/v1/returns/{id}/reject — отклонить «брак не подтвердился»:
