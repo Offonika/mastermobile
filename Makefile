@@ -42,10 +42,10 @@ openapi:
 	@echo "OpenAPI: ./openapi.yaml"
 
 db-upgrade: $(VENV_SENTINEL)
-	$(VENV_BIN)/alembic -c alembic.ini upgrade head
+	$(VENV_BIN)/alembic -c apps/mw/migrations/alembic.ini upgrade head
 
 db-downgrade: $(VENV_SENTINEL)
-	$(VENV_BIN)/alembic -c alembic.ini downgrade -1
+	$(VENV_BIN)/alembic -c apps/mw/migrations/alembic.ini downgrade -1
 
 run:
 	docker compose up app
