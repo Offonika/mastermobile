@@ -184,7 +184,7 @@ GET поддерживает ETag/If-None-Match.
 Примечание: POST /tasks/{id}/status deprecated (Sunset объявлен в API‑Contracts v1.1.3).
 6.4 POST /api/v1/instant-orders
 Создать мгновенный заказ от курьера.
-{
+{ 
   "courier_id": 7,
   "client_phone": "+79991234567",
   "lines": [{"sku":"IP15PM-GLASS","qty":1}],
