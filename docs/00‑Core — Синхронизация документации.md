@@ -156,7 +156,7 @@ Status‑Dictionary v1
  - CANCELLED — заменён на REFUSED; в status_dict помечается deprecated=true, новые интеграции его не используют.
  - NON_CASH_CONFIRMED — сверка безналичных оплат закрывается статусом DONE; значение выводится из справочника.
  - CLOSED — финальный статус объединён с DONE, исторические записи мигрируют на новый код.
- Статусы и переходы согласованы с владельцами API‑Contracts v1.1.3 (docs/API‑Contracts.md).
+Статусы и переходы согласованы с владельцами API‑Contracts v1.0.0 (docs/API‑Contracts.md).
 3.2. Instant Orders (быстрые продажи курьера)
  DRAFT → PENDING_APPROVAL → APPROVED → (DELIVERED|CANCELLED)
  Отказы: REJECTED, эскалация тайм‑аута: TIMEOUT_ESCALATED.
