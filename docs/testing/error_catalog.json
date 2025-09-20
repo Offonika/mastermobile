@@ -1,0 +1,10 @@
+{
+  "errors": {
+    "VALIDATION_ERROR": {"code": "VALIDATION_ERROR", "http": 422, "message": "Invalid input"},
+    "UNAUTHORIZED": {"code": "UNAUTHORIZED", "http": 401, "message": "Unauthorized"},
+    "FORBIDDEN": {"code": "FORBIDDEN", "http": 403, "message": "Forbidden"},
+    "NOT_FOUND": {"code": "NOT_FOUND", "http": 404, "message": "Not found"},
+    "CONFLICT": {"code": "CONFLICT", "http": 409, "message": "Conflict"},
+    "INTERNAL": {"code": "INTERNAL", "http": 500, "message": "Internal server error"}
+  }
+}

@@ -1,0 +1,30 @@
+openapi: 3.0.3
+info:
+  title: MasterMobile API
+  version: 0.1.0
+servers:
+  - url: http://localhost:8000
+paths:
+  /health:
+    get:
+      tags: [system]
+      summary: Health check
+      operationId: getHealth
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security: []
