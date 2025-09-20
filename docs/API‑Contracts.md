@@ -183,6 +183,13 @@ POST
 Успех
 Ошибки
 Идемп.
+GET
+/api/v1/returns
+Список возвратов
+Параметры: status? (return_ready|accepted|return_rejected), page?, page_size?
+200 { items:[Return], page, page_size, total_items, total_pages, has_next }
+400, 401
+Да
 POST
 /api/v1/returns
 Инициировать возврат (return_ready)

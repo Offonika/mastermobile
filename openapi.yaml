@@ -74,6 +74,7 @@ paths:
         - $ref: '#/components/parameters/XRequestId'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/ReturnStatus'
       responses:
         '200':
           description: A paginated collection of returns.
@@ -361,13 +362,12 @@ components:
           example: ret_501
         status:
           type: string
-          description: Current status of the return.
+          description: Current status of the return. See «00‑Core — Синхронизация документации», §3 for canonical values.
           enum:
-            - pending
+            - return_ready
             - accepted
-            - rejected
-            - cancelled
-          example: pending
+            - return_rejected
+          example: return_ready
         source:
           type: string
           description: Channel that initiated the return.
@@ -620,6 +620,17 @@ components:
       description: Identifier of the return.
       schema:
         type: string
+    ReturnStatus:
+      name: status
+      in: query
+      required: false
+      description: Filter returns by workflow status. Values correspond to Status-Dictionary v1.
+      schema:
+        type: string
+        enum:
+          - return_ready
+          - accepted
+          - return_rejected
   headers:
     XRequestId:
       description: Identifier correlating the request with logs and traces.
