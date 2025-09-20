@@ -28,6 +28,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Health'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
   /api/v1/system/ping:
     get:
       tags:
@@ -35,6 +38,7 @@ paths:
       summary: Ping the middleware
       description: Returns the current status of the middleware together with a UTC timestamp.
       operationId: pingSystem
+      security: []
       responses:
         '200':
           description: Service responded to ping.
@@ -42,18 +46,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Ping'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
         '503':
           description: Service is unavailable.
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
   /api/v1/returns:
     get:
       tags:
         - returns
       summary: List returns
+      description: Returns a paginated list of return requests filtered by optional query parameters.
       operationId: listReturns
+      security:
+        - bearerAuth: []
+      x-roles:
+        - admin
+        - integration
       parameters:
         - $ref: '#/components/parameters/XRequestId'
         - $ref: '#/components/parameters/Page'
@@ -65,17 +81,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedReturns'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
         '400':
           description: Invalid filters supplied.
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
     post:
       tags:
         - returns
       summary: Create a return request
+      description: Registers a new return initiated by Bitrix24, the call center or warehouse operations.
       operationId: createReturn
+      security:
+        - bearerAuth: []
+      x-roles:
+        - admin
+        - courier
       parameters:
         - $ref: '#/components/parameters/XRequestId'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -94,6 +122,8 @@ paths:
               schema:
                 type: string
                 format: uri
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
           content:
             application/json:
               schema:
@@ -104,12 +134,18 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
         '409':
-          description: A return with the provided idempotency key already exists.
+          description: A return with the provided idempotency key already exists or payload differs from the original request.
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
   /api/v1/returns/{returnId}:
     parameters:
       - $ref: '#/components/parameters/ReturnId'
@@ -118,6 +154,12 @@ paths:
         - returns
       summary: Retrieve a return
       operationId: getReturn
+      security:
+        - bearerAuth: []
+      x-roles:
+        - admin
+        - integration
+        - courier
       parameters:
         - $ref: '#/components/parameters/XRequestId'
       responses:
@@ -127,17 +169,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Return'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
         '404':
           description: Return was not found.
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
     put:
       tags:
         - returns
       summary: Update a return
       operationId: updateReturn
+      security:
+        - bearerAuth: []
+      x-roles:
+        - admin
+        - integration
       parameters:
         - $ref: '#/components/parameters/XRequestId'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -154,41 +207,63 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Return'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
         '400':
           description: Payload validation error.
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
         '404':
           description: Return was not found.
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
         '409':
           description: Conflict caused by idempotency mismatch.
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
     delete:
       tags:
         - returns
       summary: Delete a return
       operationId: deleteReturn
+      security:
+        - bearerAuth: []
+      x-roles:
+        - admin
       parameters:
         - $ref: '#/components/parameters/XRequestId'
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '204':
           description: Return was deleted.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
         '404':
           description: Return was not found.
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
 components:
   schemas:
     Health:
@@ -265,6 +340,10 @@ components:
                 type: string
                 description: Description of the validation issue.
                 example: SKU is required.
+        request_id:
+          type: string
+          description: Identifier that correlates the error with logs and traces.
+          example: 7b1c9945-70ab-4170-9c7e-4d6e9de5a0f9
     Return:
       type: object
       required:
@@ -287,6 +366,7 @@ components:
             - pending
             - accepted
             - rejected
+            - cancelled
           example: pending
         source:
           type: string
@@ -356,6 +436,7 @@ components:
                 enum:
                   - new
                   - defect
+                  - unknown
                 example: defect
               reason_code:
                 type: string
@@ -434,6 +515,7 @@ components:
                 enum:
                   - new
                   - defect
+                  - unknown
                 example: defect
               reason_code:
                 type: string
@@ -538,9 +620,17 @@ components:
       description: Identifier of the return.
       schema:
         type: string
+  headers:
+    XRequestId:
+      description: Identifier correlating the request with logs and traces.
+      schema:
+        type: string
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: >-
+        JWT access token containing role claims. Supported roles: `admin`,
+        `integration`, `courier`.
 security: []
