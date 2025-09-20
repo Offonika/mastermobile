@@ -1,0 +1,58 @@
+erDiagram
+    %% Возвраты и связанные артефакты наблюдаемости
+    RETURNS {
+        uuid return_id PK "Первичный ключ (генерируется MW)"
+        text order_id_1c "Ссылка на исходный документ 1С (nullable)"
+        text courier_id "Курьер, оформивший возврат"
+        text manager_id "Оператор, подтвердивший возврат (nullable)"
+        text source "Канал инициации: widget|call_center|warehouse"
+        text status "Статус: return_ready|accepted|return_rejected"
+        text comment "Комментарий оператора (nullable)"
+        timestamptz created_at "Создано (UTC)"
+        timestamptz updated_at "Обновлено (UTC)"
+    }
+
+    RETURN_LINES {
+        bigserial id PK "Технический идентификатор строки"
+        uuid return_id FK "FK → returns.return_id"
+        text line_id "Идентификатор строки в исходном документе"
+        text sku "SKU возвращаемого товара"
+        numeric qty "Количество (CHECK qty >= 0)"
+        text quality "Качество: new|defect"
+        uuid reason_id "FK → return_reason.reason_id (nullable)"
+        text reason_note "Текстовая расшифровка причины (nullable)"
+        jsonb photos "Массив ID файлов Bitrix24 (nullable)"
+        text imei "IMEI устройства (nullable)"
+        text serial "Серийный номер (nullable)"
+    }
+
+    INTEGRATION_LOG {
+        bigserial id PK "Журнал записи"
+        timestamptz ts "Момент вызова/ответа (UTC)"
+        text direction "Направление: inbound|outbound"
+        text external_system "Внешняя система: 1c|b24|warehouse"
+        text endpoint "REST-метод или шина"
+        integer status_code "HTTP/бизнес-статус результата"
+        text correlation_id "X-Correlation-Id для трассировки"
+        text resource_ref "Ссылка на сущность (например, return_id)"
+        jsonb request "Нормализованное тело запроса"
+        jsonb response "Нормализованное тело ответа"
+        text error_code "Код ошибки (nullable)"
+        integer retry_count "Ретраи (nullable)"
+    }
+
+    TASK_EVENT {
+        bigserial id PK "Суррогатный ключ события"
+        text task_id_b24 "Связанная задача Bitrix24"
+        uuid return_id FK "FK → returns.return_id (nullable, события ветки возврата)"
+        timestamptz ts "Момент события (UTC)"
+        text type "Тип: status|photo|geo|comment"
+        text status "Статус задачи после события (nullable)"
+        text actor_id "Курьер/система инициатор"
+        jsonb payload_json "Полный payload события"
+        text correlation_id "CorrelationId (уникальный, nullable)"
+    }
+
+    RETURNS ||--o{ RETURN_LINES : "содержит"
+    RETURNS ||--o{ INTEGRATION_LOG : "логирует через resource_ref"
+    RETURNS ||--o{ TASK_EVENT : "формирует события"
