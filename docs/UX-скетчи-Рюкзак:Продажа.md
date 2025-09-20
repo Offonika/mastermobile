@@ -1,3 +1,11 @@
+Название: UX-скетчи «Рюкзак/Продажа» · Версия: v1.2.3 · Дата: 2025-09-26 · Владелец: UX/Design · Статус: Draft
+Связанные документы:
+- [PRD «Ходячий склад» v1.3.2](PRD Ходячий склад.md)
+- [Software Requirements Specification SRS.md](Software Requirements Specification SRS.md)
+- [ONE-PAGER-ХодячийРюкзак.md](ONE-PAGER-ХодячийРюкзак.md)
+- [00‑Core — Синхронизация документации](00‑Core — Синхронизация документации.md)
+- [API‑Contracts v1.1.3](API‑Contracts.md)
+
 UX-скетчи «Рюкзак/Продажа» · v1.2.3 (исправлено)
 0) Общие принципы (оффлайн-правки согласованы с владельцами продукта, 26.09.2025)
 Платформа/ориентация: мобильный веб/PWA, портрет; orientation-lock = portrait. Поддержка 320–430 px. Отключаем авто-зум для tel/decimal.
@@ -533,3 +541,5 @@ iOS особенности: отсутствие Periodic Background Sync — с
 
 
 
+### Changelog
+- v1.2.3 — 2025-09-26 — non-breaking: добавлены единая шапка и changelog, скетчи без изменений.

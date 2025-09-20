@@ -1,7 +1,14 @@
+Название: ER‑диаграмма и DDL (PostgreSQL) · Версия: v0.6.4 · Дата: 2025-09-18 · Владелец: Арх/DB · Статус: Approved
+Связанные документы:
+- [00‑Core — Синхронизация документации](00‑Core — Синхронизация документации.md)
+- [API‑Contracts v1.1.3](API‑Contracts.md)
+- [PRD «Ходячий склад» v1.3.2](PRD Ходячий склад.md)
+- [PRD — Переход 1С: УТ 10.md](PRD — Переход 1С: УТ 10.md)
+- [SRS — Core Sync 1С: УТ 10.md](SRS — Core Sync 1С: УТ 10.md)
+
 ER‑диаграмма и DDL (PostgreSQL) — v0.6.4 Unified
 Проекты: «Ходячий склад» и Core Sync (единая БД Middleware)
- Основано на: v0.6.1; выровнено с 00‑Core v1.3 и API‑Contracts v1.1.3
- Дата: 18.09.2025
+Основано на: v0.6.1; выровнено с 00‑Core v1.3 и API‑Contracts v1.1.3
 Что изменилось в v0.6.4 против v0.6.3
 Добавлены поля валюты: orders.currency_code, instant_orders.currency_code (currency_code, по умолчанию RUB).
 
@@ -208,4 +215,6 @@ integration_log: ≥90 дн; task_events: ≥180 дн; idempotency_key: 72 ч.
 
 
 
+### Changelog
+- v0.6.4 — 2025-09-18 — non-breaking: добавлены стандартные поля шапки и changelog без изменения схемы.
 
