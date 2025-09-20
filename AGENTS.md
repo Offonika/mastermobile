@@ -60,11 +60,11 @@ ER-диаграмма и DDL.md — единая ER (PostgreSQL 14+).
 
 API-Contracts.md — единый контракт API v1.
 
-Core Sync: PRD — Переход 1С: УТ 10.md, SRS — Core Sync 1С: УТ 10.md.
+Core Sync: PRD — Переход 1С: УТ 10.md, SRS — Core Sync 1С: УТ 10.md, ONE-PAGER — Переход 1С: УТ 10.md.
 
 Walking Warehouse: PRD Ходячий склад.md, ONE-PAGER-ХодячийРюкзак.md, UX-скетчи-Рюкзак:Продажа.md.
 
-Batch-Transcribe B24: ONE-PAGER — Тексты звонков Bitrix24.md.
+Batch-Transcribe B24: PRD — Тексты звонков Bitrix24.md, ONE-PAGER — Тексты звонков Bitrix24.md.
 
 Шаблонный SRS: Software Requirements Specification SRS.md (общая заготовка—уточнить связку с конкретными PRD/SRS).
 
@@ -157,9 +157,9 @@ one-pager_b24-transcribe.md, prd_core-sync.md, srs_core-sync.md, er_ddl.md, api-
 🧩 Модули/потоки (docs-phase)
 
 Модуль    Главные документы    Итоговые артефакты
-Core Sync (УТ10.3↔УТ11)    PRD — Переход 1С: УТ 10.md, SRS — Core Sync 1С: УТ 10.md, ER-диаграмма и DDL.md, API-Contracts.md    перечень сущностей/статусов, ER v0.6.x
+Core Sync (УТ10.3↔УТ11)    PRD — Переход 1С: УТ 10.md, ONE-PAGER — Переход 1С: УТ 10.md, SRS — Core Sync 1С: УТ 10.md, ER-диаграмма и DDL.md, API-Contracts.md    перечень сущностей/статусов, ER v0.6.x
 Walking Warehouse    PRD Ходячий склад.md, ONE-PAGER-ХодячийРюкзак.md, UX-скетчи-Рюкзак:Продажа.md    процессы задач/возвратов, UX-скрины
-B24 Batch-Transcribe    ONE-PAGER — Тексты звонков Bitrix24.md (форматы calls.csv/txt как приложение)    calls.csv, transcripts/*.txt
+B24 Batch-Transcribe    PRD — Тексты звонков Bitrix24.md, ONE-PAGER — Тексты звонков Bitrix24.md (форматы calls.csv/txt как приложение)    calls.csv, transcripts/*.txt
 Концепция    Концепция проекта.md    рамки/цели/не-цели
 Общий шаблон SRS    Software Requirements Specification SRS.md    основа для новых SRS
 
@@ -258,10 +258,10 @@ ER/DDL: docs/ER-диаграмма и DDL.md
 
 API: docs/API-Contracts.md
 
-Core Sync: docs/PRD — Переход 1С: УТ 10.md, docs/SRS — Core Sync 1С: УТ 10.md
+Core Sync: docs/PRD — Переход 1С: УТ 10.md, docs/SRS — Core Sync 1С: УТ 10.md, docs/ONE-PAGER — Переход 1С: УТ 10.md
 
 Walking Warehouse: docs/PRD Ходячий склад.md, docs/ONE-PAGER-ХодячийРюкзак.md, docs/UX-скетчи-Рюкзак:Продажа.md
 
-Batch-Transcribe: docs/ONE-PAGER — Тексты звонков Bitrix24.md
+Batch-Transcribe: docs/PRD — Тексты звонков Bitrix24.md, docs/ONE-PAGER — Тексты звонков Bitrix24.md
 
 Шаблон SRS: docs/Software Requirements Specification SRS.md
