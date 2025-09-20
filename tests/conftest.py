@@ -2,9 +2,11 @@ import asyncio
 import json
 import multiprocessing
 import socket
+import sys
 import time
 from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
 import pytest
 
@@ -12,6 +14,8 @@ try:
     import uvicorn
 except ImportError:  # pragma: no cover - optional dependency
     uvicorn = None  # type: ignore[assignment]
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from apps.mw.src.health import HEALTH_PAYLOAD
 
