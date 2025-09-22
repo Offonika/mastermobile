@@ -6,7 +6,7 @@ ER‑диаграмма и DDL (PostgreSQL) — v0.6.4 Unified
 Добавлены поля валюты: orders.currency_code, instant_orders.currency_code (currency_code, по умолчанию RUB).
 
 
-Бизнес‑валидатор возвратов: если quality='defect', то reason_id обязателен (CHECK).
+Бизнес‑валидатор возвратов: reason_code обязателен (CHECK length(trim(reason_code)) > 0).
 
 
 Индексы очередей/наблюдаемости:
@@ -15,7 +15,7 @@ ER‑диаграмма и DDL (PostgreSQL) — v0.6.4 Unified
 task_events(task_id_b24, ts desc) where type='status';
 
 
-returns(status, updated_at desc) where status in ('return_ready','accepted').
+returns(status, updated_at desc) where status in ('pending','accepted').
 
 
 Дедуп фото: функциональный индекс по payload_json->>'checksum' для task_events с type='photo'.
@@ -74,7 +74,7 @@ alter table if exists orders
 alter table if exists instant_order_lines
   add constraint if not exists chk_iol_nonneg check (qty >= 0 and price >= 0);
 alter table if exists return_lines
-  add constraint if not exists chk_return_qty_nonneg check (qty >= 0);
+  add constraint if not exists chk_return_qty_positive check (qty > 0);
 
 -- Индексы под онлайн‑пути
 create index if not exists idx_orders_status_created on orders(status, created_at desc);
@@ -109,15 +109,15 @@ alter table if exists instant_orders
 
 -- Бизнес‑правило: при браке причина обязательна
 alter table if exists return_lines
-  add constraint if not exists chk_return_defect_reason
-    check (quality <> 'defect' or reason_id is not null);
+  add constraint if not exists chk_return_reason_code_not_blank
+    check (length(trim(reason_code)) > 0);
 
 -- Индексы очередей/наблюдаемости
 create index if not exists idx_task_events_status_ts
   on task_events(task_id_b24, ts desc) where type='status';
 
 create index if not exists idx_returns_status_uat
-  on returns(status, updated_at desc) where status in ('return_ready','accepted');
+  on returns(status, updated_at desc) where status in ('pending','accepted');
 
 -- Дедуп фото по контрольной сумме
 create index if not exists idx_task_events_photo_checksum
@@ -158,7 +158,7 @@ create index if not exists idx_idem_expires on idempotency_key(expires_at) where
 create unique index if not exists uq_task_events_corr on task_events(correlation_id) where correlation_id is not null;
 
 -- 2.3 Очереди возвратов (уточнение)
-create index if not exists idx_returns_ready on returns(return_id) where status='return_ready';
+create index if not exists idx_returns_pending on returns(return_id) where status='pending';
 
 -- 2.4 Обязательные телефоны (уже были), оставляем как есть
 -- orders.phone ru_phone not null; instant_orders.client_phone ru_phone not null
@@ -166,7 +166,7 @@ create index if not exists idx_returns_ready on returns(return_id) where status=
 -- 2.5 Комментарии‑подсказки по статусам (привязка к Status‑Dictionary v1)
 comment on column orders.status is 'Status‑Dictionary v1 (полный список см. 00‑Core §3.1: READY|PICKED_UP|...); изменения — через приложение, не DDL';
 comment on column instant_orders.status is 'Status‑Dictionary v1 (полный список: DRAFT|PENDING_APPROVAL|APPROVED|DELIVERED|CANCELLED|REJECTED|TIMEOUT_ESCALATED; см. 00‑Core §3.2)';
-comment on column returns.status is 'Status‑Dictionary v1 (полный список: return_ready|accepted|return_rejected); фиксация статусов возвратов';
+comment on column returns.status is 'Status‑Dictionary v1 (полный список: pending|accepted|rejected|cancelled); фиксация статусов возвратов';
 
 -- 2.6 Ретенции (операторские заметки)
 comment on table integration_log is 'Retention: 90d';
