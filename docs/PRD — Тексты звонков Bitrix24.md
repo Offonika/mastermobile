@@ -175,4 +175,4 @@ F7. Идемпотентность и повторные запуски.
 - A1. Шаблон запроса ChatGPT для саммари (OneDrive/Notion, ссылка в runbook).
 - A2. OpenAPI anchors Bitrix24 телефонии (см. API‑Contracts v1.1.3, раздел `b24.telephony.calls.*`).
 - A3. Runbook инцидентов: `docs/runbooks/call_export.md` (создать при реализации).
-- A4. Формат CSV (data dictionary) — `docs/specs/call_registry_schema.yaml` (будет добавлен при разработке).
+- A4. Формат CSV (data dictionary) — [docs/specs/call_registry_schema.yaml](specs/call_registry_schema.yaml).
