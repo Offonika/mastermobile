@@ -23,6 +23,7 @@
 | `APP_ENV`       | `local`                | Режим работы приложения             |
 | `APP_HOST`      | `0.0.0.0`              | Адрес, на котором слушает uvicorn   |
 | `APP_PORT`      | `8000`                 | Порт приложения и проброс наружу    |
+| `DATABASE_URL`  | —                      | Полный DSN Postgres (перекрывает настройки ниже) |
 | `DB_HOST`       | `db`                   | Хост Postgres внутри docker-compose |
 | `DB_PORT`       | `5432`                 | Порт Postgres                       |
 | `DB_USER`       | `postgres`             | Имя пользователя БД                 |
