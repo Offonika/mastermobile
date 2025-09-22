@@ -1,4 +1,4 @@
-"""Add check constraint ensuring defect lines have a reason."""
+"""Ensure return lines always persist a non-empty reason code."""
 from __future__ import annotations
 
 from alembic import op
@@ -10,20 +10,20 @@ branch_labels = None
 depends_on = None
 
 
-CHECK_RETURN_LINES_DEFECT_REASON = "quality <> 'defect' OR reason_id IS NOT NULL"
+CHECK_RETURN_LINES_REASON_CODE = "length(trim(reason_code)) > 0"
 
 
 def upgrade() -> None:
     op.create_check_constraint(
-        "chk_return_lines_defect_reason",
+        "chk_return_lines_reason_code_not_blank",
         "return_lines",
-        CHECK_RETURN_LINES_DEFECT_REASON,
+        CHECK_RETURN_LINES_REASON_CODE,
     )
 
 
 def downgrade() -> None:
     op.drop_constraint(
-        "chk_return_lines_defect_reason",
+        "chk_return_lines_reason_code_not_blank",
         "return_lines",
         type_="check",
     )

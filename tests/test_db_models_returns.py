@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
 from uuid import uuid4
 
 import pytest
@@ -27,12 +26,11 @@ def test_return_roundtrip_matches_schema() -> None:
     Base.metadata.create_all(engine, tables=[Return.__table__, ReturnLine.__table__])
 
     return_id = uuid4()
-    reason_id = uuid4()
 
     with Session(engine) as session:
         return_obj = Return(
             return_id=return_id,
-            status=ReturnStatus.RETURN_READY,
+            status=ReturnStatus.PENDING,
             source=ReturnSource.WAREHOUSE,
             courier_id="courier-42",
             order_id_1c="order-1c",
@@ -43,9 +41,9 @@ def test_return_roundtrip_matches_schema() -> None:
                 id=1,
                 line_id="line-1",
                 sku="sku-1",
-                qty=Decimal("2.500"),
-                quality=ReturnLineQuality.NEW,
-                reason_id=reason_id,
+                qty=2,
+                quality=ReturnLineQuality.UNKNOWN,
+                reason_code="damaged_package",
                 reason_note="Packaging damaged",
                 photos=None,
                 imei="123456789012345",
@@ -67,18 +65,18 @@ def test_return_roundtrip_matches_schema() -> None:
         line = loaded.lines[0]
         assert line.return_id == return_id
         assert line.line_id == "line-1"
-        assert line.qty == Decimal("2.500")
-        assert isinstance(line.qty, Decimal)
-        assert line.quality is ReturnLineQuality.NEW
-        assert line.reason_id == reason_id
+        assert line.qty == 2
+        assert isinstance(line.qty, int)
+        assert line.quality is ReturnLineQuality.UNKNOWN
+        assert line.reason_code == "damaged_package"
         assert line.photos is None
         assert line.serial == "SN123456789"
 
     engine.dispose()
 
 
-def test_return_line_defect_requires_reason() -> None:
-    """Ensure DB refuses defect lines without linked reason."""
+def test_return_line_reason_code_cannot_be_blank() -> None:
+    """Ensure DB refuses return lines with empty reason codes."""
 
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     Base.metadata.create_all(engine, tables=[Return.__table__, ReturnLine.__table__])
@@ -86,7 +84,7 @@ def test_return_line_defect_requires_reason() -> None:
     with Session(engine) as session:
         return_obj = Return(
             return_id=uuid4(),
-            status=ReturnStatus.RETURN_READY,
+            status=ReturnStatus.PENDING,
             source=ReturnSource.WAREHOUSE,
             courier_id="courier-13",
         )
@@ -94,9 +92,9 @@ def test_return_line_defect_requires_reason() -> None:
             ReturnLine(
                 line_id="line-defect",
                 sku="sku-defect",
-                qty=Decimal("1.000"),
+                qty=1,
                 quality=ReturnLineQuality.DEFECT,
-                reason_id=None,
+                reason_code=" ",
             )
         )
 

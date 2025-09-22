@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from decimal import Decimal
 from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
@@ -14,7 +13,6 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
-    Numeric,
     Text,
     func,
 )
@@ -34,9 +32,10 @@ class Base(DeclarativeBase):
 class ReturnStatus(str, Enum):
     """Possible workflow statuses for the return document."""
 
-    RETURN_READY = "return_ready"
+    PENDING = "pending"
     ACCEPTED = "accepted"
-    RETURN_REJECTED = "return_rejected"
+    REJECTED = "rejected"
+    CANCELLED = "cancelled"
 
 
 class ReturnSource(str, Enum):
@@ -52,6 +51,7 @@ class ReturnLineQuality(str, Enum):
 
     NEW = "new"
     DEFECT = "defect"
+    UNKNOWN = "unknown"
 
 
 class IntegrationDirection(str, Enum):
@@ -100,7 +100,7 @@ class Return(Base):
     __tablename__ = "returns"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('return_ready', 'accepted', 'return_rejected')",
+            "status IN ('pending', 'accepted', 'rejected', 'cancelled')",
             name="chk_returns_status",
         ),
         CheckConstraint(
@@ -117,8 +117,8 @@ class Return(Base):
     status: Mapped[ReturnStatus] = mapped_column(
         _enum_type(ReturnStatus, name="return_status", length=32),
         nullable=False,
-        default=ReturnStatus.RETURN_READY,
-        server_default=ReturnStatus.RETURN_READY.value,
+        default=ReturnStatus.PENDING,
+        server_default=ReturnStatus.PENDING.value,
     )
     source: Mapped[ReturnSource] = mapped_column(
         _enum_type(ReturnSource, name="return_source", length=32),
@@ -151,14 +151,14 @@ class ReturnLine(Base):
 
     __tablename__ = "return_lines"
     __table_args__ = (
-        CheckConstraint("qty >= 0", name="chk_return_lines_qty_non_negative"),
+        CheckConstraint("qty > 0", name="chk_return_lines_qty_positive"),
         CheckConstraint(
-            "quality IN ('new', 'defect')",
+            "quality IN ('new', 'defect', 'unknown')",
             name="chk_return_lines_quality",
         ),
         CheckConstraint(
-            "quality <> 'defect' OR reason_id IS NOT NULL",
-            name="chk_return_lines_defect_reason",
+            "length(trim(reason_code)) > 0",
+            name="chk_return_lines_reason_code_not_blank",
         ),
     )
 
@@ -170,12 +170,12 @@ class ReturnLine(Base):
         nullable=False,
     )
     sku: Mapped[str] = mapped_column(Text, nullable=False)
-    qty: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
+    qty: Mapped[int] = mapped_column(Integer, nullable=False)
     quality: Mapped[ReturnLineQuality] = mapped_column(
         _enum_type(ReturnLineQuality, name="return_line_quality", length=16),
         nullable=False,
     )
-    reason_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
+    reason_code: Mapped[str] = mapped_column(Text, nullable=False)
     reason_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     photos: Mapped[list[str] | None] = mapped_column(JSONBType, nullable=True)
     imei: Mapped[str | None] = mapped_column(Text, nullable=True)

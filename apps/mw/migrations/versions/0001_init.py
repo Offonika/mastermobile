@@ -11,9 +11,9 @@ down_revision = None
 branch_labels = None
 depends_on = None
 
-RETURNS_STATUS_CHECK = "status IN ('return_ready', 'accepted', 'return_rejected')"
+RETURNS_STATUS_CHECK = "status IN ('pending', 'accepted', 'rejected', 'cancelled')"
 RETURNS_SOURCE_CHECK = "source IN ('widget', 'call_center', 'warehouse')"
-RETURN_LINES_QUALITY_CHECK = "quality IN ('new', 'defect')"
+RETURN_LINES_QUALITY_CHECK = "quality IN ('new', 'defect', 'unknown')"
 INTEGRATION_LOG_DIRECTION_CHECK = "direction IN ('inbound', 'outbound')"
 INTEGRATION_LOG_SYSTEM_CHECK = "external_system IN ('1c', 'b24', 'warehouse')"
 INTEGRATION_LOG_STATUS_CHECK = "status IN ('success', 'error', 'retry')"
@@ -33,7 +33,12 @@ def upgrade() -> None:
         sa.Column("courier_id", sa.Text(), nullable=False),
         sa.Column("manager_id", sa.Text(), nullable=True),
         sa.Column("source", sa.String(length=32), nullable=False),
-        sa.Column("status", sa.String(length=32), nullable=False),
+        sa.Column(
+            "status",
+            sa.String(length=32),
+            nullable=False,
+            server_default=sa.text("'pending'"),
+        ),
         sa.Column("comment", sa.Text(), nullable=True),
         sa.Column(
             "created_at",
@@ -57,9 +62,9 @@ def upgrade() -> None:
         sa.Column("return_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("line_id", sa.Text(), nullable=False),
         sa.Column("sku", sa.Text(), nullable=False),
-        sa.Column("qty", sa.Numeric(12, 3), nullable=False),
+        sa.Column("qty", sa.Integer(), nullable=False),
         sa.Column("quality", sa.String(length=16), nullable=False),
-        sa.Column("reason_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("reason_code", sa.Text(), nullable=False),
         sa.Column("reason_note", sa.Text(), nullable=True),
         sa.Column("photos", postgresql.JSONB(), nullable=True),
         sa.Column("imei", sa.Text(), nullable=True),
@@ -71,8 +76,8 @@ def upgrade() -> None:
             name="return_lines_return_id_fkey",
         ),
         sa.CheckConstraint(
-            "qty >= 0",
-            name="chk_return_lines_qty_non_negative",
+            "qty > 0",
+            name="chk_return_lines_qty_positive",
         ),
         sa.CheckConstraint(
             RETURN_LINES_QUALITY_CHECK,
