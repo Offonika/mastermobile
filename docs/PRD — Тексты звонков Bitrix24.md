@@ -116,6 +116,7 @@ F7. Идемпотентность и повторные запуски.
   - `call_export_cost_total` > budget_threshold → warn (email/Slack).
   - Лимиты Bitrix24 (`429`) > 10 за 15 мин → warn, переключение в low‑rate режим.
 - Логи: JSON (`event`, `call_id`, `stage`, `duration_ms`, `error_code`, `correlation_id`). PII (номера телефонов) маскируются.
+- Runbook: [Выгрузка звонков Bitrix24](runbooks/call_export.md) — оперативные действия, мониторинг и ретраи.
 - Дашборды: Grafana панели для статусов, длительности, стоимости, успех/ошибка. QA панель — выборка проверенных файлов.
 
 10) Безопасность, ПДн и соответствие 00‑Core
@@ -174,5 +175,5 @@ F7. Идемпотентность и повторные запуски.
 16) Приложения и ссылки
 - A1. Шаблон запроса ChatGPT для саммари (OneDrive/Notion, ссылка в runbook).
 - A2. OpenAPI anchors Bitrix24 телефонии (см. API‑Contracts v1.1.3, раздел `b24.telephony.calls.*`).
-- A3. Runbook инцидентов: `docs/runbooks/call_export.md` (создать при реализации).
+- A3. Runbook: [Выгрузка звонков Bitrix24](runbooks/call_export.md).
 - A4. Формат CSV (data dictionary) — `docs/specs/call_registry_schema.yaml` (будет добавлен при разработке).
