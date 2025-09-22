@@ -5,7 +5,7 @@ Software Requirements Specification (SRS)
  Владелец: Операции / IT
  Согласовано: Владельцы продукта (26.09.2025)
  Связано: PRD «Ходячий склад» v1.3.2, ONE‑PAGER v1.3, Core Sync (1С 10.3↔11), API‑Contracts v1.0.0
- Ссылки на 00‑Core v1.3.1: §2 Core‑API‑Style; §3 Status‑Dictionary; §4 ER Freeze v0.6.4; §5 SoT‑Matrix; §8 Metrics & Alerts; §9 Retention; §10 Environments; §11 DR/BCP; §16 Error Registry; §17 OpenAPI; §18 1С↔MW Mapping.
+ Ссылки на 00‑Core v1.3.3: §2 Core‑API‑Style; §3 Status‑Dictionary; §4 ER Freeze v0.6.5; §5 SoT‑Matrix; §8 Metrics & Alerts; §9 Retention; §10 Environments; §11 DR/BCP; §16 Error Registry; §17 OpenAPI; §18 1С↔MW Mapping.
 
 1. Обзор и границы
 Цель. Запустить управляемую доставку 1С УТ 10.3 ↔ Middleware ↔ Bitrix24 с «рюкзаком курьера», быстрой продажей «с места», фото‑контролем, фиксацией гео и корректным учётом наличных. Без создания новых типов документов в 1С (возвраты — только стандартный «Возврат товаров от покупателя» через мастер).
@@ -105,7 +105,7 @@ UAT‑SEC‑02
 Роль: API‑шлюз 1С↔B24↔Виджет; хранилище рюкзака; instant‑orders; идемпотентность; очереди/ретраи; аудит.
 
 
-Сущности (ER Freeze v0.6.4): couriers, courier_stock, orders, instant_orders, task_events, integration_log, idempotency_key, status_dict, returns, return_lines, return_reason; денежные поля с currency_code (RUB).
+Сущности (ER Freeze v0.6.5): couriers, courier_stock, orders, instant_orders, task_events, integration_log, idempotency_key, status_dict, returns, return_lines, return_reason, call_exports, call_records; денежные поля с currency_code (RUB).
 
 
 Бизнес‑правила:
@@ -306,7 +306,7 @@ Retention (см. 00‑Core §9): сырые фото (≤15 МБ) ≤90 дн; г
 
 
 11. Модель данных (reference)
-Сущности и поля — см. ER Freeze v0.6.4 (orders, order_lines, instant_orders, instant_order_lines, returns, return_lines, return_reason, couriers, courier_stock, task_events, integration_log, idempotency_key, status_dict).
+Сущности и поля — см. ER Freeze v0.6.5 (orders, order_lines, instant_orders, instant_order_lines, returns, return_lines, return_reason, couriers, courier_stock, task_events, integration_log, idempotency_key, status_dict, call_exports, call_records).
 
 
 Домены: телефон +7XXXXXXXXXX; деньги numeric(12,2) + currency_code (RUB).
