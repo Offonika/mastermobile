@@ -55,3 +55,28 @@
 - Документация: ./docs
 - Контрибьютинг: ./CONTRIBUTING.md
 - Лицензия: ./LICENSE
+
+## API v1 — быстрые вызовы
+
+- `GET /api/v1/system/ping` — пинг сервисного слоя; заголовок `X-Request-Id` опционален (будет сгенерирован, если не передан).
+- `GET /api/v1/returns` — пагинированный список возвратов. Необязательные query-параметры: `page`, `page_size`.
+- `POST /api/v1/returns` — создание возврата. Требует `Idempotency-Key` (уникальный ≤128 символов) и желательно `X-Request-Id`.
+- `GET /api/v1/returns/{return_id}` — просмотр конкретного возврата.
+- `PUT /api/v1/returns/{return_id}` — полная замена возврата. Требует `Idempotency-Key` и рекомендуемый `X-Request-Id`.
+- `DELETE /api/v1/returns/{return_id}` — удаление возврата. Требует `Idempotency-Key`.
+
+Пример запроса на создание возврата:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/returns \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -H "X-Request-Id: $(uuidgen)" \
+  -d '{
+        "source": "warehouse",
+        "courier_id": "courier-001",
+        "items": [
+          {"sku": "SKU-1001", "qty": 1, "quality": "new", "reason_code": "customer_changed_mind"}
+        ]
+      }'
+```
