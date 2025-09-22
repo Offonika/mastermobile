@@ -13,7 +13,7 @@ try:
 except ImportError:  # pragma: no cover - optional dependency
     uvicorn = None  # type: ignore[assignment]
 
-from apps.mw.src.health import HEALTH_PAYLOAD
+from apps.mw.src.health import HEALTH_PAYLOAD, get_ping_payload
 
 _HOST = "127.0.0.1"
 _PORT = 8000
@@ -25,6 +25,14 @@ class _HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802 (BaseHTTPRequestHandler API)
         if self.path == "/health":
             body = json.dumps(HEALTH_PAYLOAD).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        elif self.path == "/api/v1/system/ping":
+            payload = get_ping_payload()
+            body = json.dumps(payload).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))
