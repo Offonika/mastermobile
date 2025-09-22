@@ -2,11 +2,20 @@ import asyncio
 import json
 import multiprocessing
 import socket
+import sys
 import time
 from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
 import pytest
+from sqlalchemy import text
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from apps.mw.src.db.session import init_db, session_scope
 
 try:
     import uvicorn
@@ -102,3 +111,17 @@ def pytest_pyfunc_call(pyfuncitem: pytest.Function) -> bool | None:
             loop.close()
         return True
     return None
+
+
+@pytest.fixture(autouse=True)
+def _reset_persistent_db() -> Iterator[None]:
+    """Ensure the SQLite database used by the API is clean for every test."""
+
+    init_db()
+    with session_scope() as session:
+        session.execute(text("DELETE FROM return_lines"))
+        session.execute(text("DELETE FROM returns"))
+    yield
+    with session_scope() as session:
+        session.execute(text("DELETE FROM return_lines"))
+        session.execute(text("DELETE FROM returns"))

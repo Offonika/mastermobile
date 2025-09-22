@@ -302,6 +302,13 @@ components:
           type: string
           description: Identifier of the service responding to the ping.
           example: master-mobile-middleware
+        checks:
+          type: object
+          additionalProperties:
+            type: string
+          description: Statuses of dependent subsystems (database, cache, etc.).
+          example:
+            database: ok
     Error:
       type: object
       required:
@@ -357,17 +364,17 @@ components:
       properties:
         id:
           type: string
+          format: uuid
           description: Unique identifier of the return.
-          example: ret_501
+          example: 5f2c6c6f-1f25-4824-b7a7-d2c9f8f8d45f
         status:
           type: string
           description: Current status of the return.
           enum:
-            - pending
+            - return_ready
             - accepted
-            - rejected
-            - cancelled
-          example: pending
+            - return_rejected
+          example: return_ready
         source:
           type: string
           description: Channel that initiated the return.
@@ -415,7 +422,6 @@ components:
               - sku
               - qty
               - quality
-              - reason_code
             properties:
               line_id:
                 type: string
@@ -426,22 +432,21 @@ components:
                 description: Stock keeping unit of the returned product.
                 example: SKU-1001
               qty:
-                type: integer
-                minimum: 1
+                type: string
                 description: Quantity being returned.
-                example: 1
+                example: '1.000'
               quality:
                 type: string
                 description: Quality of the returned item.
                 enum:
                   - new
                   - defect
-                  - unknown
                 example: defect
-              reason_code:
+              reason_id:
                 type: string
-                description: Machine-readable reason code.
-                example: damaged_package
+                format: uuid
+                nullable: true
+                description: Identifier of the reason linked to the return line.
               reason_note:
                 type: string
                 nullable: true
@@ -484,10 +489,22 @@ components:
           nullable: true
           description: Optional reference to the original order in 1C.
           example: '000123'
+        manager_id:
+          type: string
+          nullable: true
+          description: Identifier of the manager assigned to process the return.
         comment:
           type: string
           nullable: true
           description: Additional notes for operators.
+        status:
+          type: string
+          nullable: true
+          description: Explicit status override for the return.
+          enum:
+            - return_ready
+            - accepted
+            - return_rejected
         items:
           type: array
           minItems: 1
@@ -495,32 +512,35 @@ components:
           items:
             type: object
             required:
+              - line_id
               - sku
               - qty
               - quality
-              - reason_code
             properties:
+              line_id:
+                type: string
+                description: Identifier of the line item inside the return.
+                example: line_1
               sku:
                 type: string
                 description: Stock keeping unit of the returned product.
                 example: SKU-1001
               qty:
-                type: integer
-                minimum: 1
+                type: string
                 description: Quantity being returned.
-                example: 1
+                example: '1.000'
               quality:
                 type: string
                 description: Quality of the returned item.
                 enum:
                   - new
                   - defect
-                  - unknown
                 example: defect
-              reason_code:
+              reason_id:
                 type: string
-                description: Machine-readable reason code.
-                example: damaged_package
+                format: uuid
+                nullable: true
+                description: Identifier of the reason linked to the return line.
               reason_note:
                 type: string
                 nullable: true
