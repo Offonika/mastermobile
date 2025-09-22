@@ -2,7 +2,7 @@ PRD — Тексты звонков Bitrix24 (выгрузка текстов з
 Версия: v1.0.0 (синхронизировано с 00‑Core v1.3.1, API‑Contracts v1.1.3)
  Дата: 19.09.2025
  Владелец продукта: Операции / Call Center
- Основано на: ONE-PAGER — «Тексты всех звонков за 60 дней из Bitrix24», 00‑Core v1.3.1 (Core‑API‑Style, Metrics & Alerts, Retention, Envs/Flags), API‑Contracts v1.1.3 (Bitrix24 интеграции), ER Freeze v0.6.4.
+Основано на: ONE-PAGER — «Тексты всех звонков за 60 дней из Bitrix24», 00‑Core v1.3.3 (Core‑API‑Style, Metrics & Alerts, Retention, Envs/Flags), API‑Contracts v1.1.3 (Bitrix24 интеграции), ER Freeze v0.6.5.
 
 1) Резюме
 Цель — зафиксировать процесс регулярной выгрузки аудиозаписей и текстов всех звонков Bitrix24 за последние 60 дней, автоматизировать распознавание речи и формирование артефактов (папка текстов, CSV‑реестр, отчёт по длительности и стоимости), обеспечить идемпотентность повторных запусков, контроль качества и прозрачность расходов. Решение строится на существующем MW‑контуре (FastAPI) с отдельным пайплайном: запрос звонков → скачивание аудио → распознавание → хранение текстов → отчёт и контроль.
@@ -116,6 +116,7 @@ F7. Идемпотентность и повторные запуски.
   - `call_export_cost_total` > budget_threshold → warn (email/Slack).
   - Лимиты Bitrix24 (`429`) > 10 за 15 мин → warn, переключение в low‑rate режим.
 - Логи: JSON (`event`, `call_id`, `stage`, `duration_ms`, `error_code`, `correlation_id`). PII (номера телефонов) маскируются.
+- Runbook: [Выгрузка звонков Bitrix24](runbooks/call_export.md) — оперативные действия, мониторинг и ретраи.
 - Дашборды: Grafana панели для статусов, длительности, стоимости, успех/ошибка. QA панель — выборка проверенных файлов.
 
 10) Безопасность, ПДн и соответствие 00‑Core
@@ -174,5 +175,7 @@ F7. Идемпотентность и повторные запуски.
 16) Приложения и ссылки
 - A1. Шаблон запроса ChatGPT для саммари (OneDrive/Notion, ссылка в runbook).
 - A2. OpenAPI anchors Bitrix24 телефонии (см. API‑Contracts v1.1.3, раздел `b24.telephony.calls.*`).
+
 - A3. Runbook инцидентов: `docs/runbooks/call_export.md` (создать при реализации).
 - A4. Формат CSV (data dictionary) — [docs/specs/call_registry_schema.yaml](specs/call_registry_schema.yaml).
+
