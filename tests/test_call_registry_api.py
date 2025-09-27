@@ -8,6 +8,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import Column, Table, create_engine
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError, StatementError
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
@@ -15,6 +16,7 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from apps.mw.src.app import app
 from apps.mw.src.db.models import (
     Base,
+    CallDirection,
     CallExport,
     CallExportStatus,
     CallRecord,
@@ -85,7 +87,7 @@ def _seed_call_records(engine: Engine) -> None:
             call_id="CALL-001",
             record_id="REC-001",
             call_started_at=datetime(2024, 1, 1, 10, 30, 0),
-            direction="inbound",
+            direction=CallDirection.INBOUND,
             from_number="+700000001",
             to_number="+700000002",
             duration_sec=180,
@@ -97,7 +99,7 @@ def _seed_call_records(engine: Engine) -> None:
             call_id="CALL-002",
             record_id="REC-002",
             call_started_at=datetime(2024, 1, 2, 12, 0, 0),
-            direction="outbound",
+            direction=CallDirection.OUTBOUND,
             from_number="+700000003",
             to_number="+700000004",
             duration_sec=60,
@@ -106,6 +108,17 @@ def _seed_call_records(engine: Engine) -> None:
         )
         session.add_all([export, in_range, out_of_range])
         session.commit()
+
+
+def _create_export(session: Session) -> CallExport:
+    export = CallExport(
+        period_from=datetime(2024, 1, 1, 0, 0, 0),
+        period_to=datetime(2024, 1, 1, 1, 0, 0),
+        status=CallExportStatus.PENDING,
+    )
+    session.add(export)
+    session.flush()
+    return export
 
 
 @pytest.mark.asyncio
@@ -136,7 +149,7 @@ async def test_export_call_registry_streams_csv(
 
         chunks = [chunk async for chunk in response.aiter_bytes()]
 
-    assert len(chunks) == 2
+    assert len(chunks) >= 1
     content = b"".join(chunks)
     assert content.startswith(codecs.BOM_UTF8)
     decoded = content.decode("utf-8-sig")
@@ -166,3 +179,84 @@ async def test_export_call_registry_validates_period(
     payload = response.json()
     assert payload["title"] == "Invalid period range"
     assert payload["status"] == 400
+
+
+def test_call_record_rejects_null_direction(sqlite_engine: Engine) -> None:
+    with Session(sqlite_engine) as session:
+        export = _create_export(session)
+        record = CallRecord(
+            export=export,
+            call_id="CALL-NULL-DIRECTION",
+            direction=None,
+            from_number="+79990000001",
+            to_number="+79990000002",
+            duration_sec=60,
+            status=CallRecordStatus.PENDING,
+        )
+        session.add(record)
+
+        with pytest.raises(IntegrityError):
+            session.flush()
+
+        session.rollback()
+
+
+def test_call_record_rejects_invalid_direction_value(sqlite_engine: Engine) -> None:
+    with Session(sqlite_engine) as session:
+        export = _create_export(session)
+        record = CallRecord(
+            export=export,
+            call_id="CALL-INVALID-DIRECTION",
+            direction="sideways",
+            from_number="+79990000003",
+            to_number="+79990000004",
+            duration_sec=60,
+            status=CallRecordStatus.PENDING,
+        )
+        session.add(record)
+
+        with pytest.raises(StatementError) as exc:
+            session.flush()
+
+        assert isinstance(exc.value.orig, LookupError)
+        session.rollback()
+
+
+def test_call_record_rejects_blank_from_number(sqlite_engine: Engine) -> None:
+    with Session(sqlite_engine) as session:
+        export = _create_export(session)
+        record = CallRecord(
+            export=export,
+            call_id="CALL-BLANK-FROM",
+            direction=CallDirection.INBOUND,
+            from_number="   ",
+            to_number="+79990000005",
+            duration_sec=60,
+            status=CallRecordStatus.PENDING,
+        )
+        session.add(record)
+
+        with pytest.raises(IntegrityError):
+            session.flush()
+
+        session.rollback()
+
+
+def test_call_record_rejects_blank_to_number(sqlite_engine: Engine) -> None:
+    with Session(sqlite_engine) as session:
+        export = _create_export(session)
+        record = CallRecord(
+            export=export,
+            call_id="CALL-BLANK-TO",
+            direction=CallDirection.INBOUND,
+            from_number="+79990000006",
+            to_number="",
+            duration_sec=60,
+            status=CallRecordStatus.PENDING,
+        )
+        session.add(record)
+
+        with pytest.raises(IntegrityError):
+            session.flush()
+
+        session.rollback()

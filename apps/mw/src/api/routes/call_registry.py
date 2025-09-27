@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 from collections.abc import Iterable
 from datetime import datetime
+from enum import Enum
 from io import StringIO
 
 from fastapi import APIRouter, Depends, Query, Response, status
@@ -52,19 +53,29 @@ def _encode_row(values: list[str], *, include_bom: bool = False) -> bytes:
     return payload.encode("utf-8")
 
 
+def _enum_to_value(value: Enum | str | None) -> str:
+    """Normalize enum-like values to their string representation."""
+
+    if value is None:
+        return ""
+    if isinstance(value, Enum):
+        return value.value
+    return str(value)
+
+
 def _row_values(record: CallRecord) -> list[str]:
     """Extract CSV field values from a call record."""
 
-    direction = getattr(record, "direction", None)
-    from_number = getattr(record, "from_number", None)
-    to_number = getattr(record, "to_number", None)
-    status = record.status.value if hasattr(record.status, "value") else str(record.status)
+    direction = _enum_to_value(getattr(record, "direction", None))
+    from_number = getattr(record, "from_number", None) or ""
+    to_number = getattr(record, "to_number", None) or ""
+    status = _enum_to_value(getattr(record, "status", None))
 
     return [
         _format_datetime(getattr(record, "call_started_at", None)),
-        direction or "",
-        from_number or "",
-        to_number or "",
+        direction,
+        from_number,
+        to_number,
         str(record.duration_sec),
         record.recording_url or "",
         status,
@@ -113,9 +124,7 @@ def export_call_registry(
         .where(CallRecord.call_started_at <= period_to)
         .order_by(CallRecord.call_started_at.asc(), CallRecord.id.asc())
     )
-    rows = session.execute(
-        stmt.execution_options(stream_results=True)
-    ).scalars()
+    rows = session.execute(stmt).scalars().all()
 
     filename = (
         f"registry/calls_{period_from.strftime('%Y%m%dT%H%M%S')}"
