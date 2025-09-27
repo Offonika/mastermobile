@@ -390,6 +390,9 @@ class CallRecord(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+    direction: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    from_number: Mapped[str | None] = mapped_column(Text, nullable=True)
+    to_number: Mapped[str | None] = mapped_column(Text, nullable=True)
     duration_sec: Mapped[int] = mapped_column(Integer, nullable=False)
     recording_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     storage_path: Mapped[str | None] = mapped_column(Text, nullable=True)
