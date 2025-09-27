@@ -4,7 +4,8 @@ SRS — Тексты звонков Bitrix24 (выгрузка за 60 дней)
 Дата: 21.09.2025
 Владелец: Интеграции / DataOps
 
-Связанные документы: [PRD — Тексты звонков Bitrix24 v1.0.0 (19.09.2025)](docs/PRD — Тексты звонков Bitrix24.md), [ONE-PAGER — «Тексты всех звонков за 60 дней из Bitrix24»](docs/b24-transcribe/ONE-PAGER.md) (финал), [Runbook — Выгрузка реестра звонков](docs/runbooks/call_export.md), [Call Registry Schema](docs/specs/call_registry_schema.yaml)
+Связанные документы: PRD — Тексты звонков Bitrix24 v1.0.0 (19.09.2025), ONE-PAGER — «Тексты всех звонков за 60 дней из Bitrix24» v1.1.0 (Draft), Runbook — docs/runbooks/call_export.md, Data Dictionary — docs/data/call_registry_dictionary.md
+
 
 1. Назначение
 SRS фиксирует технические требования к батчевому пайплайну выгрузки аудиозаписей и текстов всех звонков Bitrix24 за последние 60 дней. Документ расширяет PRD за счёт детализации интеграций, хранения state в MW, форматов артефактов и уровней контроля качества, а также связывает решение с общими нормами 00‑Core (Core-API-Style, Retention, Metrics & Alerts, Security). Целевая аудитория: инженеры интеграций, DataOps, QA, on-call.
@@ -268,7 +269,7 @@ LANGUAGE: <iso639-1>
 
 16. Приложения и ссылки
 - PRD — Тексты звонков Bitrix24 v1.0.0.
-- ONE-PAGER — «Тексты всех звонков за 60 дней из Bitrix24».
+- ONE-PAGER — «Тексты всех звонков за 60 дней из Bitrix24» v1.1.0 (Draft).
 - 00‑Core — Синхронизация документации v1.3.1.
 - API‑Contracts v1.1.3 (Bitrix24 телефония).
 - ER Freeze v0.6.4.
