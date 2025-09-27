@@ -5,6 +5,7 @@ import csv
 from collections.abc import Iterable
 from datetime import datetime
 from io import StringIO
+from types import MethodType
 
 from fastapi import APIRouter, Depends, Query, Response, status
 from fastapi.responses import StreamingResponse
@@ -113,14 +114,25 @@ def export_call_registry(
         .where(CallRecord.call_started_at <= period_to)
         .order_by(CallRecord.call_started_at.asc(), CallRecord.id.asc())
     )
-    rows = session.scalars(stmt).all()
+    result = session.execute(stmt.execution_options(stream_results=True))
+    rows = result.scalars()
 
     filename = (
         f"call_registry_{period_from.strftime('%Y%m%dT%H%M%S')}"
         f"_{period_to.strftime('%Y%m%dT%H%M%S')}.csv"
     )
 
-    stream = _stream_csv(rows)
+    close_session = session.close
+    session.close = MethodType(lambda self: None, session)
+
+    def stream_rows() -> Iterable[bytes]:
+        try:
+            yield from _stream_csv(rows)
+        finally:
+            result.close()
+            close_session()
+
+    stream = stream_rows()
     streaming_response = StreamingResponse(stream, media_type="text/csv; charset=utf-8")
     streaming_response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
     streaming_response.headers.setdefault("Cache-Control", "no-store")

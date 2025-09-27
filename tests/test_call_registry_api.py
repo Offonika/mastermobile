@@ -115,22 +115,27 @@ async def test_export_call_registry_streams_csv(
 ) -> None:
     _seed_call_records(sqlite_engine)
 
-    response = await api_client.get(
+    async with api_client.stream(
+        "GET",
         "/api/v1/call-registry",
         params={
             "period_from": "2024-01-01T00:00:00",
             "period_to": "2024-01-01T23:59:59",
         },
         headers={"X-Request-Id": "req-call-registry-1"},
-    )
+    ) as response:
+        assert response.status_code == 200
+        assert response.headers["Content-Type"].startswith("text/csv")
+        assert response.headers["X-Request-Id"] == "req-call-registry-1"
+        assert response.headers["Content-Disposition"].endswith('.csv"')
 
-    assert response.status_code == 200
-    assert response.headers["Content-Type"].startswith("text/csv")
-    assert response.headers["X-Request-Id"] == "req-call-registry-1"
-    assert response.headers["Content-Disposition"].endswith('.csv"')
+        chunks: list[bytes] = []
+        async for chunk in response.aiter_bytes(chunk_size=32):
+            chunks.append(chunk)
 
-    content = response.content
-    assert content.startswith(codecs.BOM_UTF8)
+    assert len(chunks) >= 2
+    assert chunks[0].startswith(codecs.BOM_UTF8)
+    content = b"".join(chunks)
     decoded = content.decode("utf-8-sig")
     lines = [line for line in decoded.splitlines() if line]
     assert lines[0] == "datetime_start;direction;from;to;duration_sec;recording_url;status"
