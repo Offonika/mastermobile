@@ -13,10 +13,12 @@
 ## Быстрый старт (локально)
 1. `make init`
 2. `make up`
-3. `make seed` — по мере появления данных
-4. `make test`
+3. `make worker` — запускает отдельный STT-воркер (в отдельном терминале)
+4. `make seed` — по мере появления данных
+5. `make test`
 
 > Для запуска только зависимостей можно выполнить `docker compose up -d db redis`.
+> Метрики Prometheus доступны по адресу `http://localhost:8000/metrics`.
 
 ## Переменные окружения Compose
 

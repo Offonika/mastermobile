@@ -1,4 +1,4 @@
-.PHONY: init up down logs lint typecheck test fmt openapi db-upgrade db-downgrade run seed
+.PHONY: init up down logs lint typecheck test fmt openapi db-upgrade db-downgrade run seed worker
 
 VENV_DIR := .venv
 VENV_BIN := $(VENV_DIR)/bin
@@ -52,3 +52,6 @@ run:
 
 seed:
 	@echo "TODO: seed script"
+
+worker:
+	docker compose up stt-worker

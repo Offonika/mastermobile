@@ -7,6 +7,7 @@ from .logging import (
     create_logging_lifespan,
     get_correlation_id,
 )
+from .metrics import STT_JOB_DURATION_SECONDS, STT_JOBS_TOTAL, register_metrics
 
 __all__ = [
     "RequestContextMiddleware",
@@ -14,4 +15,7 @@ __all__ = [
     "correlation_context",
     "create_logging_lifespan",
     "get_correlation_id",
+    "STT_JOB_DURATION_SECONDS",
+    "STT_JOBS_TOTAL",
+    "register_metrics",
 ]
