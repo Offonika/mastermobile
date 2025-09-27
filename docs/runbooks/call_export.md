@@ -39,6 +39,7 @@
 - **Логи:** `docker compose logs -f app | jq 'select(.module=="call_export")'` — ищем `stage`, `call_id`, `error`.
 - **Отчёты:** S3/объектное хранилище `exports/<period>/reports/summary_<period>.md` и CSV реестр
   `exports/<period>/registry/calls_<from>_<to>.csv`.
+  - CSV cхема актуализирована до версии v0.2.0: добавлены столбцы `employee` и `text_preview`, а поля стоимости/языка переименованы в `transcription_cost`, `currency_code`, `language`. Детали — в [docs/specs/call_registry_schema.yaml](../specs/call_registry_schema.yaml).
 
 ## Алерты
 | Правило | Порог | Действия |

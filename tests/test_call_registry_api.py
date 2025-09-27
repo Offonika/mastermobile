@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import codecs
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 import httpx
 import pytest
@@ -93,6 +94,13 @@ def _seed_call_records(engine: Engine) -> None:
             recording_url="https://example.com/records/1.mp3",
             status=CallRecordStatus.COMPLETED,
             employee_id="EMP-001",
+            transcript_path="transcripts/call_001.txt",
+            summary_path="summary/call_001.md",
+            text_preview="Позвонил клиент, уточнил статус заказа",
+            transcription_cost=Decimal("18.00"),
+            currency_code="RUB",
+            language="ru",
+            checksum="abc123",
         )
         out_of_range = CallRecord(
             export=export,
@@ -106,6 +114,8 @@ def _seed_call_records(engine: Engine) -> None:
             recording_url="https://example.com/records/2.mp3",
             status=CallRecordStatus.COMPLETED,
             employee_id="EMP-002",
+            transcription_cost=Decimal("6.00"),
+            currency_code="RUB",
         )
         session.add_all([export, in_range, out_of_range])
         session.commit()
@@ -129,9 +139,14 @@ def _seed_b24_call_records(engine: Engine) -> None:
             duration_sec=240,
             recording_url="https://example.com/records/100.mp3",
             transcript_path="s3://bucket/call_100.txt",
-            transcript_lang="ru",
+            summary_path="summary/call_100.md",
+            text_preview="Клиент благодарит за консультацию",
+            language="ru",
+            transcription_cost=Decimal("24.00"),
+            currency_code="RUB",
             status=CallRecordStatus.COMPLETED,
             employee_id="EMP-900",
+            checksum="checksum-100",
         )
         without_transcript = CallRecord(
             export=export,
@@ -146,6 +161,9 @@ def _seed_b24_call_records(engine: Engine) -> None:
             transcript_path=None,
             status=CallRecordStatus.COMPLETED,
             employee_id="EMP-901",
+            transcription_cost=Decimal("12.00"),
+            currency_code="RUB",
+            language="en",
         )
         outside_range = CallRecord(
             export=export,
@@ -160,6 +178,8 @@ def _seed_b24_call_records(engine: Engine) -> None:
             transcript_path="",
             status=CallRecordStatus.COMPLETED,
             employee_id="EMP-900",
+            transcription_cost=Decimal("6.00"),
+            currency_code="RUB",
         )
         session.add_all([export, with_transcript, without_transcript, outside_range])
         session.commit()
@@ -198,12 +218,52 @@ async def test_export_call_registry_streams_csv(
     assert content.startswith(codecs.BOM_UTF8)
     decoded = content.decode("utf-8-sig")
     lines = [line for line in decoded.splitlines() if line]
-    assert lines[0] == "datetime_start;direction;from;to;duration_sec;recording_url;status"
-    assert lines[1] == (
-        "2024-01-01T10:30:00;inbound;+700000001;+700000002;180;"
-        "https://example.com/records/1.mp3;completed"
-    )
+    expected_headers = [
+        "run_id",
+        "call_id",
+        "record_id",
+        "employee",
+        "datetime_start",
+        "direction",
+        "from",
+        "to",
+        "duration_sec",
+        "recording_url",
+        "transcript_path",
+        "summary_path",
+        "text_preview",
+        "transcription_cost",
+        "currency_code",
+        "language",
+        "status",
+        "error_code",
+        "retry_count",
+        "checksum",
+    ]
+    header = lines[0].split(";")
+    assert header == expected_headers
     assert len(lines) == 2
+    values = lines[1].split(";")
+    row = dict(zip(header, values))
+    assert row["call_id"] == "CALL-001"
+    assert row["record_id"] == "REC-001"
+    assert row["employee"] == "EMP-001"
+    assert row["datetime_start"] == "2024-01-01T10:30:00"
+    assert row["direction"] == "inbound"
+    assert row["from"] == "+700000001"
+    assert row["to"] == "+700000002"
+    assert row["duration_sec"] == "180"
+    assert row["recording_url"] == "https://example.com/records/1.mp3"
+    assert row["transcript_path"] == "transcripts/call_001.txt"
+    assert row["summary_path"] == "summary/call_001.md"
+    assert row["text_preview"] == "Позвонил клиент, уточнил статус заказа"
+    assert row["transcription_cost"] == "18.00"
+    assert row["currency_code"] == "RUB"
+    assert row["language"] == "ru"
+    assert row["status"] == "completed"
+    assert row["error_code"] == ""
+    assert row["retry_count"] == "0"
+    assert row["checksum"] == "abc123"
 
 
 @pytest.mark.asyncio
@@ -255,15 +315,54 @@ async def test_export_b24_calls_csv_applies_filters(
     assert content.startswith(codecs.BOM_UTF8)
     decoded = content.decode("utf-8-sig")
     rows = [line for line in decoded.splitlines() if line]
-    assert rows[0] == (
-        "call_id;record_id;employee_id;call_started_at;from_number;to_number;direction;duration_sec;"
-        "recording_url;transcript_path;transcript_lang;has_text"
-    )
-    assert rows[1] == (
-        "CALL-100;REC-100;EMP-900;2024-02-01T09:00:00;+701000001;+701000002;inbound;240;"
-        "https://example.com/records/100.mp3;s3://bucket/call_100.txt;ru;true"
-    )
+    expected_headers = [
+        "run_id",
+        "call_id",
+        "record_id",
+        "employee",
+        "datetime_start",
+        "direction",
+        "from",
+        "to",
+        "duration_sec",
+        "recording_url",
+        "transcript_path",
+        "summary_path",
+        "text_preview",
+        "transcription_cost",
+        "currency_code",
+        "language",
+        "status",
+        "error_code",
+        "retry_count",
+        "checksum",
+        "has_text",
+    ]
+    header = rows[0].split(";")
+    assert header == expected_headers
     assert len(rows) == 2
+    values = rows[1].split(";")
+    row = dict(zip(header, values))
+    assert row["call_id"] == "CALL-100"
+    assert row["record_id"] == "REC-100"
+    assert row["employee"] == "EMP-900"
+    assert row["datetime_start"] == "2024-02-01T09:00:00"
+    assert row["direction"] == "inbound"
+    assert row["from"] == "+701000001"
+    assert row["to"] == "+701000002"
+    assert row["duration_sec"] == "240"
+    assert row["recording_url"] == "https://example.com/records/100.mp3"
+    assert row["transcript_path"] == "s3://bucket/call_100.txt"
+    assert row["summary_path"] == "summary/call_100.md"
+    assert row["text_preview"] == "Клиент благодарит за консультацию"
+    assert row["transcription_cost"] == "24.00"
+    assert row["currency_code"] == "RUB"
+    assert row["language"] == "ru"
+    assert row["status"] == "completed"
+    assert row["error_code"] == ""
+    assert row["retry_count"] == "0"
+    assert row["checksum"] == "checksum-100"
+    assert row["has_text"] == "true"
 
 
 @pytest.mark.asyncio
@@ -291,9 +390,14 @@ async def test_export_b24_calls_json_filters_and_returns_payload(
     assert len(payload) == 1
     record = payload[0]
     assert record["call_id"] == "CALL-200"
-    assert record["employee_id"] == "EMP-901"
+    assert record["employee"] == "EMP-901"
     assert record["has_text"] is False
     assert record["transcript_path"] is None
+    assert record["text_preview"] is None
+    assert record["language"] == "en"
+    assert record["transcription_cost"] == "12.00"
+    assert record["currency_code"] == "RUB"
+    assert record["retry_count"] == 0
 
 
 @pytest.mark.asyncio

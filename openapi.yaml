@@ -438,10 +438,18 @@ components:
     B24CallRecord:
       type: object
       required:
+        - run_id
         - call_id
         - duration_sec
+        - status
+        - retry_count
         - has_text
       properties:
+        run_id:
+          type: string
+          format: uuid
+          description: Identifier of the export run that produced the record.
+          example: 8c9c2cb4-5a37-4b7d-8c29-6c5d9ec470b9
         call_id:
           type: string
           description: Bitrix24 call identifier.
@@ -451,32 +459,32 @@ components:
           nullable: true
           description: Optional Bitrix24 record identifier when a call has multiple segments.
           example: REC-100
-        employee_id:
+        employee:
           type: string
           nullable: true
           description: Identifier of the Bitrix24 employee associated with the call.
           example: EMP-900
-        call_started_at:
+        datetime_start:
           type: string
           format: date-time
           nullable: true
           description: Timestamp when the call started in Bitrix24.
           example: '2024-02-01T09:00:00Z'
-        from_number:
-          type: string
-          nullable: true
-          description: Caller phone number.
-          example: '+701000001'
-        to_number:
-          type: string
-          nullable: true
-          description: Callee phone number.
-          example: '+701000002'
         direction:
           type: string
           nullable: true
           description: Direction of the call (inbound, outbound or internal).
           example: inbound
+        'from':
+          type: string
+          nullable: true
+          description: Caller phone number.
+          example: '+701000001'
+        to:
+          type: string
+          nullable: true
+          description: Callee phone number.
+          example: '+701000002'
         duration_sec:
           type: integer
           description: Duration of the call in seconds.
@@ -491,11 +499,49 @@ components:
           nullable: true
           description: Storage path for the generated transcript.
           example: s3://bucket/call_100.txt
-        transcript_lang:
+        summary_path:
+          type: string
+          nullable: true
+          description: Storage path for the optional call summary.
+          example: summary/call_100.md
+        text_preview:
+          type: string
+          nullable: true
+          description: First kilobyte of the transcript text for preview purposes.
+          example: Клиент благодарит за консультацию
+        transcription_cost:
+          type: string
+          nullable: true
+          description: Total recognition cost for the call, formatted with two decimal places.
+          example: '24.00'
+        currency_code:
+          type: string
+          nullable: true
+          description: ISO-4217 currency code of the recognition cost.
+          example: RUB
+        language:
           type: string
           nullable: true
           description: Language detected for the transcript.
           example: ru
+        status:
+          type: string
+          description: Processing status of the call within the export run.
+          example: completed
+        error_code:
+          type: string
+          nullable: true
+          description: Machine-readable error code when processing failed.
+          example: missing_audio
+        retry_count:
+          type: integer
+          description: Number of transcription retry attempts performed by the pipeline.
+          example: 2
+        checksum:
+          type: string
+          nullable: true
+          description: Hex-encoded checksum of the stored audio/transcript pair for QA sampling.
+          example: 4f5d6a7b8c9d10e1
         has_text:
           type: boolean
           description: Indicates whether the call has an associated transcript.

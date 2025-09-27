@@ -189,10 +189,13 @@ create table if not exists call_records (
   recording_url     text,
   storage_path      text,
   transcript_path   text,
-  transcript_lang   text,
+  summary_path      text,
+  text_preview      text,
+  language          text,
+  employee_id       text,
   checksum          text,
-  cost_amount       numeric(12,2),
-  cost_currency     currency_code default 'RUB',
+  transcription_cost numeric(12,2),
+  currency_code     currency_code default 'RUB',
   status            text not null check (status in ('pending','downloading','downloaded','transcribing','completed','skipped','error')),
   error_code        text,
   error_message     text,
@@ -215,7 +218,7 @@ create unique index if not exists uq_call_records_run_call_record
 
 Основные положения:
 - `call_exports` фиксирует один запуск выгрузки: период (`period_from`/`period_to`), статус (pending/in_progress/completed/error/cancelled), ссылку на инициатора (`actor_user_id` → `core.users.user_id`, nullable для системных джобов), тайминги (`started_at`, `finished_at`) и JSON‑опции запуска (флаги `generate_summary`, `language_override` и др.).
-- `call_records` хранит каждую запись звонка в рамках запуска: бизнес-ключ `(run_id, call_id, coalesce(record_id,''))`, длительность (`duration_sec`), локации хранения (`recording_url`, `storage_path`, `transcript_path`), контрольные суммы (`checksum`), стоимость (`cost_amount`, `cost_currency`), текущий статус (pending/downloading/downloaded/transcribing/completed/skipped/error) и информацию об ошибках/повторах (`attempts`, `last_attempt_at`, `error_code`, `error_message`).
+- `call_records` хранит каждую запись звонка в рамках запуска: бизнес-ключ `(run_id, call_id, coalesce(record_id,''))`, длительность (`duration_sec`), локации хранения (`recording_url`, `storage_path`, `transcript_path`, `summary_path`), текстовый предпросмотр (`text_preview`), язык (`language`), идентификатор оператора (`employee_id`), контрольные суммы (`checksum`), стоимость (`transcription_cost`, `currency_code`), текущий статус (pending/downloading/downloaded/transcribing/completed/skipped/error) и информацию об ошибках/повторах (`attempts`, `last_attempt_at`, `error_code`, `error_message`).
 - Внешние ключи: `call_records.run_id` с каскадным удалением → `call_exports.run_id`; `call_exports.actor_user_id` → `core.users.user_id` (`ON DELETE SET NULL`).
 - Индексация рассчитана на мониторинг прогрессии и дедупликацию: частичный индекс по активным статусам, GIN/GiST не требуется; хэш по `checksum` обеспечивает быстрый поиск дублей при ретраях.
 

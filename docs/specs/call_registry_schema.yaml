@@ -1,6 +1,6 @@
 ---
 title: "Bitrix24 call registry CSV schema"
-version: "v0.1.0"
+version: "v0.2.0"
 description: >-
   Data dictionary for the `registry/calls_<from>_<to>.csv` artifact produced by the
   Bitrix24 call transcription pipeline. The schema ensures downstream analysts receive
@@ -54,8 +54,8 @@ fields:
       - "721459"
   - name: record_id
     type: string
-    required: true
-    description: Recording identifier returned by Bitrix24 (`RECORD_ID`).
+    required: false
+    description: Recording identifier returned by Bitrix24 (`RECORD_ID`). Empty when the call is pending recording delivery.
     source:
       table: call_records
       column: record_id
@@ -69,7 +69,7 @@ fields:
     description: Call start timestamp from Bitrix24.
     source:
       table: call_records
-      column: started_at
+      column: call_started_at
     examples:
       - "2025-08-31T19:23:45+03:00"
   - name: direction
@@ -105,6 +105,15 @@ fields:
       column: to_number
     examples:
       - "+79997654321"
+  - name: employee
+    type: string
+    required: false
+    description: Identifier of the Bitrix24 employee (operator) attached to the call.
+    source:
+      table: call_records
+      column: employee_id
+    examples:
+      - "EMP-00421"
   - name: duration_sec
     type: integer
     required: true
@@ -132,6 +141,24 @@ fields:
       column: transcript_path
     examples:
       - "transcripts/call_721459.txt"
+  - name: summary_path
+    type: string
+    required: false
+    description: Relative path to optional Markdown summary (`exports/<period>/summary/`).
+    source:
+      table: call_records
+      column: summary_path
+    examples:
+      - "summary/call_721459.md"
+  - name: text_preview
+    type: string
+    required: false
+    description: First kilobyte of the transcript text for quick scanning/search in spreadsheets.
+    source:
+      table: call_records
+      column: text_preview
+    examples:
+      - "Здравствуйте! Это мастер-приёмка MasterMobile..."
   - name: transcription_cost
     type: number
     format: decimal(10,2)
@@ -200,17 +227,8 @@ fields:
       column: checksum
     examples:
       - "4f5d6a7b8c9d10e1"
-  - name: summary_path
-    type: string
-    required: false
-    description: Relative path to optional Markdown summary (`exports/<period>/summary/`).
-    source:
-      table: call_records
-      column: summary_path
-    examples:
-      - "summary/call_721459.md"
 notes:
-  - Field order in the CSV matches the sequence defined above.
+  - Field order in the CSV matches the sequence defined above. `text_preview` is truncated server-side to 1024 UTF-8 bytes to keep file size bounded.
   - Semicolon (`;`) delimiter chosen for compatibility with European Excel locale settings.
   - Numeric fields use dot (`.`) as decimal separator; no thousands separators permitted.
   - Headers must be included on the first row and remain stable for automated ingestion.

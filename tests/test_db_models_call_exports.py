@@ -128,7 +128,7 @@ def test_call_record_crud_and_cascade() -> None:
             to_number="+79997654321",
             duration_sec=180,
             status=CallRecordStatus.PENDING,
-            transcript_lang="ru",
+            language="ru",
         )
         session.add_all([export, record])
         session.commit()
@@ -147,8 +147,8 @@ def test_call_record_crud_and_cascade() -> None:
         assert loaded.record_id is None
         assert loaded.duration_sec == 180
         assert loaded.status is CallRecordStatus.PENDING
-        assert loaded.transcript_lang == "ru"
-        assert loaded.cost_currency == "RUB"
+        assert loaded.language == "ru"
+        assert loaded.currency_code == "RUB"
 
         last_attempt = period_to + timedelta(hours=2)
         loaded.status = CallRecordStatus.COMPLETED
@@ -156,7 +156,7 @@ def test_call_record_crud_and_cascade() -> None:
         loaded.last_attempt_at = last_attempt
         loaded.storage_path = "/storage/call-001.wav"
         loaded.checksum = "abc123"
-        loaded.cost_amount = Decimal("12.34")
+        loaded.transcription_cost = Decimal("12.34")
         loaded.direction = CallDirection.OUTBOUND
         loaded.from_number = "+74959876543"
         loaded.to_number = "+78005553535"
@@ -170,8 +170,8 @@ def test_call_record_crud_and_cascade() -> None:
         assert updated.last_attempt_at == last_attempt.replace(tzinfo=None)
         assert updated.storage_path == "/storage/call-001.wav"
         assert updated.checksum == "abc123"
-        assert updated.cost_amount == Decimal("12.34")
-        assert updated.cost_currency == "RUB"
+        assert updated.transcription_cost == Decimal("12.34")
+        assert updated.currency_code == "RUB"
         assert updated.direction is CallDirection.OUTBOUND
         assert updated.from_number == "+74959876543"
         assert updated.to_number == "+78005553535"
