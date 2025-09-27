@@ -1,5 +1,7 @@
 # MasterMobile — Middleware & Integrations (FastAPI)
 
+[![Docs CI](https://github.com/mastermobile/mastermobile/actions/workflows/docs-ci.yml/badge.svg)](https://github.com/mastermobile/mastermobile/actions/workflows/docs-ci.yml)
+
 ## Что это
 Единый middleware-сервис: интеграция 1С (УТ 10.3/11), Bitrix24 и «Walking Warehouse».
 
@@ -31,7 +33,23 @@
 | `DB_NAME`       | `mastermobile`         | Имя базы данных                     |
 | `REDIS_HOST`    | `redis`                | Хост Redis                          |
 | `REDIS_PORT`    | `6379`                 | Порт Redis                          |
-| `CHATGPT_PROXY_URL` | `http://user150107:dx4a5m@102.129.178.65:6517` | Прокси-сервер для исходящих запросов к ChatGPT |
+| `B24_BASE_URL`  | `https://example.bitrix24.ru/rest` | Базовый URL REST Bitrix24 |
+| `B24_WEBHOOK_USER_ID` | `1`            | Идентификатор пользователя webhook Bitrix24 |
+| `B24_WEBHOOK_TOKEN` | `changeme`        | Токен webhook Bitrix24 (замените в `.env`) |
+| `B24_RATE_LIMIT_RPS` | `2.0`            | Лимит запросов к Bitrix24 в секунду |
+| `B24_BACKOFF_SECONDS` | `5`             | Стартовый шаг экспоненциального бэкоффа |
+| `OPENAI_API_KEY` | —                    | Ключ OpenAI; оставьте пустым, если STT недоступно |
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Базовый URL OpenAI/совместимого API |
+| `WHISPER_RATE_PER_MIN_USD` | `0.006`    | Ставка Whisper за минуту аудио (для расчёта стоимости) |
+| `STT_MAX_FILE_MINUTES` | `0`            | Максимальная длительность файла для STT; `0` отключает обработку |
+| `CHATGPT_PROXY_URL` | `http://proxy.example.com:8080` | HTTP-прокси для исходящих запросов к ChatGPT/Whisper |
+| `STORAGE_BACKEND` | `local`             | Тип хранилища (`local` или `s3`) |
+| `S3_ENDPOINT_URL` | —                   | Кастомный endpoint S3 (для minio/совместимых сервисов) |
+| `S3_REGION`     | —                     | Регион S3 |
+| `S3_BUCKET`     | —                     | Имя S3-бакета для хранения артефактов |
+| `S3_ACCESS_KEY_ID` | —                  | Access key для S3 |
+| `S3_SECRET_ACCESS_KEY` | —             | Secret key для S3 |
+| `LOCAL_STORAGE_DIR` | `/app/storage`    | Путь локального хранилища (монтируется в контейнер `app`) |
 | `LOG_LEVEL`     | `INFO`                 | Уровень логирования приложения      |
 | `JWT_SECRET`    | `changeme`             | Секрет для подписи JWT-токенов      |
 | `JWT_ISSUER`    | `mastermobile`         | Значение `iss` в выданных JWT       |
@@ -41,9 +59,10 @@
 | `ENABLE_TRACING` | `false`                | Включение экспорта трассировок OpenTelemetry |
 | `PII_MASKING_ENABLED` | `false`           | Маскирование персональных данных в логах |
 | `DISK_ENCRYPTION_FLAG` | `false`          | Флаг шифрования томов/дисков (prod → `true`) |
-| `CHATGPT_PROXY_URL` | `http://user150107:dx4a5m@102.129.178.65:6517` | Корпоративный прокси для исходящих запросов к ChatGPT/Whisper |
 
 > Все значения можно переопределить в `.env` перед запуском `docker compose` / `make up`.
+
+> При пустом `OPENAI_API_KEY` или значении `STT_MAX_FILE_MINUTES=0` сервис стартует без обработки STT: запросы на транскрибацию пропускаются, очередь заданий не создаётся.
 
 ## Архитектура (вкратце)
 - FastAPI (apps/mw/src)
@@ -57,6 +76,16 @@
 - Документация: ./docs
 - Контрибьютинг: ./CONTRIBUTING.md
 - Лицензия: ./LICENSE
+
+## Документация
+
+### B24 Transcribe
+
+- [PRD — Тексты звонков Bitrix24](docs/PRD%20—%20Тексты%20звонков%20Bitrix24.md)
+- [SRS — Тексты звонков Bitrix24 (выгрузка за 60 дней)](docs/SRS%20—%20Тексты%20звонков%20Bitrix24%20(выгрузка%20за%2060%20дней).md)
+- [ONE-PAGER — Тексты всех звонков за 60 дней](docs/b24-transcribe/ONE-PAGER.md)
+- [Runbook: экспорт звонков](docs/runbooks/call_export.md)
+- [Calls CSV schema](docs/specs/call_registry_schema.yaml)
 
 ## API v1 — быстрые вызовы
 

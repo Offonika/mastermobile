@@ -10,6 +10,24 @@ services:
     env_file:
       - .env
       - .env.example
+    environment:
+      B24_BASE_URL: ${B24_BASE_URL:-https://example.bitrix24.ru/rest}
+      B24_WEBHOOK_USER_ID: ${B24_WEBHOOK_USER_ID:-1}
+      B24_WEBHOOK_TOKEN: ${B24_WEBHOOK_TOKEN:-changeme}
+      B24_RATE_LIMIT_RPS: ${B24_RATE_LIMIT_RPS:-2.0}
+      B24_BACKOFF_SECONDS: ${B24_BACKOFF_SECONDS:-5}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      WHISPER_RATE_PER_MIN_USD: ${WHISPER_RATE_PER_MIN_USD:-0.006}
+      STT_MAX_FILE_MINUTES: ${STT_MAX_FILE_MINUTES:-0}
+      CHATGPT_PROXY_URL: ${CHATGPT_PROXY_URL:-http://proxy.example.com:8080}
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-}
+      S3_REGION: ${S3_REGION:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      LOCAL_STORAGE_DIR: ${LOCAL_STORAGE_DIR:-/app/storage}
     depends_on:
       db:
         condition: service_healthy
@@ -20,6 +38,7 @@ services:
       - "${APP_PORT:-8000}:8000"
     volumes:
       - .:/app
+      - ./storage:${LOCAL_STORAGE_DIR:-/app/storage}
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:${APP_PORT:-8000}/health || exit 1"]
       interval: 10s
