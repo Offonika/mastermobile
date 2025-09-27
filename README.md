@@ -31,7 +31,23 @@
 | `DB_NAME`       | `mastermobile`         | Имя базы данных                     |
 | `REDIS_HOST`    | `redis`                | Хост Redis                          |
 | `REDIS_PORT`    | `6379`                 | Порт Redis                          |
-| `CHATGPT_PROXY_URL` | `http://user150107:dx4a5m@102.129.178.65:6517` | Прокси-сервер для исходящих запросов к ChatGPT |
+| `B24_BASE_URL`  | `https://example.bitrix24.ru/rest` | Базовый URL REST Bitrix24 |
+| `B24_WEBHOOK_USER_ID` | `1`            | Идентификатор пользователя webhook Bitrix24 |
+| `B24_WEBHOOK_TOKEN` | `changeme`        | Токен webhook Bitrix24 (замените в `.env`) |
+| `B24_RATE_LIMIT_RPS` | `2.0`            | Лимит запросов к Bitrix24 в секунду |
+| `B24_BACKOFF_SECONDS` | `5`             | Стартовый шаг экспоненциального бэкоффа |
+| `OPENAI_API_KEY` | —                    | Ключ OpenAI; оставьте пустым, если STT недоступно |
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Базовый URL OpenAI/совместимого API |
+| `WHISPER_RATE_PER_MIN_USD` | `0.006`    | Ставка Whisper за минуту аудио (для расчёта стоимости) |
+| `STT_MAX_FILE_MINUTES` | `0`            | Максимальная длительность файла для STT; `0` отключает обработку |
+| `CHATGPT_PROXY_URL` | `http://proxy.example.com:8080` | HTTP-прокси для исходящих запросов к ChatGPT/Whisper |
+| `STORAGE_BACKEND` | `local`             | Тип хранилища (`local` или `s3`) |
+| `S3_ENDPOINT_URL` | —                   | Кастомный endpoint S3 (для minio/совместимых сервисов) |
+| `S3_REGION`     | —                     | Регион S3 |
+| `S3_BUCKET`     | —                     | Имя S3-бакета для хранения артефактов |
+| `S3_ACCESS_KEY_ID` | —                  | Access key для S3 |
+| `S3_SECRET_ACCESS_KEY` | —             | Secret key для S3 |
+| `LOCAL_STORAGE_DIR` | `/app/storage`    | Путь локального хранилища (монтируется в контейнер `app`) |
 | `LOG_LEVEL`     | `INFO`                 | Уровень логирования приложения      |
 | `JWT_SECRET`    | `changeme`             | Секрет для подписи JWT-токенов      |
 | `JWT_ISSUER`    | `mastermobile`         | Значение `iss` в выданных JWT       |
@@ -41,9 +57,10 @@
 | `ENABLE_TRACING` | `false`                | Включение экспорта трассировок OpenTelemetry |
 | `PII_MASKING_ENABLED` | `false`           | Маскирование персональных данных в логах |
 | `DISK_ENCRYPTION_FLAG` | `false`          | Флаг шифрования томов/дисков (prod → `true`) |
-| `CHATGPT_PROXY_URL` | `http://user150107:dx4a5m@102.129.178.65:6517` | Корпоративный прокси для исходящих запросов к ChatGPT/Whisper |
 
 > Все значения можно переопределить в `.env` перед запуском `docker compose` / `make up`.
+
+> При пустом `OPENAI_API_KEY` или значении `STT_MAX_FILE_MINUTES=0` сервис стартует без обработки STT: запросы на транскрибацию пропускаются, очередь заданий не создаётся.
 
 ## Архитектура (вкратце)
 - FastAPI (apps/mw/src)

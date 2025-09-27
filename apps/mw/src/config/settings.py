@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -30,10 +31,32 @@ class Settings(BaseSettings):
 
     redis_host: str = Field(default="redis", alias="REDIS_HOST")
     redis_port: int = Field(default=6379, alias="REDIS_PORT")
-    chatgpt_proxy_url: str = Field(
-        default="http://user150107:dx4a5m@102.129.178.65:6517",
-        alias="CHATGPT_PROXY_URL",
+
+    b24_base_url: str = Field(default="https://example.bitrix24.ru/rest", alias="B24_BASE_URL")
+    b24_webhook_user_id: int = Field(default=1, alias="B24_WEBHOOK_USER_ID")
+    b24_webhook_token: str = Field(default="changeme", alias="B24_WEBHOOK_TOKEN")
+    b24_rate_limit_rps: float = Field(default=2.0, alias="B24_RATE_LIMIT_RPS")
+    b24_backoff_seconds: int = Field(default=5, alias="B24_BACKOFF_SECONDS")
+
+    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
+    openai_base_url: str = Field(default="https://api.openai.com/v1", alias="OPENAI_BASE_URL")
+    whisper_rate_per_min_usd: float = Field(
+        default=0.006,
+        alias="WHISPER_RATE_PER_MIN_USD",
     )
+    stt_max_file_minutes: int = Field(default=0, alias="STT_MAX_FILE_MINUTES")
+    chatgpt_proxy_url: str | None = Field(default=None, alias="CHATGPT_PROXY_URL")
+
+    storage_backend: Literal["local", "s3"] = Field(
+        default="local",
+        alias="STORAGE_BACKEND",
+    )
+    s3_endpoint_url: str | None = Field(default=None, alias="S3_ENDPOINT_URL")
+    s3_region: str | None = Field(default=None, alias="S3_REGION")
+    s3_bucket: str | None = Field(default=None, alias="S3_BUCKET")
+    s3_access_key_id: str | None = Field(default=None, alias="S3_ACCESS_KEY_ID")
+    s3_secret_access_key: str | None = Field(default=None, alias="S3_SECRET_ACCESS_KEY")
+    local_storage_dir: str = Field(default="/app/storage", alias="LOCAL_STORAGE_DIR")
 
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     jwt_secret: str = Field(default="changeme", alias="JWT_SECRET")
