@@ -46,6 +46,34 @@ def test_pii_masking_masks_sensitive_fields_when_enabled(monkeypatch) -> None:
     assert extra["email"] == "[REDACTED]"
 
 
+def test_pii_masking_masks_call_record_numbers(monkeypatch) -> None:
+    """PII masking redacts call record number fields and nested structures."""
+
+    monkeypatch.setenv("PII_MASKING_ENABLED", "true")
+    get_settings.cache_clear()
+
+    buffer = io.StringIO()
+    configure_logging(sink=buffer)
+
+    logger.bind(
+        event="call_export.download",
+        from_number="+79005554433",
+        to_number="+79000001122",
+        metadata={
+            "call": {"from_number": "+79001231212"},
+            "recipients": [{"to_number": "+79009998877"}],
+        },
+    ).info("Call record masking test")
+
+    records = _parse_logs(buffer)
+    assert records, "Expected at least one log entry"
+    extra = records[-1]["extra"]
+    assert extra["from_number"] == "[REDACTED]"
+    assert extra["to_number"] == "[REDACTED]"
+    assert extra["metadata"]["call"]["from_number"] == "[REDACTED]"
+    assert extra["metadata"]["recipients"][0]["to_number"] == "[REDACTED]"
+
+
 async def test_request_context_injects_request_id_into_logs(monkeypatch) -> None:
     """Request middleware injects correlation id for main and background tasks."""
 
