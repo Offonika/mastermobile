@@ -4,10 +4,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from threading import Lock
 from time import perf_counter, sleep
 from typing import Protocol
 
 from loguru import logger
+from prometheus_client import start_http_server
 from sqlalchemy.orm import Session
 
 from apps.mw.src.config import get_settings
@@ -17,6 +19,33 @@ from apps.mw.src.services.stt_queue import DLQEntry, STTJob, STTQueue, create_re
 
 DEFAULT_MAX_RETRIES = 5
 DEFAULT_BACKOFF_SECONDS = 2.0
+
+_metrics_server_lock = Lock()
+_metrics_server_started = False
+
+
+def start_worker_metrics_exporter() -> None:
+    """Start the Prometheus HTTP exporter for the worker if not already running."""
+
+    global _metrics_server_started
+
+    if _metrics_server_started:
+        return
+
+    with _metrics_server_lock:
+        if _metrics_server_started:
+            return
+
+        settings = get_settings()
+        start_http_server(
+            settings.worker_metrics_port,
+            addr=settings.worker_metrics_host,
+        )
+        logger.bind(
+            host=settings.worker_metrics_host,
+            port=settings.worker_metrics_port,
+        ).info("Started STT worker metrics exporter")
+        _metrics_server_started = True
 
 
 @dataclass(slots=True)
@@ -82,6 +111,7 @@ class STTWorker:
     def run_forever(self, *, timeout: int = 5) -> None:
         """Blocking loop that keeps polling the queue for new jobs."""
 
+        start_worker_metrics_exporter()
         logger.info("Starting STT worker loop")
         while True:  # pragma: no cover - integration loop
             handled = self.process_next(timeout=timeout)

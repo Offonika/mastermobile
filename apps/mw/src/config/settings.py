@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     redis_host: str = Field(default="redis", alias="REDIS_HOST")
     redis_port: int = Field(default=6379, alias="REDIS_PORT")
 
+    worker_metrics_host: str = Field(default="0.0.0.0", alias="WORKER_METRICS_HOST")
+    worker_metrics_port: int = Field(default=9100, alias="WORKER_METRICS_PORT")
+
     b24_base_url: str = Field(default="https://example.bitrix24.ru/rest", alias="B24_BASE_URL")
     b24_webhook_user_id: int = Field(default=1, alias="B24_WEBHOOK_USER_ID")
     b24_webhook_token: str = Field(default="changeme", alias="B24_WEBHOOK_TOKEN")

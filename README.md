@@ -18,7 +18,8 @@
 5. `make test`
 
 > Для запуска только зависимостей можно выполнить `docker compose up -d db redis`.
-> Метрики Prometheus доступны по адресу `http://localhost:8000/metrics`.
+> Метрики Prometheus для FastAPI-приложения доступны по адресу `http://localhost:8000/metrics`.
+> Экспортер фонового STT-воркера публикует метрики на `http://localhost:${WORKER_METRICS_PORT:-9100}/metrics`.
 
 ## Smoke-тест распознавания речи
 
@@ -75,6 +76,8 @@ python scripts/stt_smoke.py \
 | `S3_SECRET_ACCESS_KEY` | —             | Secret key для S3 |
 | `LOCAL_STORAGE_DIR` | `/app/storage`    | Путь локального хранилища (монтируется в контейнер `app`) |
 | `LOG_LEVEL`     | `INFO`                 | Уровень логирования приложения      |
+| `WORKER_METRICS_HOST` | `0.0.0.0`        | Адрес, на котором слушает экспортер метрик STT-воркера |
+| `WORKER_METRICS_PORT` | `9100`           | Порт экспортера метрик STT-воркера  |
 | `JWT_SECRET`    | `changeme`             | Секрет для подписи JWT-токенов      |
 | `JWT_ISSUER`    | `mastermobile`         | Значение `iss` в выданных JWT       |
 | `CORS_ORIGINS`  | `http://localhost:3000` | Разрешённые источники CORS (через запятую) |

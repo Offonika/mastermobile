@@ -74,6 +74,8 @@ services:
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
       LOCAL_STORAGE_DIR: ${LOCAL_STORAGE_DIR:-/app/storage}
+      WORKER_METRICS_HOST: ${WORKER_METRICS_HOST:-0.0.0.0}
+      WORKER_METRICS_PORT: ${WORKER_METRICS_PORT:-9100}
     depends_on:
       db:
         condition: service_healthy
@@ -83,6 +85,8 @@ services:
     volumes:
       - .:/app
       - ./storage:${LOCAL_STORAGE_DIR:-/app/storage}
+    ports:
+      - "${WORKER_METRICS_PORT:-9100}:${WORKER_METRICS_PORT:-9100}"
 
   db:
     image: postgres:16

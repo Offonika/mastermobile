@@ -26,6 +26,7 @@
 | `app`  | FastAPI MW (`apps/mw/src/app.py`) | `8000` | `${APP_PORT:-8000}` |
 | `db`   | PostgreSQL 16 (данные MW)         | `5432` | `${DB_PORT:-5432}`  |
 | `redis`| Кэш/очереди                       | `6379` | `${REDIS_PORT:-6379}` |
+| `stt-worker (metrics)` | Экспортер метрик фонового STT-воркера | `${WORKER_METRICS_PORT:-9100}` | `${WORKER_METRICS_PORT:-9100}` |
 
 ## Подробный сценарий
 ### 1. Подготовка окружения
