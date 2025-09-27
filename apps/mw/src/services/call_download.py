@@ -66,6 +66,7 @@ async def download_call_record(
             record.call_id,
             stream,
             started_at=record.call_started_at,
+            record_identifier=record.record_id or record.recording_url,
         )
     except httpx.HTTPStatusError as exc:  # pragma: no cover - defensive guard
         _handle_failure(record, f"http_{exc.response.status_code}", str(exc))

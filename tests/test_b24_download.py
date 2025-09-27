@@ -46,21 +46,25 @@ def sleep_mock(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
     return mock
 
 
-def _call_record(status: CallRecordStatus = CallRecordStatus.PENDING) -> CallRecord:
-    return CallRecord(
-        run_id=uuid4(),
-        call_id="42",
-        record_id="1001",
-        call_started_at=datetime(2024, 9, 1, 12, 0, tzinfo=timezone.utc),
-        duration_sec=120,
-        recording_url=None,
-        storage_path=None,
-        transcript_path=None,
-        transcript_lang=None,
-        checksum=None,
-        status=status,
-        attempts=0,
-    )
+def _call_record(
+    status: CallRecordStatus = CallRecordStatus.PENDING, **overrides: object
+) -> CallRecord:
+    payload: dict[str, object] = {
+        "run_id": uuid4(),
+        "call_id": "42",
+        "record_id": "1001",
+        "call_started_at": datetime(2024, 9, 1, 12, 0, tzinfo=timezone.utc),
+        "duration_sec": 120,
+        "recording_url": None,
+        "storage_path": None,
+        "transcript_path": None,
+        "transcript_lang": None,
+        "checksum": None,
+        "status": status,
+        "attempts": 0,
+    }
+    payload.update(overrides)
+    return CallRecord(**payload)
 
 
 @pytest.mark.asyncio
@@ -134,11 +138,56 @@ async def test_download_workflow_updates_status_and_checksum(
     assert result is not None
     assert record.status is CallRecordStatus.DOWNLOADED
     assert record.storage_path is not None
-    assert Path(record.storage_path).exists()
+    storage_path = Path(record.storage_path)
+    assert storage_path.exists()
+    expected_suffix = hashlib.sha256("1001".encode("utf-8")).hexdigest()[:16]
+    assert storage_path.name == f"call_42_{expected_suffix}.mp3"
     assert record.checksum == hashlib.sha256(b"binary-audio").hexdigest()
     assert record.attempts == 1
     assert record.error_code is None
     assert record.error_message is None
+
+
+@pytest.mark.asyncio
+async def test_download_records_with_same_call_id_use_unique_paths() -> None:
+    """Different Bitrix24 recordings for one call ID persist independently."""
+
+    record_one = _call_record(record_id="rec-1")
+    record_two = _call_record(record_id="rec-2")
+
+    storage = StorageService(settings=get_settings())
+
+    def stream_factory(call_id: str, record_id: str | None):
+        async def _gen(payload: bytes):
+            yield payload
+
+        if record_id == "rec-1":
+            return _gen(b"audio-one")
+        if record_id == "rec-2":
+            return _gen(b"audio-two")
+        raise AssertionError("unexpected record identifier")
+
+    result_one = await download_call_record(
+        record_one, storage=storage, stream_factory=stream_factory
+    )
+    assert record_one.storage_path is not None
+    path_one = Path(record_one.storage_path)
+    result_two = await download_call_record(
+        record_two, storage=storage, stream_factory=stream_factory
+    )
+    assert record_two.storage_path is not None
+    path_two = Path(record_two.storage_path)
+
+    assert result_one is not None and result_two is not None
+    assert path_one.exists() and path_two.exists()
+    assert path_one != path_two
+    assert path_one.read_bytes() == b"audio-one"
+    assert path_two.read_bytes() == b"audio-two"
+
+    suffix_one = hashlib.sha256("rec-1".encode("utf-8")).hexdigest()[:16]
+    suffix_two = hashlib.sha256("rec-2".encode("utf-8")).hexdigest()[:16]
+    assert path_one.name == f"call_42_{suffix_one}.mp3"
+    assert path_two.name == f"call_42_{suffix_two}.mp3"
 
 
 @pytest.mark.asyncio

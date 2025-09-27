@@ -40,10 +40,11 @@ class StorageService:
         stream: AsyncIterable[bytes],
         *,
         started_at: datetime | None,
+        record_identifier: str | None = None,
     ) -> StorageResult:
         """Persist the incoming recording stream and return its metadata."""
 
-        key = self._build_object_key(call_id, started_at)
+        key = self._build_object_key(call_id, record_identifier, started_at)
 
         if self._backend == "s3":
             return await self._store_s3(key, stream)
@@ -97,7 +98,12 @@ class StorageService:
             bytes_stored=bytes_written,
         )
 
-    def _build_object_key(self, call_id: str, started_at: datetime | None) -> str:
+    def _build_object_key(
+        self,
+        call_id: str,
+        record_identifier: str | None,
+        started_at: datetime | None,
+    ) -> str:
         if started_at is not None:
             if started_at.tzinfo is None:
                 started_at = started_at.replace(tzinfo=timezone.utc)
@@ -105,12 +111,17 @@ class StorageService:
         else:
             day = datetime.now(tz=timezone.utc).date()
 
+        suffix = f"call_{call_id}"
+        if record_identifier:
+            digest = hashlib.sha256(record_identifier.encode("utf-8")).hexdigest()
+            suffix = f"{suffix}_{digest[:16]}"
+
         return str(
             Path("raw")
             / f"{day.year:04d}"
             / f"{day.month:02d}"
             / f"{day.day:02d}"
-            / f"call_{call_id}.mp3"
+            / f"{suffix}.mp3"
         )
 
     def _create_s3_client(self) -> Any:
