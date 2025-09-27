@@ -9,6 +9,7 @@ from uuid import uuid4
 from fastapi import Depends, Header, Request, Response, status
 
 from apps.mw.src.api.schemas import Error
+from apps.mw.src.config import get_settings
 
 
 class ProblemDetailException(Exception):
@@ -21,6 +22,8 @@ class ProblemDetailException(Exception):
 
 _RequestIdHeader = Annotated[str | None, Header(alias="X-Request-Id", max_length=128)]
 _IdempotencyKeyHeader = Annotated[str, Header(alias="Idempotency-Key", max_length=128)]
+_AdminAuthorizationHeader = Annotated[str | None, Header(alias="Authorization", max_length=512)]
+_AdminActorHeader = Annotated[str | None, Header(alias="X-Admin-Actor", max_length=128)]
 
 _IDEMPOTENCY_CACHE: dict[tuple[str, str, str], str] = {}
 _IDEMPOTENCY_LOCK = threading.Lock()
@@ -105,3 +108,40 @@ def reset_idempotency_cache() -> None:
 
     with _IDEMPOTENCY_LOCK:
         _IDEMPOTENCY_CACHE.clear()
+
+
+def require_admin_actor(
+    authorization: _AdminAuthorizationHeader = None,
+    actor_header: _AdminActorHeader = None,
+    request_id: str = Depends(provide_request_id),
+) -> str:
+    """Validate the admin API key and return the actor identifier."""
+
+    settings = get_settings()
+    expected_key = (settings.admin_api_key or "").strip()
+    if not expected_key:
+        raise ProblemDetailException(
+            build_error(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                title="Admin authentication unavailable",
+                detail="Admin API key is not configured.",
+                request_id=request_id,
+            )
+        )
+
+    provided = (authorization or "").strip()
+    if provided.lower().startswith("bearer "):
+        provided = provided.split(" ", 1)[1].strip()
+
+    if not provided or provided != expected_key:
+        raise ProblemDetailException(
+            build_error(
+                status.HTTP_401_UNAUTHORIZED,
+                title="Unauthorized",
+                detail="Admin credentials are required to access this resource.",
+                request_id=request_id,
+            )
+        )
+
+    actor = (actor_header or "admin").strip()
+    return actor or "admin"

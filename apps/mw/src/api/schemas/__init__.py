@@ -10,12 +10,15 @@ from .returns import (
     ReturnCreateItem,
     ReturnItem,
 )
+from .stt import DLQReplayRequest, DLQReplayResponse
 
 __all__ = [
     "Error",
     "Health",
     "PaginatedReturns",
     "Ping",
+    "DLQReplayRequest",
+    "DLQReplayResponse",
     "Return",
     "ReturnCreate",
     "ReturnCreateItem",

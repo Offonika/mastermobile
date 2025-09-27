@@ -183,6 +183,36 @@ class STTQueue:
 
         self._redis.rpush(self._dlq_key, json.dumps(entry.to_payload()))
 
+    def replay_dlq_job(self, record_id: int) -> STTJob | None:
+        """Move a job from the DLQ back to the main queue."""
+
+        entries = self._redis.lrange(self._dlq_key, 0, -1)
+        for raw_entry in entries:
+            try:
+                payload = json.loads(raw_entry)
+            except json.JSONDecodeError:  # pragma: no cover - defensive
+                logger.warning("Skipping malformed DLQ entry during replay")
+                continue
+
+            job_payload = payload.get("job") if isinstance(payload, Mapping) else None
+            if not isinstance(job_payload, Mapping):
+                continue
+
+            try:
+                job = STTJob.from_mapping(job_payload)
+            except ValueError:  # pragma: no cover - defensive
+                logger.warning("Skipping DLQ entry with invalid job payload")
+                continue
+
+            if job.record_id != record_id:
+                continue
+
+            self._redis.lrem(self._dlq_key, 1, raw_entry)
+            self.enqueue(job)
+            return job
+
+        return None
+
     def mark_transcribing(self, session: Session, job: STTJob) -> CallRecord | None:
         """Set the CallRecord to transcribing and bump attempt counters."""
 

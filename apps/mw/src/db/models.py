@@ -473,3 +473,39 @@ class CallRecord(Base):
     )
 
     export: Mapped[CallExport] = relationship(back_populates="records")
+
+
+class AuditLog(Base):
+    """Audit trail entry capturing administrative actions."""
+
+    __tablename__ = "audit_log"
+    __table_args__ = (
+        CheckConstraint(
+            "length(trim(actor)) > 0",
+            name="chk_audit_log_actor_not_blank",
+        ),
+        CheckConstraint(
+            "length(trim(action)) > 0",
+            name="chk_audit_log_action_not_blank",
+        ),
+        CheckConstraint(
+            "length(trim(job_reference)) > 0",
+            name="chk_audit_log_job_reference_not_blank",
+        ),
+        CheckConstraint(
+            "length(trim(reason)) > 0",
+            name="chk_audit_log_reason_not_blank",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    actor: Mapped[str] = mapped_column(String(128), nullable=False)
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    job_reference: Mapped[str] = mapped_column(Text, nullable=False)
+    job_payload: Mapped[dict[str, Any]] = mapped_column(JSONBType, nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
