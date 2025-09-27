@@ -206,6 +206,7 @@ class STTQueue:
         *,
         transcript_path: str,
         language: str | None,
+        summary_path: str | None = None,
     ) -> None:
         """Persist successful transcription details on the CallRecord."""
 
@@ -218,6 +219,7 @@ class STTQueue:
 
         record.transcript_path = transcript_path
         record.language = language
+        record.summary_path = summary_path
         record.status = CallRecordStatus.COMPLETED
         record.error_code = None
         record.error_message = None

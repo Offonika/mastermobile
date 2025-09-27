@@ -10,9 +10,12 @@ from typing import Protocol
 from loguru import logger
 from sqlalchemy.orm import Session
 
-from apps.mw.src.config import get_settings
+from urllib.parse import urlparse
+
+from apps.mw.src.config import Settings, get_settings
 from apps.mw.src.db.session import SessionLocal
 from apps.mw.src.observability import STT_JOB_DURATION_SECONDS, STT_JOBS_TOTAL
+from apps.mw.src.services.summarizer import CallSummarizer
 from apps.mw.src.services.stt_queue import DLQEntry, STTJob, STTQueue, create_redis_client
 
 DEFAULT_MAX_RETRIES = 5
@@ -71,6 +74,8 @@ class STTWorker:
         max_retries: int = DEFAULT_MAX_RETRIES,
         base_backoff_seconds: float = DEFAULT_BACKOFF_SECONDS,
         idle_sleep_seconds: float = 1.0,
+        settings: Settings | None = None,
+        summarizer: CallSummarizer | None = None,
     ) -> None:
         self._queue = queue
         self._transcriber = transcriber
@@ -78,6 +83,8 @@ class STTWorker:
         self._max_retries = max(1, max_retries)
         self._base_backoff = max(0.1, base_backoff_seconds)
         self._idle_sleep = max(0.1, idle_sleep_seconds)
+        self._settings = settings or get_settings()
+        self._summarizer = summarizer
 
     def run_forever(self, *, timeout: int = 5) -> None:
         """Blocking loop that keeps polling the queue for new jobs."""
@@ -109,11 +116,13 @@ class STTWorker:
             if result is None:
                 return True
 
+            summary_path = self._maybe_generate_summary(job, result)
             self._queue.record_success(
                 session,
                 job,
                 transcript_path=result.transcript_path,
                 language=result.language,
+                summary_path=summary_path,
             )
             STT_JOBS_TOTAL.labels(status="success").inc()
             logger.bind(call_id=job.call_id, engine=job.engine).info(
@@ -179,6 +188,58 @@ class STTWorker:
                     delay=delay,
                 ).exception("Retrying after unexpected STT worker error")
                 sleep(delay)
+
+    def _maybe_generate_summary(
+        self,
+        job: STTJob,
+        result: TranscriptionResult,
+    ) -> str | None:
+        """Attempt to create a summary for a successful transcription."""
+
+        if not self._settings.call_summary_enabled:
+            return None
+
+        summarizer = self._summarizer
+        if summarizer is None:
+            summarizer = CallSummarizer(settings=self._settings)
+            self._summarizer = summarizer
+
+        transcript_text = self._load_transcript_text(result.transcript_path)
+        if not transcript_text:
+            return None
+
+        try:
+            summary = summarizer.summarize(job.call_id, transcript_text)
+        except Exception:  # pragma: no cover - defensive guard
+            logger.bind(call_id=job.call_id).exception(
+                "Failed to generate call summary",
+            )
+            return None
+
+        return summary.path
+
+    def _load_transcript_text(self, transcript_path: str) -> str | None:
+        if not transcript_path:
+            return None
+
+        parsed = urlparse(transcript_path)
+        if parsed.scheme and parsed.scheme not in {"", "file"}:
+            logger.bind(path=transcript_path, scheme=parsed.scheme).warning(
+                "Skipping summary generation for unsupported transcript backend",
+            )
+            return None
+
+        try:
+            return Path(transcript_path).read_text(encoding="utf-8")
+        except FileNotFoundError:
+            logger.bind(path=transcript_path).warning(
+                "Transcript file missing; skipping summary generation",
+            )
+        except OSError:  # pragma: no cover - defensive guard
+            logger.bind(path=transcript_path).exception(
+                "Unable to read transcript for summary generation",
+            )
+        return None
 
     def _handle_client_failure(
         self,

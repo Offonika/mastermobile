@@ -51,6 +51,21 @@ class StorageService:
 
         return await self._store_local(key, stream)
 
+    def store_summary(
+        self,
+        call_id: str,
+        content: str,
+        *,
+        created_at: datetime | None = None,
+    ) -> StorageResult:
+        """Persist a Markdown summary for a call and return its metadata."""
+
+        created_at = created_at or datetime.now(tz=timezone.utc)
+        key = self._build_summary_key(call_id, created_at)
+        payload = content.encode("utf-8")
+
+        return self._store_bytes(key, payload)
+
     async def _store_local(self, key: str, stream: AsyncIterable[bytes]) -> StorageResult:
         storage_root = Path(self._settings.local_storage_dir)
         storage_root.mkdir(parents=True, exist_ok=True)
@@ -98,6 +113,43 @@ class StorageService:
             bytes_stored=bytes_written,
         )
 
+    def _store_bytes(self, key: str, payload: bytes) -> StorageResult:
+        if self._backend == "s3":
+            return self._store_s3_bytes(key, payload)
+
+        return self._store_local_bytes(key, payload)
+
+    def _store_local_bytes(self, key: str, payload: bytes) -> StorageResult:
+        destination = Path(self._settings.local_storage_dir) / key
+        destination.parent.mkdir(parents=True, exist_ok=True)
+
+        checksum = hashlib.sha256(payload).hexdigest()
+        destination.write_bytes(payload)
+
+        return StorageResult(
+            path=str(destination),
+            checksum=checksum,
+            backend="local",
+            bytes_stored=len(payload),
+        )
+
+    def _store_s3_bytes(self, key: str, payload: bytes) -> StorageResult:
+        client = self._s3_client or self._create_s3_client()
+        checksum = hashlib.sha256(payload).hexdigest()
+
+        client.put_object(
+            Bucket=self._settings.s3_bucket,
+            Key=key,
+            Body=payload,
+        )
+
+        return StorageResult(
+            path=f"s3://{self._settings.s3_bucket}/{key}",
+            checksum=checksum,
+            backend="s3",
+            bytes_stored=len(payload),
+        )
+
     def _build_object_key(
         self,
         call_id: str,
@@ -119,6 +171,21 @@ class StorageService:
             / f"{day.month:02d}"
             / f"{day.day:02d}"
             / f"call_{call_id}_{suffix}.mp3"
+        )
+
+    def _build_summary_key(self, call_id: str, created_at: datetime) -> str:
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        moment = created_at.astimezone(timezone.utc)
+        sanitized_call_id = self._sanitize_identifier(call_id) or "unknown"
+        timestamp = moment.strftime("%Y%m%dT%H%M%SZ")
+
+        return str(
+            Path("summaries")
+            / f"{moment.year:04d}"
+            / f"{moment.month:02d}"
+            / f"{moment.day:02d}"
+            / f"call_{sanitized_call_id}_{timestamp}.md"
         )
 
     def _sanitize_identifier(self, identifier: str) -> str:
