@@ -30,3 +30,32 @@ jobs:
 
       - name: Tests
         run: make test
+
+      - name: STT smoke playlist
+        id: stt-smoke
+        if: ${{ hashFiles('scripts/stt_smoke.py') != '' && secrets.OPENAI_API_KEY != '' }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          STT_SMOKE_PLAYLIST_PATH: ${{ vars.STT_SMOKE_PLAYLIST_PATH }}
+        run: |
+          set -euo pipefail
+          playlist_path="${STT_SMOKE_PLAYLIST_PATH:-docs/testing/stt_smoke_playlist.json}"
+          if [ ! -f "$playlist_path" ]; then
+            echo "Playlist file not found: $playlist_path" >&2
+            exit 1
+          fi
+
+          report_dir="smoke-reports"
+          mkdir -p "$report_dir"
+          report_path="$report_dir/stt_smoke_report.txt"
+
+          python scripts/stt_smoke.py --playlist "$playlist_path" | tee "$report_path"
+          echo "report_path=$report_path" >> "$GITHUB_OUTPUT"
+
+      - name: Upload STT smoke report
+        if: ${{ always() && steps.stt-smoke.outputs.report_path != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: stt-smoke-report
+          path: ${{ steps.stt-smoke.outputs.report_path }}
+          if-no-files-found: warn
