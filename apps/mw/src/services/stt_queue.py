@@ -1,6 +1,7 @@
 """Redis-backed queue helpers for Speech-to-Text jobs."""
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -101,6 +102,68 @@ class DLQEntry:
             payload["status_code"] = self.status_code
         return payload
 
+    @classmethod
+    def from_mapping(cls, payload: Mapping[str, Any]) -> DLQEntry:
+        """Restore an entry from a mapping payload."""
+
+        job_payload = payload.get("job")
+        if not isinstance(job_payload, Mapping):  # pragma: no cover - defensive
+            raise ValueError("DLQ payload is missing job details")
+
+        reason_raw = payload.get("reason")
+        reason = str(reason_raw) if reason_raw is not None else "unknown"
+
+        status_code_raw = payload.get("status_code")
+        status_code: int | None = None
+        if status_code_raw is not None:
+            try:
+                status_code = int(status_code_raw)
+            except (TypeError, ValueError):  # pragma: no cover - defensive
+                status_code = None
+
+        failed_at_raw = payload.get("failed_at")
+        failed_at = datetime.now(tz=UTC)
+        if isinstance(failed_at_raw, str):
+            try:
+                failed_at = datetime.fromisoformat(failed_at_raw)
+            except ValueError:  # pragma: no cover - defensive
+                failed_at = datetime.now(tz=UTC)
+            else:
+                if failed_at.tzinfo is None:
+                    failed_at = failed_at.replace(tzinfo=UTC)
+
+        return cls(
+            job=STTJob.from_mapping(job_payload),
+            reason=reason,
+            status_code=status_code,
+            failed_at=failed_at,
+        )
+
+    @classmethod
+    def from_json(cls, payload: str) -> DLQEntry:
+        """Restore an entry from a JSON payload."""
+
+        data = json.loads(payload)
+        if not isinstance(data, Mapping):  # pragma: no cover - defensive
+            raise ValueError("DLQ payload must be a JSON object")
+        return cls.from_mapping(data)
+
+
+@dataclass(slots=True)
+class DLQItem:
+    """Wrapper for a DLQ entry with a deterministic identifier."""
+
+    entry_id: str
+    payload: str
+    entry: DLQEntry
+
+
+def _dlq_entry_id(payload: str) -> str:
+    """Derive a deterministic identifier for a stored DLQ payload."""
+
+    digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    return digest
+
 
 def create_redis_client(settings: Settings | None = None) -> Redis:
     """Create a Redis client configured from application settings."""
@@ -183,6 +246,67 @@ class STTQueue:
 
         self._redis.rpush(self._dlq_key, json.dumps(entry.to_payload()))
 
+    def list_dlq_entries(self, *, limit: int | None = None) -> list[DLQItem]:
+        """Return DLQ entries paired with deterministic identifiers."""
+
+        if limit is not None and limit <= 0:
+            return []
+
+        end = -1 if limit is None else limit - 1
+        raw_entries = self._redis.lrange(self._dlq_key, 0, end)
+        items: list[DLQItem] = []
+        for payload in raw_entries:
+            entry = DLQEntry.from_json(payload)
+            items.append(DLQItem(entry_id=_dlq_entry_id(payload), payload=payload, entry=entry))
+        return items
+
+    def pop_dlq_entry(self, entry_id: str) -> DLQEntry | None:
+        """Remove and return a DLQ entry by its derived identifier."""
+
+        raw_entries = self._redis.lrange(self._dlq_key, 0, -1)
+        for payload in raw_entries:
+            if _dlq_entry_id(payload) != entry_id:
+                continue
+            removed = self._redis.lrem(self._dlq_key, 1, payload)
+            if removed:
+                return DLQEntry.from_json(payload)
+        return None
+
+    def remove_processed_marker(self, job: STTJob) -> None:
+        """Remove a job's deduplication marker from the processed set."""
+
+        self._redis.srem(self._processed_key, job.dedup_key)
+
+    def reset_for_retry(self, session: Session, job: STTJob) -> CallRecord | None:
+        """Reset a call record to a retryable state for requeueing."""
+
+        record = session.get(CallRecord, job.record_id)
+        if record is None:
+            logger.bind(call_id=job.call_id, record_id=job.record_id).warning(
+                "CallRecord for DLQ job not found",
+            )
+            return None
+
+        record.status = CallRecordStatus.DOWNLOADED
+        record.error_code = None
+        record.error_message = None
+        record.last_attempt_at = datetime.now(tz=UTC)
+        session.commit()
+        return record
+
+    def requeue_dlq_entry(self, session: Session, entry_id: str) -> DLQEntry | None:
+        """Requeue a DLQ entry back to the main queue for another attempt."""
+
+        entry = self.pop_dlq_entry(entry_id)
+        if entry is None:
+            return None
+
+        job = entry.job
+        self.remove_processed_marker(job)
+        self.reset_for_retry(session, job)
+        self.enqueue(job)
+        return entry
+
     def mark_transcribing(self, session: Session, job: STTJob) -> CallRecord | None:
         """Set the CallRecord to transcribing and bump attempt counters."""
 
@@ -252,6 +376,7 @@ class STTQueue:
 
 __all__ = [
     "DLQEntry",
+    "DLQItem",
     "STTJob",
     "STTQueue",
     "create_redis_client",

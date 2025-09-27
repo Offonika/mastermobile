@@ -10,6 +10,7 @@ from .returns import (
     ReturnCreateItem,
     ReturnItem,
 )
+from .stt import STTDLQRequeueResponse, STTJobPayload
 
 __all__ = [
     "Error",
@@ -20,4 +21,6 @@ __all__ = [
     "ReturnCreate",
     "ReturnCreateItem",
     "ReturnItem",
+    "STTDLQRequeueResponse",
+    "STTJobPayload",
 ]
