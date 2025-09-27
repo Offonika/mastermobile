@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     enable_tracing: bool = Field(default=False, alias="ENABLE_TRACING")
     pii_masking_enabled: bool = Field(default=False, alias="PII_MASKING_ENABLED")
     disk_encryption_flag: bool = Field(default=False, alias="DISK_ENCRYPTION_FLAG")
+    call_summary_enabled: bool = Field(default=False, alias="CALL_SUMMARY_ENABLED")
 
     @property
     def sqlalchemy_database_uri(self) -> str:

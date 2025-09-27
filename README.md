@@ -86,6 +86,7 @@ python scripts/stt_smoke.py \
 | `ENABLE_TRACING` | `false`                | Включение экспорта трассировок OpenTelemetry |
 | `PII_MASKING_ENABLED` | `false`           | Маскирование персональных данных в логах |
 | `DISK_ENCRYPTION_FLAG` | `false`          | Флаг шифрования томов/дисков (prod → `true`) |
+| `CALL_SUMMARY_ENABLED` | `false`          | Автогенерация Markdown-саммари для расшифровок звонков |
 
 > Все значения можно переопределить в `.env` перед запуском `docker compose` / `make up`.
 > `docker-compose.yml` подключает `.env.example` **до** `.env`, поэтому локальные
