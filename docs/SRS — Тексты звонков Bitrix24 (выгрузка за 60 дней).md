@@ -3,7 +3,9 @@ SRS — Тексты звонков Bitrix24 (выгрузка за 60 дней)
 Версия: v1.0.0 (синхронизировано с 00‑Core v1.3.1, API‑Contracts v1.1.3, ER Freeze v0.6.4)
 Дата: 21.09.2025
 Владелец: Интеграции / DataOps
+
 Связанные документы: PRD — Тексты звонков Bitrix24 v1.0.0 (19.09.2025), ONE-PAGER — «Тексты всех звонков за 60 дней из Bitrix24» v1.1.0 (Draft), Runbook — docs/runbooks/call_export.md, Data Dictionary — docs/data/call_registry_dictionary.md
+
 
 1. Назначение
 SRS фиксирует технические требования к батчевому пайплайну выгрузки аудиозаписей и текстов всех звонков Bitrix24 за последние 60 дней. Документ расширяет PRD за счёт детализации интеграций, хранения state в MW, форматов артефактов и уровней контроля качества, а также связывает решение с общими нормами 00‑Core (Core-API-Style, Retention, Metrics & Alerts, Security). Целевая аудитория: инженеры интеграций, DataOps, QA, on-call.
@@ -260,7 +262,7 @@ LANGUAGE: <iso639-1>
 - Пайплайн обрабатывает 60-дневный период: coverage ≥ 99%, отчёт и CSV соответствуют схемам (§7.1).
 - QA-выборка из 50 файлов подтверждена, дефекты < 2% критичных, задокументированы.
 - Алерты и дашборды настроены, on-call ознакомлен с runbook `docs/runbooks/call_export.md`.
-- Runbook и data dictionary (`docs/data/call_registry_dictionary.md`) актуализированы и содержат сценарии инцидентов/структуру данных.
+- Runbook и схема реестра звонков ([docs/specs/call_registry_schema.yaml](docs/specs/call_registry_schema.yaml), каталог `docs/specs/`) актуализированы и содержат сценарии инцидентов/структуру данных.
 - Повторный запуск не создаёт дублей; идемпотентность проверена интеграционными тестами.
 - Стоимость и длительность в отчёте совпадают с Bitrix24 в пределах KPI.
 - Все секреты и доступы оформлены, аудит завершён Security Officer.
@@ -271,5 +273,5 @@ LANGUAGE: <iso639-1>
 - 00‑Core — Синхронизация документации v1.3.1.
 - API‑Contracts v1.1.3 (Bitrix24 телефония).
 - ER Freeze v0.6.4.
-- Runbook: docs/runbooks/call_export.md.
-- Data Dictionary: docs/data/call_registry_dictionary.md.
+- Runbook: [docs/runbooks/call_export.md](docs/runbooks/call_export.md).
+- Call Registry Schema: [docs/specs/call_registry_schema.yaml](docs/specs/call_registry_schema.yaml) (см. каталог `docs/specs/`)
