@@ -185,6 +185,60 @@ def _seed_b24_call_records(engine: Engine) -> None:
         session.commit()
 
 
+def test_call_record_duplicate_recording_url_is_rejected(sqlite_engine: Engine) -> None:
+    first_period_from = datetime(2024, 3, 1, 0, 0, 0)
+    first_period_to = first_period_from + timedelta(days=1)
+
+    with Session(sqlite_engine) as session:
+        first_export = CallExport(
+            period_from=first_period_from,
+            period_to=first_period_to,
+            status=CallExportStatus.COMPLETED,
+        )
+        original_record = CallRecord(
+            export=first_export,
+            call_id="CALL-DEDUP",
+            record_id="REC-ORIGINAL",
+            call_started_at=datetime(2024, 3, 1, 9, 0, 0),
+            direction="inbound",
+            from_number="+702000001",
+            to_number="+702000002",
+            duration_sec=120,
+            recording_url="https://example.com/records/dedup.mp3",
+            status=CallRecordStatus.COMPLETED,
+            employee_id="EMP-DEDUP",
+        )
+        session.add_all([first_export, original_record])
+        session.commit()
+
+    second_period_from = datetime(2024, 3, 2, 0, 0, 0)
+    second_period_to = second_period_from + timedelta(days=1)
+
+    with Session(sqlite_engine) as session:
+        second_export = CallExport(
+            period_from=second_period_from,
+            period_to=second_period_to,
+            status=CallExportStatus.COMPLETED,
+        )
+        conflicting_record = CallRecord(
+            export=second_export,
+            call_id="CALL-DEDUP",
+            record_id="REC-SECOND",
+            call_started_at=datetime(2024, 3, 2, 11, 0, 0),
+            direction="outbound",
+            from_number="+702000003",
+            to_number="+702000004",
+            duration_sec=60,
+            recording_url="https://example.com/records/dedup.mp3",
+            status=CallRecordStatus.COMPLETED,
+            employee_id="EMP-DED2",
+        )
+        session.add_all([second_export, conflicting_record])
+
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+
 @pytest.mark.asyncio
 async def test_export_call_registry_streams_csv(
     api_client: httpx.AsyncClient,

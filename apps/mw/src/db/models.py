@@ -393,6 +393,14 @@ class CallRecord(Base):
             text("coalesce(record_id, '')"),
             unique=True,
         ),
+        Index(
+            "uq_call_records_call_id_recording_url",
+            "call_id",
+            "recording_url",
+            unique=True,
+            postgresql_where=text("recording_url IS NOT NULL"),
+            sqlite_where=text("recording_url IS NOT NULL"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(
