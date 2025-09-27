@@ -18,6 +18,18 @@ from apps.mw.src.config import Settings, get_settings
 _correlation_id_var: ContextVar[str | None] = ContextVar("correlation_id", default=None)
 
 _SENSITIVE_EXACT = {"from", "to"}
+_SENSITIVE_CALL_RECORD_KEYS = {
+    "from_number",
+    "to_number",
+    "fromnumber",
+    "tonumber",
+    "call_from",
+    "call_to",
+    "caller_number",
+    "callee_number",
+    "source_number",
+    "destination_number",
+}
 _SENSITIVE_SUBSTRINGS = (
     "phone",
     "email",
@@ -51,7 +63,7 @@ def _is_sensitive_key(key: str | None) -> bool:
     if key is None:
         return False
     normalized = key.lower()
-    if normalized in _SENSITIVE_EXACT:
+    if normalized in _SENSITIVE_EXACT or normalized in _SENSITIVE_CALL_RECORD_KEYS:
         return True
     return any(part in normalized for part in _SENSITIVE_SUBSTRINGS)
 
