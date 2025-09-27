@@ -134,7 +134,10 @@ def main() -> None:
     if example_recording:
         print(f"recording_url (example): {example_recording}")
     else:
-        print("recording_url (example): not available")
+        print(
+            "recording_url (example): not available — enable call recording in Bitrix24 "
+            "or check webhook permissions."
+        )
 
 
 if __name__ == "__main__":
