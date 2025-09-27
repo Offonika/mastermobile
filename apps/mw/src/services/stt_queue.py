@@ -194,8 +194,8 @@ class STTQueue:
             return None
 
         record.status = CallRecordStatus.TRANSCRIBING
-        record.attempts += 1
-        record.last_attempt_at = datetime.now(tz=UTC)
+        record.retry_count += 1
+        record.last_retry_at = datetime.now(tz=UTC)
         session.commit()
         return record
 
@@ -205,7 +205,7 @@ class STTQueue:
         job: STTJob,
         *,
         transcript_path: str,
-        transcript_lang: str | None,
+        language: str | None,
     ) -> None:
         """Persist successful transcription details on the CallRecord."""
 
@@ -217,11 +217,11 @@ class STTQueue:
             return
 
         record.transcript_path = transcript_path
-        record.transcript_lang = transcript_lang
+        record.language = language
         record.status = CallRecordStatus.COMPLETED
         record.error_code = None
         record.error_message = None
-        record.last_attempt_at = datetime.now(tz=UTC)
+        record.last_retry_at = datetime.now(tz=UTC)
         session.commit()
         self.mark_processed(job)
 
@@ -245,7 +245,7 @@ class STTQueue:
         record.status = CallRecordStatus.ERROR
         record.error_code = error_code
         record.error_message = error_message
-        record.last_attempt_at = datetime.now(tz=UTC)
+        record.last_retry_at = datetime.now(tz=UTC)
         session.commit()
         self.mark_processed(job)
 

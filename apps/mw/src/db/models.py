@@ -19,6 +19,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
     func,
     text,
 )
@@ -291,10 +292,10 @@ class CallExport(Base):
         ),
     )
 
-    run_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
+    run_id: Mapped[str] = mapped_column(
+        String(36),
         primary_key=True,
-        default=uuid4,
+        default=lambda: str(uuid4()),
     )
     period_from: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -354,8 +355,8 @@ class CallRecord(Base):
             name="chk_call_records_duration_non_negative",
         ),
         CheckConstraint(
-            "attempts >= 0",
-            name="chk_call_records_attempts_non_negative",
+            "retry_count >= 0",
+            name="chk_call_records_retry_count_non_negative",
         ),
         CheckConstraint(
             "status IN ('pending','downloading','downloaded','transcribing','completed','skipped','error','missing_audio')",
@@ -386,12 +387,10 @@ class CallRecord(Base):
             "checksum",
             postgresql_where=text("checksum IS NOT NULL"),
         ),
-        Index(
-            "uq_call_records_run_call_record",
+        UniqueConstraint(
             "run_id",
             "call_id",
-            text("coalesce(record_id, '')"),
-            unique=True,
+            name="uq_call_records_run_call",
         ),
     )
 
@@ -400,36 +399,39 @@ class CallRecord(Base):
         primary_key=True,
         autoincrement=True,
     )
-    run_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
+    run_id: Mapped[str] = mapped_column(
+        String(36),
         ForeignKey("call_exports.run_id", ondelete="CASCADE"),
         nullable=False,
     )
     call_id: Mapped[str] = mapped_column(Text, nullable=False)
+    record_id: Mapped[str] = mapped_column(Text, nullable=False)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
     direction: Mapped[CallDirection] = mapped_column(
         _enum_type(CallDirection, name="call_direction", length=16),
         nullable=False,
     )
+    employee_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     from_number: Mapped[str] = mapped_column(Text, nullable=False)
     to_number: Mapped[str] = mapped_column(Text, nullable=False)
-    record_id: Mapped[str | None] = mapped_column(Text, nullable=True)
-    call_started_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True,
-    )
-    direction: Mapped[str | None] = mapped_column(String(16), nullable=True)
-    from_number: Mapped[str | None] = mapped_column(Text, nullable=True)
-    to_number: Mapped[str | None] = mapped_column(Text, nullable=True)
     duration_sec: Mapped[int] = mapped_column(Integer, nullable=False)
-    recording_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    recording_url: Mapped[str] = mapped_column(Text, nullable=False)
     storage_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     transcript_path: Mapped[str | None] = mapped_column(Text, nullable=True)
-    transcript_lang: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    text_preview: Mapped[str | None] = mapped_column(Text, nullable=True)
+    language: Mapped[str | None] = mapped_column(String(8), nullable=True)
     checksum: Mapped[str | None] = mapped_column(Text, nullable=True)
-    cost_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
-    cost_currency: Mapped[str | None] = mapped_column(
-        String(3),
+    transcription_cost: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2),
         nullable=True,
+    )
+    currency_code: Mapped[str] = mapped_column(
+        String(3),
+        nullable=False,
         default="RUB",
         server_default=text("'RUB'"),
     )
@@ -439,13 +441,13 @@ class CallRecord(Base):
     )
     error_code: Mapped[str | None] = mapped_column(Text, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    attempts: Mapped[int] = mapped_column(
+    retry_count: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
         default=0,
         server_default=text("0"),
     )
-    last_attempt_at: Mapped[datetime | None] = mapped_column(
+    last_retry_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )

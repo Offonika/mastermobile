@@ -85,6 +85,15 @@ fields:
       column: direction
     examples:
       - "inbound"
+  - name: employee
+    type: string
+    required: false
+    description: Bitrix24 employee identifier handling the call (`PORTAL_USER_ID`).
+    source:
+      table: call_records
+      column: employee_id
+    examples:
+      - "12345"
   - name: from
     type: string
     required: true
@@ -132,6 +141,15 @@ fields:
       column: transcript_path
     examples:
       - "transcripts/call_721459.txt"
+  - name: text_preview
+    type: string
+    required: false
+    description: First 1 kB of the transcript for quick triage in dashboards.
+    source:
+      table: call_records
+      column: text_preview
+    examples:
+      - "Operator: MasterMobile support, how can I help you today?..."
   - name: transcription_cost
     type: number
     format: decimal(10,2)
@@ -165,9 +183,14 @@ fields:
     required: true
     description: Processing status of the call within the export run.
     allowed_values:
+      - pending
+      - downloading
+      - downloaded
+      - transcribing
       - completed
-      - transcription_pending
+      - skipped
       - error
+      - missing_audio
     source:
       table: call_records
       column: status
@@ -188,7 +211,7 @@ fields:
     description: Number of retry attempts performed by the pipeline.
     source:
       table: call_records
-      column: attempts
+      column: retry_count
     examples:
       - 2
   - name: checksum

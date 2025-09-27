@@ -20,13 +20,19 @@ CALL_RECORD_STATUS_CHECK = (
     "status IN ('pending','downloading','downloaded','transcribing','completed','skipped','error','missing_audio')"
 )
 
+CALL_RECORD_DIRECTION_CHECK = (
+    "direction IN ('inbound','outbound','internal')"
+)
+CALL_RECORD_FROM_NUMBER_CHECK = "length(trim(from_number)) > 0"
+CALL_RECORD_TO_NUMBER_CHECK = "length(trim(to_number)) > 0"
+
 
 def upgrade() -> None:
     op.create_table(
         "call_exports",
         sa.Column(
             "run_id",
-            postgresql.UUID(as_uuid=True),
+            sa.String(length=36),
             primary_key=True,
         ),
         sa.Column("period_from", sa.TIMESTAMP(timezone=True), nullable=False),
@@ -67,33 +73,39 @@ def upgrade() -> None:
     op.create_table(
         "call_records",
         sa.Column("id", sa.BigInteger(), primary_key=True, autoincrement=True),
-        sa.Column("run_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("run_id", sa.String(length=36), nullable=False),
         sa.Column("call_id", sa.Text(), nullable=False),
-        sa.Column("record_id", sa.Text(), nullable=True),
-        sa.Column("call_started_at", sa.TIMESTAMP(timezone=True), nullable=True),
+        sa.Column("record_id", sa.Text(), nullable=False),
+        sa.Column("started_at", sa.TIMESTAMP(timezone=True), nullable=False),
+        sa.Column("direction", sa.Text(), nullable=False),
+        sa.Column("employee_id", sa.Text(), nullable=True),
+        sa.Column("from_number", sa.Text(), nullable=False),
+        sa.Column("to_number", sa.Text(), nullable=False),
         sa.Column("duration_sec", sa.Integer(), nullable=False),
-        sa.Column("recording_url", sa.Text(), nullable=True),
+        sa.Column("recording_url", sa.Text(), nullable=False),
         sa.Column("storage_path", sa.Text(), nullable=True),
         sa.Column("transcript_path", sa.Text(), nullable=True),
-        sa.Column("transcript_lang", sa.Text(), nullable=True),
+        sa.Column("summary_path", sa.Text(), nullable=True),
+        sa.Column("text_preview", sa.Text(), nullable=True),
+        sa.Column("language", sa.String(length=8), nullable=True),
         sa.Column("checksum", sa.Text(), nullable=True),
-        sa.Column("cost_amount", sa.Numeric(12, 2), nullable=True),
+        sa.Column("transcription_cost", sa.Numeric(12, 2), nullable=True),
         sa.Column(
-            "cost_currency",
+            "currency_code",
             sa.String(length=3),
-            nullable=True,
+            nullable=False,
             server_default=sa.text("'RUB'"),
         ),
         sa.Column("status", sa.Text(), nullable=False),
         sa.Column("error_code", sa.Text(), nullable=True),
         sa.Column("error_message", sa.Text(), nullable=True),
         sa.Column(
-            "attempts",
+            "retry_count",
             sa.Integer(),
             nullable=False,
             server_default=sa.text("0"),
         ),
-        sa.Column("last_attempt_at", sa.TIMESTAMP(timezone=True), nullable=True),
+        sa.Column("last_retry_at", sa.TIMESTAMP(timezone=True), nullable=True),
         sa.Column(
             "created_at",
             sa.TIMESTAMP(timezone=True),
@@ -113,10 +125,26 @@ def upgrade() -> None:
             "duration_sec >= 0", name="chk_call_records_duration_non_negative"
         ),
         sa.CheckConstraint(
-            "attempts >= 0", name="chk_call_records_attempts_non_negative"
+            "retry_count >= 0", name="chk_call_records_retry_count_non_negative"
         ),
         sa.CheckConstraint(
             CALL_RECORD_STATUS_CHECK, name="chk_call_records_status"
+        ),
+        sa.CheckConstraint(
+            CALL_RECORD_DIRECTION_CHECK, name="chk_call_records_direction"
+        ),
+        sa.CheckConstraint(
+            CALL_RECORD_FROM_NUMBER_CHECK,
+            name="chk_call_records_from_number_not_blank",
+        ),
+        sa.CheckConstraint(
+            CALL_RECORD_TO_NUMBER_CHECK,
+            name="chk_call_records_to_number_not_blank",
+        ),
+        sa.UniqueConstraint(
+            "run_id",
+            "call_id",
+            name="uq_call_records_run_call",
         ),
     )
 
@@ -145,16 +173,7 @@ def upgrade() -> None:
         postgresql_where=sa.text("checksum IS NOT NULL"),
     )
 
-    op.create_index(
-        "uq_call_records_run_call_record",
-        "call_records",
-        ["run_id", "call_id", sa.text("coalesce(record_id, '')")],
-        unique=True,
-    )
-
-
 def downgrade() -> None:
-    op.drop_index("uq_call_records_run_call_record", table_name="call_records")
     op.drop_index("idx_call_records_checksum", table_name="call_records")
     op.drop_index("idx_call_records_status_run", table_name="call_records")
     op.drop_index("idx_call_exports_status_active", table_name="call_exports")

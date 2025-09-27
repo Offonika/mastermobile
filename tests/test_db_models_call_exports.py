@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import Column, Table, create_engine, event, insert, select
@@ -71,7 +71,7 @@ def test_call_export_crud_matches_schema() -> None:
         )
         session.add(export)
         session.commit()
-        run_id: UUID = export.run_id
+        run_id: str = export.run_id
         session.expunge_all()
 
         loaded = session.get(CallExport, run_id)
@@ -123,12 +123,17 @@ def test_call_record_crud_and_cascade() -> None:
         record = CallRecord(
             export=export,
             call_id="CALL-001",
+            record_id="REC-001",
+            started_at=period_from + timedelta(hours=1),
             direction=CallDirection.INBOUND,
+            employee_id="EMP-42",
             from_number="+74951234567",
             to_number="+79997654321",
             duration_sec=180,
+            recording_url="https://example.com/records/1.mp3",
+            transcript_path="transcripts/call_001.txt",
             status=CallRecordStatus.PENDING,
-            transcript_lang="ru",
+            language="ru",
         )
         session.add_all([export, record])
         session.commit()
@@ -141,23 +146,27 @@ def test_call_record_crud_and_cascade() -> None:
         ).one()
         assert loaded.run_id == run_id
         assert loaded.call_id == "CALL-001"
+        assert loaded.record_id == "REC-001"
+        assert loaded.started_at == (period_from + timedelta(hours=1)).replace(tzinfo=None)
         assert loaded.direction is CallDirection.INBOUND
+        assert loaded.employee_id == "EMP-42"
         assert loaded.from_number == "+74951234567"
         assert loaded.to_number == "+79997654321"
-        assert loaded.record_id is None
         assert loaded.duration_sec == 180
         assert loaded.status is CallRecordStatus.PENDING
-        assert loaded.transcript_lang == "ru"
-        assert loaded.cost_currency == "RUB"
+        assert loaded.language == "ru"
+        assert loaded.currency_code == "RUB"
 
         last_attempt = period_to + timedelta(hours=2)
         loaded.status = CallRecordStatus.COMPLETED
-        loaded.attempts = 1
-        loaded.last_attempt_at = last_attempt
+        loaded.retry_count = 1
+        loaded.last_retry_at = last_attempt
         loaded.storage_path = "/storage/call-001.wav"
         loaded.checksum = "abc123"
-        loaded.cost_amount = Decimal("12.34")
+        loaded.transcription_cost = Decimal("12.34")
         loaded.direction = CallDirection.OUTBOUND
+        loaded.summary_path = "summary/call_001.md"
+        loaded.text_preview = "Hello world"
         loaded.from_number = "+74959876543"
         loaded.to_number = "+78005553535"
         session.commit()
@@ -166,12 +175,14 @@ def test_call_record_crud_and_cascade() -> None:
         updated = session.get(CallRecord, record_id)
         assert updated is not None
         assert updated.status is CallRecordStatus.COMPLETED
-        assert updated.attempts == 1
-        assert updated.last_attempt_at == last_attempt.replace(tzinfo=None)
+        assert updated.retry_count == 1
+        assert updated.last_retry_at == last_attempt.replace(tzinfo=None)
         assert updated.storage_path == "/storage/call-001.wav"
         assert updated.checksum == "abc123"
-        assert updated.cost_amount == Decimal("12.34")
-        assert updated.cost_currency == "RUB"
+        assert updated.transcription_cost == Decimal("12.34")
+        assert updated.currency_code == "RUB"
+        assert updated.summary_path == "summary/call_001.md"
+        assert updated.text_preview == "Hello world"
         assert updated.direction is CallDirection.OUTBOUND
         assert updated.from_number == "+74959876543"
         assert updated.to_number == "+78005553535"
@@ -179,7 +190,7 @@ def test_call_record_crud_and_cascade() -> None:
         updated.status = CallRecordStatus.MISSING_AUDIO
         updated.error_code = "http_404"
         updated.error_message = "Recording was not found"
-        updated.attempts = 5
+        updated.retry_count = 5
         session.commit()
         session.expunge_all()
 
@@ -188,16 +199,20 @@ def test_call_record_crud_and_cascade() -> None:
         assert missing.status is CallRecordStatus.MISSING_AUDIO
         assert missing.error_code == "http_404"
         assert missing.error_message == "Recording was not found"
-        assert missing.attempts == 5
+        assert missing.retry_count == 5
 
         duplicate = CallRecord(
             run_id=run_id,
             call_id="CALL-001",
+            record_id="REC-XYZ",
+            started_at=period_from + timedelta(hours=2),
             direction=CallDirection.OUTBOUND,
             from_number="+74951230000",
             to_number="+78001230000",
             duration_sec=60,
             status=CallRecordStatus.PENDING,
+            recording_url="https://example.com/records/duplicate.mp3",
+            transcript_path="transcripts/call_002.txt",
         )
         session.add(duplicate)
         with pytest.raises(IntegrityError):

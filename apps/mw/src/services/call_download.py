@@ -30,20 +30,20 @@ async def download_call_record(
             event="call_export.download",
             stage="skipped",
             call_id=record.call_id,
-            attempt=record.attempts,
+            attempt=record.retry_count,
         ).info("Call already downloaded")
         return None
 
-    if record.attempts >= MAX_RETRY_ATTEMPTS:
+    if record.retry_count >= MAX_RETRY_ATTEMPTS:
         record.status = CallRecordStatus.ERROR
         record.error_code = "max_attempts"
         record.error_message = "Maximum download attempts exceeded"
-        record.last_attempt_at = datetime.now(tz=timezone.utc)
+        record.last_retry_at = datetime.now(tz=timezone.utc)
         logger.bind(
             event="call_export.download",
             stage="max_retries",
             call_id=record.call_id,
-            attempt=record.attempts,
+            attempt=record.retry_count,
             max_attempts=MAX_RETRY_ATTEMPTS,
         ).error("Maximum download attempts exceeded")
         raise RuntimeError("maximum download attempts exceeded")
@@ -51,13 +51,13 @@ async def download_call_record(
     storage = storage or StorageService()
 
     record.status = CallRecordStatus.DOWNLOADING
-    record.attempts += 1
-    record.last_attempt_at = datetime.now(tz=timezone.utc)
+    record.retry_count += 1
+    record.last_retry_at = datetime.now(tz=timezone.utc)
     logger.bind(
         event="call_export.download",
         stage="start",
         call_id=record.call_id,
-        attempt=record.attempts,
+        attempt=record.retry_count,
     ).info("Starting call download")
 
     try:
@@ -65,7 +65,7 @@ async def download_call_record(
         result = await storage.store_call_recording(
             record.call_id,
             stream,
-            started_at=record.call_started_at,
+            started_at=record.started_at,
         )
     except httpx.HTTPStatusError as exc:  # pragma: no cover - defensive guard
         _handle_failure(record, f"http_{exc.response.status_code}", str(exc))
@@ -87,7 +87,7 @@ async def download_call_record(
         event="call_export.download",
         stage="completed",
         call_id=record.call_id,
-        attempt=record.attempts,
+        attempt=record.retry_count,
         storage_backend=result.backend,
         bytes_stored=result.bytes_stored,
     ).info("Finished call download")
@@ -103,6 +103,6 @@ def _handle_failure(record: CallRecord, code: str, message: str) -> None:
         event="call_export.download",
         stage="error",
         call_id=record.call_id,
-        attempt=record.attempts,
+        attempt=record.retry_count,
         error_code=code,
     ).error("Failed to download call")

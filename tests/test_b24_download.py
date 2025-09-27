@@ -51,15 +51,15 @@ def _call_record(status: CallRecordStatus = CallRecordStatus.PENDING) -> CallRec
         run_id=uuid4(),
         call_id="42",
         record_id="1001",
-        call_started_at=datetime(2024, 9, 1, 12, 0, tzinfo=timezone.utc),
+        started_at=datetime(2024, 9, 1, 12, 0, tzinfo=timezone.utc),
         duration_sec=120,
-        recording_url=None,
+        recording_url="https://example.bitrix24.ru/rest/recordings/1001",
         storage_path=None,
-        transcript_path=None,
-        transcript_lang=None,
+        transcript_path="transcripts/42.txt",
+        language=None,
         checksum=None,
         status=status,
-        attempts=0,
+        retry_count=0,
     )
 
 
@@ -136,7 +136,7 @@ async def test_download_workflow_updates_status_and_checksum(
     assert record.storage_path is not None
     assert Path(record.storage_path).exists()
     assert record.checksum == hashlib.sha256(b"binary-audio").hexdigest()
-    assert record.attempts == 1
+    assert record.retry_count == 1
     assert record.error_code is None
     assert record.error_message is None
 
@@ -150,7 +150,7 @@ async def test_download_workflow_skips_when_already_downloaded(
     record = _call_record(status=CallRecordStatus.DOWNLOADED)
     record.storage_path = "/tmp/fake.mp3"
     record.checksum = "deadbeef"
-    record.attempts = 3
+    record.retry_count = 3
 
     url = "https://example.bitrix24.ru/rest/1/token/telephony.recording.get"
     route = respx_mock.get(url).mock(return_value=httpx.Response(200, content=b"unused"))
@@ -159,7 +159,7 @@ async def test_download_workflow_skips_when_already_downloaded(
 
     assert result is None
     assert route.call_count == 0
-    assert record.attempts == 3
+    assert record.retry_count == 3
     assert record.status is CallRecordStatus.DOWNLOADED
 
 
@@ -170,7 +170,7 @@ async def test_download_workflow_respects_retry_limit(
     """Records stop processing once the maximum retry limit is reached."""
 
     record = _call_record()
-    record.attempts = MAX_RETRY_ATTEMPTS
+    record.retry_count = MAX_RETRY_ATTEMPTS
 
     url = "https://example.bitrix24.ru/rest/1/token/telephony.recording.get"
     route = respx_mock.get(url).mock(return_value=httpx.Response(200, content=b"unused"))

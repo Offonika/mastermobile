@@ -165,26 +165,31 @@ LANGUAGE: <iso639-1>
 8.2. Таблица `call_records`
 | Поле | Тип | Ограничения | Описание |
 | --- | --- | --- | --- |
-| id | uuid | PK | Уникальный идентификатор записи |
-| call_export_id | uuid | FK → call_exports(id) on delete cascade | Связанный run |
+| id | bigserial | PK | Технический идентификатор записи |
+| run_id | uuid | FK → call_exports(run_id) on delete cascade | Связанный run |
 | call_id | text | not null | ID звонка Bitrix24 |
 | record_id | text | not null | ID аудиозаписи |
-| status | enum (`pending`, `downloading`, `transcribing`, `completed`, `error`, `missing_audio`) | not null | Статус обработки |
-| direction | text | not null | Направление звонка |
-| datetime_start | timestamptz | not null | Время начала |
+| started_at | timestamptz | not null | Время начала |
+| direction | text | not null | Направление звонка (inbound/outbound/internal) |
+| employee_id | text | null | Оператор (Bitrix24 `PORTAL_USER_ID`) |
+| from_number | text | not null | Номер клиента (E.164, CHECK not blank) |
+| to_number | text | not null | Номер оператора/линии (CHECK not blank) |
 | duration_sec | integer | not null | Длительность |
 | recording_url | text | not null | Исходная ссылка (masked в выгрузке) |
-| storage_path | text | not null | Путь к аудио в storage |
-| checksum_sha256 | text | not null | Контрольная сумма |
+| storage_path | text | null | Путь к аудио в storage |
 | transcript_path | text | null | Путь к тексту |
 | summary_path | text | null | Путь к саммари |
-| tags | text | null | Сериализованные теги |
-| language | char(2) | null | ISO 639-1 |
-| cost_value | numeric(10,2) | null | Стоимость |
-| cost_currency | char(3) | null default 'USD' | Валюта |
+| text_preview | text | null | Первые 1 кБ расшифровки для превью |
+| language | text | null | ISO 639-1/ISO 639-3 |
+| transcription_cost | numeric(12,2) | null | Стоимость распознавания |
+| currency_code | char(3) | not null default 'RUB' | Валюта |
+| status | enum (`pending`, `downloading`, `downloaded`, `transcribing`, `completed`, `skipped`, `error`, `missing_audio`) | not null | Статус обработки |
+| error_code | text | null | Код последней ошибки |
+| error_message | text | null | Текст ошибки (PII-маскирование) |
 | retry_count | integer | not null default 0 | Повторные попытки |
-| last_error_code | text | null | Код последней ошибки |
-| last_error_message | text | null | Текст ошибки (PII-маскирование) |
+| last_retry_at | timestamptz | null | Время последней попытки |
+| checksum | text | null | Контрольная сумма |
+| created_at | timestamptz | not null default now() | Создание записи |
 | updated_at | timestamptz | not null default now() | Обновление статуса |
 Уникальные ограничения: `unique(call_export_id, call_id, record_id)`. Индексы: `(status, updated_at)` для мониторинга, `(call_id, record_id)` для идемпотентности, `GIN(tags)` при включённых тегах.
 
@@ -211,10 +216,10 @@ LANGUAGE: <iso639-1>
 10. Функциональные требования (FR)
 - FR-INGEST-001. MW должен создавать run в `call_exports` с уникальным `run_id` и статусом `pending` при запуске задачи.
 - FR-INGEST-010. Клиент Bitrix24 обязан выгружать все звонки за период, учитывая пагинацию и фильтры по `start_time`.
-- FR-DOWNLOAD-001. Скачивание аудио сохраняет файл в storage, вычисляет `checksum_sha256`, обновляет `call_records.status = 'downloading' → 'transcribing'`.
+- FR-DOWNLOAD-001. Скачивание аудио сохраняет файл в storage, вычисляет `call_records.checksum`, обновляет `call_records.status = 'downloading' → 'transcribing'`.
 - FR-DOWNLOAD-010. При 5 неудачных попытках загрузки запись переводится в `missing_audio`, фиксируется `last_error_code` и попадает в отчёт.
 - FR-TRANSCRIBE-001. Транскрипция должна обеспечивать ≥ 98% успешных попыток; язык определяется автоматически и записывается в `call_records.language`.
-- FR-TRANSCRIBE-010. Стоимость рассчитывается по тарифу сервиса с округлением минут вверх и сохраняется в `cost_value`, `cost_currency`.
+- FR-TRANSCRIBE-010. Стоимость рассчитывается по тарифу сервиса с округлением минут вверх и сохраняется в `transcription_cost`, `currency_code`.
 - FR-CSV-001. Каждая завершённая запись добавляется в CSV; файл валиден (UTF-8, `;` разделитель) и открывается в Excel/Google Sheets без ошибок.
 - FR-CSV-010. CSV содержит все обязательные поля (§7.1); отсутствующие транскрипты заполняются `status = error|missing_audio`.
 - FR-REPORT-001. Отчёт `summary_<period>.md` формируется автоматически и включает агрегаты (§7.3), список пропусков, QA-выборку.

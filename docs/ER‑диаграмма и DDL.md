@@ -162,7 +162,7 @@ create index if not exists idx_returns_pending on returns(return_id) where statu
 2.4 v0.6.4 → v0.6.5 (новое)
 -- Пакетная выгрузка звонков Bitrix24
 create table if not exists call_exports (
-  run_id          uuid primary key,
+  run_id          char(36) primary key,
   period_from     timestamptz not null,
   period_to       timestamptz not null,
   status          text not null check (status in ('pending','in_progress','completed','error','cancelled')),
@@ -181,23 +181,29 @@ create index if not exists idx_call_exports_status_active
 
 create table if not exists call_records (
   id                bigserial primary key,
-  run_id            uuid not null references call_exports(run_id) on delete cascade,
+  run_id            char(36) not null references call_exports(run_id) on delete cascade,
   call_id           text not null,
-  record_id         text,
-  call_started_at   timestamptz,
+  record_id         text not null,
+  started_at        timestamptz not null,
+  direction         text not null check (direction in ('inbound','outbound','internal')),
+  employee_id       text,
+  from_number       text not null check (length(trim(from_number)) > 0),
+  to_number         text not null check (length(trim(to_number)) > 0),
   duration_sec      integer not null check (duration_sec >= 0),
-  recording_url     text,
+  recording_url     text not null,
   storage_path      text,
   transcript_path   text,
-  transcript_lang   text,
+  summary_path      text,
+  text_preview      text,
+  language          text,
   checksum          text,
-  cost_amount       numeric(12,2),
-  cost_currency     currency_code default 'RUB',
-  status            text not null check (status in ('pending','downloading','downloaded','transcribing','completed','skipped','error')),
+  transcription_cost numeric(12,2),
+  currency_code     currency_code not null default 'RUB',
+  status            text not null check (status in ('pending','downloading','downloaded','transcribing','completed','skipped','error','missing_audio')),
   error_code        text,
   error_message     text,
-  attempts          integer not null default 0 check (attempts >= 0),
-  last_attempt_at   timestamptz,
+  retry_count       integer not null default 0 check (retry_count >= 0),
+  last_retry_at     timestamptz,
   created_at        timestamptz not null default now(),
   updated_at        timestamptz not null default now()
 );
@@ -215,7 +221,7 @@ create unique index if not exists uq_call_records_run_call_record
 
 Основные положения:
 - `call_exports` фиксирует один запуск выгрузки: период (`period_from`/`period_to`), статус (pending/in_progress/completed/error/cancelled), ссылку на инициатора (`actor_user_id` → `core.users.user_id`, nullable для системных джобов), тайминги (`started_at`, `finished_at`) и JSON‑опции запуска (флаги `generate_summary`, `language_override` и др.).
-- `call_records` хранит каждую запись звонка в рамках запуска: бизнес-ключ `(run_id, call_id, coalesce(record_id,''))`, длительность (`duration_sec`), локации хранения (`recording_url`, `storage_path`, `transcript_path`), контрольные суммы (`checksum`), стоимость (`cost_amount`, `cost_currency`), текущий статус (pending/downloading/downloaded/transcribing/completed/skipped/error) и информацию об ошибках/повторах (`attempts`, `last_attempt_at`, `error_code`, `error_message`).
+- `call_records` хранит каждую запись звонка в рамках запуска: бизнес-ключ `(run_id, call_id, record_id)`, атрибуты вызова (`started_at`, `direction`, `employee_id`, `from_number`, `to_number`, `duration_sec`), локации хранения (`recording_url`, `storage_path`, `transcript_path`, `summary_path`), превью текста (`text_preview`), контрольные суммы (`checksum`), стоимость (`transcription_cost`, `currency_code`), текущий статус (pending/downloading/downloaded/transcribing/completed/skipped/error/missing_audio) и информацию об ошибках/повторах (`retry_count`, `last_retry_at`, `error_code`, `error_message`).
 - Внешние ключи: `call_records.run_id` с каскадным удалением → `call_exports.run_id`; `call_exports.actor_user_id` → `core.users.user_id` (`ON DELETE SET NULL`).
 - Индексация рассчитана на мониторинг прогрессии и дедупликацию: частичный индекс по активным статусам, GIN/GiST не требуется; хэш по `checksum` обеспечивает быстрый поиск дублей при ретраях.
 

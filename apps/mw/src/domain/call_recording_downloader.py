@@ -25,12 +25,12 @@ def register_http_failure(
 ) -> None:
     """Persist the outcome of a failed download attempt on the ORM entity."""
 
-    record.attempts += 1
-    record.last_attempt_at = _now_utc()
+    record.retry_count += 1
+    record.last_retry_at = _now_utc()
     record.error_code = f"http_{status_code}"
     record.error_message = message or f"HTTP {status_code}"
 
-    if status_code in MISSING_AUDIO_HTTP_STATUS and record.attempts >= max_attempts:
+    if status_code in MISSING_AUDIO_HTTP_STATUS and record.retry_count >= max_attempts:
         record.status = CallRecordStatus.MISSING_AUDIO
     else:
         record.status = CallRecordStatus.ERROR

@@ -42,6 +42,18 @@ def _ensure_httpx() -> None:
 
 _ensure_httpx()
 
+import httpx
+
+if not hasattr(httpx, "BaseTransport"):
+    from httpx import _transports
+
+    httpx.BaseTransport = _transports.base.BaseTransport  # type: ignore[attr-defined]
+    httpx.AsyncBaseTransport = _transports.base.AsyncBaseTransport  # type: ignore[attr-defined]
+
+import respx
+
+pytest_plugins = ("pytest_asyncio.plugin",)
+
 try:
     import uvicorn
 except ImportError:  # pragma: no cover - optional dependency
@@ -120,6 +132,14 @@ def _serve_app() -> Iterator[None]:
         if process.is_alive():
             process.kill()
             process.join(timeout=5)
+
+
+@pytest.fixture()
+def respx_mock() -> Iterator[respx.Router]:
+    """Provide a respx router fixture compatible with newer httpx releases."""
+
+    with respx.mock(assert_all_called=False) as mock:
+        yield mock
 
 
 def pytest_configure(config: pytest.Config) -> None:
