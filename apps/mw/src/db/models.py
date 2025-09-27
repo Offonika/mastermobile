@@ -102,6 +102,14 @@ class CallRecordStatus(str, Enum):
     ERROR = "error"
 
 
+class CallDirection(str, Enum):
+    """Direction of a Bitrix24 call."""
+
+    INBOUND = "inbound"
+    OUTBOUND = "outbound"
+    INTERNAL = "internal"
+
+
 JSONBType = JSONB().with_variant(SQLiteJSON(), "sqlite")
 
 
@@ -352,6 +360,18 @@ class CallRecord(Base):
             "status IN ('pending','downloading','downloaded','transcribing','completed','skipped','error')",
             name="chk_call_records_status",
         ),
+        CheckConstraint(
+            "direction IN ('inbound','outbound','internal')",
+            name="chk_call_records_direction",
+        ),
+        CheckConstraint(
+            "length(trim(from_number)) > 0",
+            name="chk_call_records_from_number_not_blank",
+        ),
+        CheckConstraint(
+            "length(trim(to_number)) > 0",
+            name="chk_call_records_to_number_not_blank",
+        ),
         Index(
             "idx_call_records_status_run",
             "status",
@@ -385,6 +405,12 @@ class CallRecord(Base):
         nullable=False,
     )
     call_id: Mapped[str] = mapped_column(Text, nullable=False)
+    direction: Mapped[CallDirection] = mapped_column(
+        _enum_type(CallDirection, name="call_direction", length=16),
+        nullable=False,
+    )
+    from_number: Mapped[str] = mapped_column(Text, nullable=False)
+    to_number: Mapped[str] = mapped_column(Text, nullable=False)
     record_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     call_started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),

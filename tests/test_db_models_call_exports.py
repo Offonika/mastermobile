@@ -16,6 +16,7 @@ from apps.mw.src.db.models import (
     Base,
     CallExport,
     CallExportStatus,
+    CallDirection,
     CallRecord,
     CallRecordStatus,
 )
@@ -122,6 +123,9 @@ def test_call_record_crud_and_cascade() -> None:
         record = CallRecord(
             export=export,
             call_id="CALL-001",
+            direction=CallDirection.INBOUND,
+            from_number="+74951234567",
+            to_number="+79997654321",
             duration_sec=180,
             status=CallRecordStatus.PENDING,
             transcript_lang="ru",
@@ -137,6 +141,9 @@ def test_call_record_crud_and_cascade() -> None:
         ).one()
         assert loaded.run_id == run_id
         assert loaded.call_id == "CALL-001"
+        assert loaded.direction is CallDirection.INBOUND
+        assert loaded.from_number == "+74951234567"
+        assert loaded.to_number == "+79997654321"
         assert loaded.record_id is None
         assert loaded.duration_sec == 180
         assert loaded.status is CallRecordStatus.PENDING
@@ -150,6 +157,9 @@ def test_call_record_crud_and_cascade() -> None:
         loaded.storage_path = "/storage/call-001.wav"
         loaded.checksum = "abc123"
         loaded.cost_amount = Decimal("12.34")
+        loaded.direction = CallDirection.OUTBOUND
+        loaded.from_number = "+74959876543"
+        loaded.to_number = "+78005553535"
         session.commit()
         session.expunge_all()
 
@@ -162,10 +172,16 @@ def test_call_record_crud_and_cascade() -> None:
         assert updated.checksum == "abc123"
         assert updated.cost_amount == Decimal("12.34")
         assert updated.cost_currency == "RUB"
+        assert updated.direction is CallDirection.OUTBOUND
+        assert updated.from_number == "+74959876543"
+        assert updated.to_number == "+78005553535"
 
         duplicate = CallRecord(
             run_id=run_id,
             call_id="CALL-001",
+            direction=CallDirection.OUTBOUND,
+            from_number="+74951230000",
+            to_number="+78001230000",
             duration_sec=60,
             status=CallRecordStatus.PENDING,
         )
