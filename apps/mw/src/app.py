@@ -1,6 +1,8 @@
 """FastAPI application setup and router registration."""
 from __future__ import annotations
 
+import asyncio
+from contextlib import suppress
 from typing import Any
 from uuid import uuid4
 
@@ -13,6 +15,7 @@ from apps.mw.src.api.dependencies import (
     build_error,
     provide_request_id,
 )
+from apps.mw.src.config import get_settings
 from apps.mw.src.api.routes import b24_calls as b24_calls_router
 from apps.mw.src.api.routes import call_registry as call_registry_router
 from apps.mw.src.api.routes import returns as returns_router
@@ -26,6 +29,8 @@ from apps.mw.src.observability import (
     create_logging_lifespan,
     register_metrics,
 )
+from apps.mw.src.services.cleanup import StorageCleanupRunner
+from apps.mw.src.services.storage import StorageService
 
 app = FastAPI(title="MasterMobile MW", lifespan=create_logging_lifespan())
 app.add_middleware(RequestContextMiddleware)
@@ -37,6 +42,31 @@ app.include_router(b24_calls_router.router)
 app.include_router(call_registry_router.router)
 app.include_router(returns_router.router)
 app.include_router(stt_admin_router.router)
+
+
+@app.on_event("startup")
+async def start_background_jobs() -> None:
+    """Initialise background tasks that run for the app lifespan."""
+
+    settings = get_settings()
+    storage_service = StorageService(settings=settings)
+    cleanup_runner = StorageCleanupRunner(storage_service=storage_service, settings=settings)
+    task = asyncio.create_task(cleanup_runner.run_periodic(), name="storage-cleanup")
+    app.state.storage_cleanup_runner = cleanup_runner
+    app.state.storage_cleanup_task = task
+
+
+@app.on_event("shutdown")
+async def stop_background_jobs() -> None:
+    """Cancel background tasks before shutting down the application."""
+
+    task = getattr(app.state, "storage_cleanup_task", None)
+    if task is None:
+        return
+
+    task.cancel()
+    with suppress(asyncio.CancelledError):
+        await task
 
 
 @app.get("/health", response_model=Health)

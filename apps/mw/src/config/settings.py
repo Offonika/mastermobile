@@ -60,6 +60,26 @@ class Settings(BaseSettings):
     s3_access_key_id: str | None = Field(default=None, alias="S3_ACCESS_KEY_ID")
     s3_secret_access_key: str | None = Field(default=None, alias="S3_SECRET_ACCESS_KEY")
     local_storage_dir: str = Field(default="/app/storage", alias="LOCAL_STORAGE_DIR")
+    raw_recording_retention_days: int = Field(
+        default=90,
+        alias="RAW_RECORDING_RETENTION_DAYS",
+        ge=0,
+    )
+    transcript_retention_days: int = Field(
+        default=180,
+        alias="TRANSCRIPT_RETENTION_DAYS",
+        ge=0,
+    )
+    summary_retention_days: int = Field(
+        default=365,
+        alias="SUMMARY_RETENTION_DAYS",
+        ge=0,
+    )
+    storage_cleanup_interval_hours: int = Field(
+        default=24,
+        alias="STORAGE_CLEANUP_INTERVAL_HOURS",
+        ge=1,
+    )
 
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     jwt_secret: str = Field(default="changeme", alias="JWT_SECRET")
