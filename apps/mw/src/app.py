@@ -17,8 +17,10 @@ from apps.mw.src.api.routes import returns as returns_router
 from apps.mw.src.api.routes import system as system_router
 from apps.mw.src.api.schemas import Error, Health
 from apps.mw.src.health import get_health_payload
+from apps.mw.src.observability import RequestContextMiddleware, create_logging_lifespan
 
-app = FastAPI(title="MasterMobile MW")
+app = FastAPI(title="MasterMobile MW", lifespan=create_logging_lifespan())
+app.add_middleware(RequestContextMiddleware)
 
 app.include_router(system_router.router)
 app.include_router(returns_router.router)
@@ -41,7 +43,12 @@ async def handle_problem_detail(request: Request, exc: ProblemDetailException) -
     """Render RFC7807 responses raised by dependencies and routes."""
 
     error = exc.error
-    request_id = error.request_id or request.headers.get("X-Request-Id") or str(uuid4())
+    request_id = (
+        error.request_id
+        or getattr(request.state, "request_id", None)
+        or request.headers.get("X-Request-Id")
+        or str(uuid4())
+    )
     error = Error(**{**error.model_dump(exclude_none=True), "request_id": request_id})
     response = JSONResponse(
         status_code=error.status,
@@ -56,7 +63,11 @@ async def handle_problem_detail(request: Request, exc: ProblemDetailException) -
 async def handle_validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Convert FastAPI validation errors into problem details responses."""
 
-    request_id = request.headers.get("X-Request-Id") or str(uuid4())
+    request_id = (
+        getattr(request.state, "request_id", None)
+        or request.headers.get("X-Request-Id")
+        or str(uuid4())
+    )
     errors: list[dict[str, Any]] = []
     for error in exc.errors():
         loc = ".".join(str(part) for part in error.get("loc", []) if part not in {"body"})

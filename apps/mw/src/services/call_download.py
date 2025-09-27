@@ -1,19 +1,17 @@
 """Workflow helpers for downloading Bitrix24 call recordings."""
 from __future__ import annotations
 
-import logging
 from collections.abc import AsyncIterable
 from datetime import datetime, timezone
 from typing import Callable
 
 import httpx
+from loguru import logger
 
 from apps.mw.src.db.models import CallRecord, CallRecordStatus
 from apps.mw.src.integrations.b24.client import MAX_RETRY_ATTEMPTS
 from apps.mw.src.integrations.b24.downloader import stream_recording
 from apps.mw.src.services.storage import StorageResult, StorageService
-
-logger = logging.getLogger(__name__)
 
 
 RecordingStreamFactory = Callable[[str, str | None], AsyncIterable[bytes]]
@@ -28,9 +26,12 @@ async def download_call_record(
     """Download a call recording and persist it using the configured storage backend."""
 
     if record.storage_path and record.checksum:
-        logger.info(
-            "Call %s already downloaded; skipping", record.call_id
-        )
+        logger.bind(
+            event="call_export.download",
+            stage="skipped",
+            call_id=record.call_id,
+            attempt=record.attempts,
+        ).info("Call already downloaded")
         return None
 
     if record.attempts >= MAX_RETRY_ATTEMPTS:
@@ -38,9 +39,13 @@ async def download_call_record(
         record.error_code = "max_attempts"
         record.error_message = "Maximum download attempts exceeded"
         record.last_attempt_at = datetime.now(tz=timezone.utc)
-        logger.error(
-            "Call %s exceeded retry limit; attempts=%s", record.call_id, record.attempts
-        )
+        logger.bind(
+            event="call_export.download",
+            stage="max_retries",
+            call_id=record.call_id,
+            attempt=record.attempts,
+            max_attempts=MAX_RETRY_ATTEMPTS,
+        ).error("Maximum download attempts exceeded")
         raise RuntimeError("maximum download attempts exceeded")
 
     storage = storage or StorageService()
@@ -48,7 +53,12 @@ async def download_call_record(
     record.status = CallRecordStatus.DOWNLOADING
     record.attempts += 1
     record.last_attempt_at = datetime.now(tz=timezone.utc)
-    logger.info("Starting download for call %s", record.call_id)
+    logger.bind(
+        event="call_export.download",
+        stage="start",
+        call_id=record.call_id,
+        attempt=record.attempts,
+    ).info("Starting call download")
 
     try:
         stream = stream_factory(record.call_id, record.record_id)
@@ -73,12 +83,14 @@ async def download_call_record(
     record.error_code = None
     record.error_message = None
 
-    logger.info(
-        "Finished download for call %s (backend=%s, bytes=%s)",
-        record.call_id,
-        result.backend,
-        result.bytes_stored,
-    )
+    logger.bind(
+        event="call_export.download",
+        stage="completed",
+        call_id=record.call_id,
+        attempt=record.attempts,
+        storage_backend=result.backend,
+        bytes_stored=result.bytes_stored,
+    ).info("Finished call download")
 
     return result
 
@@ -87,6 +99,10 @@ def _handle_failure(record: CallRecord, code: str, message: str) -> None:
     record.status = CallRecordStatus.ERROR
     record.error_code = code
     record.error_message = message
-    logger.error(
-        "Failed to download call %s (attempt=%s): %s", record.call_id, record.attempts, message
-    )
+    logger.bind(
+        event="call_export.download",
+        stage="error",
+        call_id=record.call_id,
+        attempt=record.attempts,
+        error_code=code,
+    ).error("Failed to download call")
