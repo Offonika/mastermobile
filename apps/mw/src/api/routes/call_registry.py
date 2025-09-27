@@ -116,7 +116,7 @@ def export_call_registry(
     rows = session.scalars(stmt).all()
 
     filename = (
-        f"call_registry_{period_from.strftime('%Y%m%dT%H%M%S')}"
+        f"registry/calls_{period_from.strftime('%Y%m%dT%H%M%S')}"
         f"_{period_to.strftime('%Y%m%dT%H%M%S')}.csv"
     )
 
