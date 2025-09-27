@@ -176,6 +176,20 @@ def test_call_record_crud_and_cascade() -> None:
         assert updated.from_number == "+74959876543"
         assert updated.to_number == "+78005553535"
 
+        updated.status = CallRecordStatus.MISSING_AUDIO
+        updated.error_code = "http_404"
+        updated.error_message = "Recording was not found"
+        updated.attempts = 5
+        session.commit()
+        session.expunge_all()
+
+        missing = session.get(CallRecord, record_id)
+        assert missing is not None
+        assert missing.status is CallRecordStatus.MISSING_AUDIO
+        assert missing.error_code == "http_404"
+        assert missing.error_message == "Recording was not found"
+        assert missing.attempts == 5
+
         duplicate = CallRecord(
             run_id=run_id,
             call_id="CALL-001",

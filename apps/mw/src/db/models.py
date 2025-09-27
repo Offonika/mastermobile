@@ -100,6 +100,7 @@ class CallRecordStatus(str, Enum):
     COMPLETED = "completed"
     SKIPPED = "skipped"
     ERROR = "error"
+    MISSING_AUDIO = "missing_audio"
 
 
 class CallDirection(str, Enum):
@@ -357,7 +358,7 @@ class CallRecord(Base):
             name="chk_call_records_attempts_non_negative",
         ),
         CheckConstraint(
-            "status IN ('pending','downloading','downloaded','transcribing','completed','skipped','error')",
+            "status IN ('pending','downloading','downloaded','transcribing','completed','skipped','error','missing_audio')",
             name="chk_call_records_status",
         ),
         CheckConstraint(
