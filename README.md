@@ -31,6 +31,7 @@
 | `DB_NAME`       | `mastermobile`         | Имя базы данных                     |
 | `REDIS_HOST`    | `redis`                | Хост Redis                          |
 | `REDIS_PORT`    | `6379`                 | Порт Redis                          |
+| `CHATGPT_PROXY_URL` | `http://user150107:dx4a5m@102.129.178.65:6517` | Прокси-сервер для исходящих запросов к ChatGPT |
 | `LOG_LEVEL`     | `INFO`                 | Уровень логирования приложения      |
 | `JWT_SECRET`    | `changeme`             | Секрет для подписи JWT-токенов      |
 | `JWT_ISSUER`    | `mastermobile`         | Значение `iss` в выданных JWT       |
