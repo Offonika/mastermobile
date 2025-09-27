@@ -15,8 +15,8 @@
 ## Метрики
 | Метрика | Тип | Labels | Цель |
 | --- | --- | --- | --- |
-| `http_requests_duration_seconds` | Histogram | `method`, `path_template`, `status_code`, `role` | p95 ≤ 250 мс (чтение), p95 ≤ 400 мс (запись) |
-| `http_requests_total` | Counter | `method`, `path_template`, `status_code`, `role` | Контроль объёма вызовов, rate limit |
+| `http_request_duration_seconds` | Histogram | `method`, `status_code`, `path` | p95 ≤ 250 мс (чтение), p95 ≤ 400 мс (запись) |
+| `http_requests_total` | Counter | `method`, `status_code`, `path` | Контроль объёма вызовов, rate limit |
 | `background_tasks_duration_seconds` | Histogram | `task_name`, `status` | SLA фоновых процессов |
 | `integration_failures_total` | Counter | `system`, `reason`, `retry_stage` | Алерты при росте ошибок внешних систем |
 | `queue_lag_seconds` | Gauge | `queue_name` | Контроль задержек Redis/Kafka (порог 60 сек) |
@@ -24,6 +24,11 @@
 
 - Экспортер: Prometheus `/metrics`, scrape interval 15с.
 - Alertmanager правила: p95 > SLO 5 мин подряд, `integration_failures_total` +50% за 10 мин, `queue_lag_seconds` > 60с.
+
+### Рекомендуемые PromQL запросы
+
+- Ошибка по статусам: ``sum by (status_code)(rate(http_requests_total[5m]))``
+- p95 латентности по маршруту: ``histogram_quantile(0.95, sum by (method, path, le)(rate(http_request_duration_seconds_bucket[5m])))``
 
 ## Трассировки
 - OpenTelemetry SDK. Спаны: `http.server`, `http.client`, `redis.command`, `db.query`, `event.publish`, `event.consume`.
