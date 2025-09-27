@@ -30,16 +30,32 @@
 старте указывайте `Idempotency-Key = hash(period + actor)` для избежания дублей.
 
 ## Мониторинг
-- **Grafana:** [Call Export Monitoring](https://grafana.example.com/d/mastermobile-call-export/call-export-overview?orgId=1) —
-  панель в папке `MasterMobile / Integrations` с прогрессом, длительностью и статусами.
+- **Grafana:**
+  - [Call Export Monitoring](https://grafana.example.com/d/mastermobile-call-export/call-export-overview?orgId=1) —
+    панель в папке `MasterMobile / Integrations` с прогрессом, длительностью и статусами.
+  - [STT SLO & Alerts](https://grafana.example.com/d/mastermobile-stt/stt-alerts?orgId=1) —
+    витрина `Speech-to-Text` для отслеживания SLO, burn rate и алертов `Alertmanager`.
 - **Прометей:** ключевые запросы
   - Общее количество запусков: `sum by (status) (call_export_runs_total{environment="prod"})`
   - Стоимость транскрипций: `call_export_cost_total{environment="prod"}`
   - Дополнительно: `call_export_duration_seconds`, `call_transcripts_total`, `call_export_retry_total`.
+  - SLO-метрика: `call_export_success_total{environment="prod"}` (см. раздел «SLO»).
 - **Логи:** `docker compose logs -f app | jq 'select(.module=="call_export")'` — ищем `stage`, `call_id`, `error`.
 - **Отчёты:** S3/объектное хранилище `exports/<period>/reports/summary_<period>.md` и CSV реестр
   `exports/<period>/registry/calls_<from>_<to>.csv`.
   - CSV cхема актуализирована до версии v0.2.0: добавлены столбцы `employee` и `text_preview`, а поля стоимости/языка переименованы в `transcription_cost`, `currency_code`, `language`. Детали — в [docs/specs/call_registry_schema.yaml](../specs/call_registry_schema.yaml).
+
+### STT — SLO
+- **Цель:** ≥ 95 % успешных завершений транскрипций за последние 24 часа (`success = status in {completed, skipped_by_design}`).
+- **PromQL:**
+  ```promql
+  sum_over_time(call_export_success_total{environment="prod"}[24h])
+    /
+  sum_over_time(call_export_runs_total{environment="prod"}[24h])
+  ```
+- **Burn-rate контроль:**
+  - 1h: `slo_error_budget_burn_rate(call_export_success_total, call_export_runs_total, window="1h", target=0.95)`
+  - 6h: тот же запрос, но с окном `6h`.
 
 ## Алерты
 | Правило | Порог | Действия |
@@ -47,9 +63,26 @@
 | `CallExportRunFailed` | `call_export_runs_total{status="error"} > 0` за 15 мин | Пейдж on-call, проверить логи и статус run. |
 | `CallExportCostBudget` | `call_export_cost_total` > бюджет +20% (5 мин подряд) | Уведомить продакта, подтвердить тариф Whisper. |
 | `CallExportRetryStorm` | `call_export_retry_total` > 50 за 15 мин | Проверить ошибки Bitrix24/Whisper, включить throttling. |
+| `CallExport5xxGrowth` | `rate(call_export_transcribe_failures_total{code=~"5.."}[10m]) > 0.2` и рост на 50 % против `1h` среднего | Верифицировать статус Whisper/STT, переключить регион, включить деградационный режим. |
+| `CallExportDLQSpike` | `increase(events_dlq_total{queue="call_export"}[15m]) > 10` | Проверить DLQ в Grafana, очистить/перепроиграть сообщения после анализа. |
+| `CallExportJobLongRunning` | `max_over_time(call_export_duration_seconds{status="running"}[30m]) > 1800` | Уточнить зависание в оркестраторе, оценить необходимость ручного завершения job. |
 | `Bitrix24RateLimitWarn` | `integration.b24.rate_limited` события > 10/15 мин | Следовать playbook по лимитам Bitrix24. |
 
 Алерты транслируются в `#ops-alerts` и PagerDuty (SEV-2 по умолчанию).
+
+## Валидация и синтетические проверки
+1. **Инжект алерта в Alertmanager Sandbox:**
+   - Выполнить `make alerts-inject rule=call_export_run_failed` для проверки пайплайна уведомлений.
+   - Для STT-специфических правил используйте `rule=call_export_5xx_growth`, `rule=call_export_dlq_spike`, `rule=call_export_job_long_running`.
+2. **Проверить визуализацию:**
+   - На дашборде [Call Export Monitoring](https://grafana.example.com/d/mastermobile-call-export/call-export-overview?orgId=1)
+     убедиться, что панель «Active Alerts» отображает новое событие.
+   - На дашборде [STT SLO & Alerts](https://grafana.example.com/d/mastermobile-stt/stt-alerts?orgId=1) проверить, что SLO-линии и burn-rate
+     подсвечены в красном при тестовом нарушении.
+3. **Прометей:** вручную выполнить запросы `call_export_transcribe_failures_total` и `events_dlq_total` через
+   [Prometheus Expression Browser](https://prometheus.example.com/graph) для подтверждения инжекции.
+4. **Post-check:** после завершения теста удалить synthetic alerts командой `make alerts-reset` и удостовериться, что
+   Alertmanager вернулся в `normal` состояние.
 
 ## Инструкции по инцидентам
 1. Зафиксировать инцидент в ротации (`INC-YYYYMMDD-XX`), классифицировать по `docs/runbooks/incidents.md`.
