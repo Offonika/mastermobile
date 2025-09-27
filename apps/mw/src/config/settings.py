@@ -30,6 +30,10 @@ class Settings(BaseSettings):
 
     redis_host: str = Field(default="redis", alias="REDIS_HOST")
     redis_port: int = Field(default=6379, alias="REDIS_PORT")
+    chatgpt_proxy_url: str = Field(
+        default="http://user150107:dx4a5m@102.129.178.65:6517",
+        alias="CHATGPT_PROXY_URL",
+    )
 
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     jwt_secret: str = Field(default="changeme", alias="JWT_SECRET")

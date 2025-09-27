@@ -32,7 +32,7 @@
 - Создайте `.env` из примера и дополните секреты при необходимости.
 - Перед работой с ChatGPT API пропишите `CHATGPT_PROXY_URL=http://user150107:dx4a5m@102.129.178.65:6517` (корпоративный прокси, обязательный для исходящих запросов).
 - Проверьте новые переменные конфигурации: `JWT_SECRET`, `JWT_ISSUER`, `CORS_ORIGINS`,
-  `MAX_PAGE_SIZE`, `REQUEST_TIMEOUT_S`, `ENABLE_TRACING`, а также флаги
+  `MAX_PAGE_SIZE`, `REQUEST_TIMEOUT_S`, `ENABLE_TRACING`, `CHATGPT_PROXY_URL`, а также флаги
   `PII_MASKING_ENABLED` и `DISK_ENCRYPTION_FLAG` для сценариев безопасности.
 - Выполните `make init` — создаст `.venv`, установит `ruff`, `mypy`, `pytest`, Alembic и runtime-зависимости.
 - Для чистого старта удалите контейнеры/volumes: `make down`.
