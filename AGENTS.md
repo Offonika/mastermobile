@@ -98,11 +98,13 @@ PRD / SRS  →  ER / DDL  →  API Contracts  →  ONE-PAGER / UX
   `ONE-PAGER — Переход 1С: УТ 10.md`.
 - Walking Warehouse: `PRD Ходячий склад.md`, `ONE-PAGER-ХодячийРюкзак.md`,
   `UX-скетчи-Рюкзак:Продажа.md`.
-- Batch-Transcribe B24: `docs/PRD — Тексты звонков Bitrix24.md`,
-  `docs/SRS — Тексты звонков Bitrix24 (выгрузка за 60 дней).md`,
-  `docs/b24-transcribe/ONE-PAGER.md`,
-  `docs/runbooks/call_export.md`,
-  `docs/specs/call_registry_schema.yaml`.
+
+- Batch-Transcribe B24: `PRD — Тексты звонков Bitrix24.md`,
+  `SRS — Тексты звонков Bitrix24 (выгрузка за 60 дней).md`,
+  `b24-transcribe/ONE-PAGER.md`,
+  `runbooks/call_export.md`,
+  `specs/call_registry_schema.yaml`.
+
 - Шаблон: `Software Requirements Specification SRS.md` — заготовка для новых SRS.
 
 ### Конвенции (00-Core)
@@ -145,7 +147,7 @@ PRD / SRS  →  ER / DDL  →  API Contracts  →  ONE-PAGER / UX
 |-----------------------|--------------------------------------------------------|---------|-----|------------|
 | Core Sync             | `PRD — Переход 1С: УТ 10.md`, `SRS — Core Sync 1С: УТ 10.md` | v0.6.x  | v1.1.x | SoT = УТ 10.3 |
 | Walking Warehouse     | `PRD Ходячий склад.md` (SRS при появлении)            | v0.6.x  | v1.1.x | Нет нового типа «Возврат» в УТ 10.3 |
-| B24 Batch-Transcribe  | `PRD — Тексты звонков Bitrix24.md`, `SRS — Тексты звонков Bitrix24 (выгрузка за 60 дней).md` | —       | v1.0? | ONE-PAGER `docs/b24-transcribe/ONE-PAGER.md`, runbook `docs/runbooks/call_export.md`, CSV schema `docs/specs/call_registry_schema.yaml`; форматы `calls.csv`/`txt` зафиксированы |
+
 | Общий шаблон SRS      | `Software Requirements Specification SRS.md`           | —       | —    | База для новых SRS |
 
 ### PR-чеклист (документация)
@@ -169,7 +171,9 @@ PRD / SRS  →  ER / DDL  →  API Contracts  →  ONE-PAGER / UX
 |----------------------|---------------------------------------------------------------------------|--------------------------------------------|
 | Core Sync (УТ10.3↔11)| PRD, ONE-PAGER, SRS, ER/DDL, API Contracts                               | Перечень сущностей, статусов, ER v0.6.x    |
 | Walking Warehouse    | PRD, ONE-PAGER, UX-скетчи                                                | Процессы задач/возвратов, UX-скрины        |
-| B24 Batch-Transcribe | PRD, SRS, ONE-PAGER, runbook `call_export`, CSV schema `call_registry_schema.yaml` | Calls.csv, transcripts/*.txt               |
+
+| B24 Batch-Transcribe | PRD, SRS, ONE-PAGER, runbook, схема реестра                                | Calls.csv, transcripts/*.txt, schema YAML  |
+
 | Концепция            | `Концепция проекта.md`                                                    | Рамки/цели/не-цели                         |
 | Общий шаблон SRS     | `Software Requirements Specification SRS.md`                              | Основа для новых SRS                       |
 
