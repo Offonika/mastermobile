@@ -58,6 +58,16 @@
 - Контрибьютинг: ./CONTRIBUTING.md
 - Лицензия: ./LICENSE
 
+## Документация
+
+### B24 Transcribe
+
+- [PRD — Тексты звонков Bitrix24](docs/PRD%20—%20Тексты%20звонков%20Bitrix24.md)
+- [SRS — Тексты звонков Bitrix24 (выгрузка за 60 дней)](docs/SRS%20—%20Тексты%20звонков%20Bitrix24%20(выгрузка%20за%2060%20дней).md)
+- [ONE-PAGER — Тексты всех звонков за 60 дней](docs/b24-transcribe/ONE-PAGER.md)
+- [Runbook: экспорт звонков](docs/runbooks/call_export.md)
+- [Calls CSV schema](docs/specs/call_registry_schema.yaml)
+
 ## API v1 — быстрые вызовы
 
 - `GET /api/v1/system/ping` — пинг сервисного слоя; заголовок `X-Request-Id` опционален (будет сгенерирован, если не передан).
