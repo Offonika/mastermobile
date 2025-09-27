@@ -17,7 +17,7 @@ CALL_EXPORT_STATUS_CHECK = (
 )
 
 CALL_RECORD_STATUS_CHECK = (
-    "status IN ('pending','downloading','downloaded','transcribing','completed','skipped','error')"
+    "status IN ('pending','downloading','downloaded','transcribing','completed','skipped','error','missing_audio')"
 )
 
 
