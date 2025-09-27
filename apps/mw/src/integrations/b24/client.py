@@ -13,13 +13,13 @@ BITRIX24_ENDPOINT = "voximplant.statistic.get.json"
 MAX_RETRY_ATTEMPTS = 5
 
 
-def _build_request_url(base_url: str, user_id: int, token: str) -> str:
+def build_rest_method_url(base_url: str, user_id: int, token: str, method: str) -> str:
     """Return the fully-qualified Bitrix24 REST endpoint URL."""
 
     normalized = base_url.rstrip("/")
     if normalized.endswith("/rest"):
         normalized = normalized[: -len("/rest")]
-    return f"{normalized}/rest/{user_id}/{token}/{BITRIX24_ENDPOINT}"
+    return f"{normalized}/rest/{user_id}/{token}/{method}"
 
 
 def _coerce_datetime(value: str | datetime) -> str:
@@ -64,10 +64,11 @@ async def list_calls(date_from: str | datetime, date_to: str | datetime) -> list
     """Return all Voximplant calls between the provided dates."""
 
     settings = get_settings()
-    request_url = _build_request_url(
+    request_url = build_rest_method_url(
         settings.b24_base_url,
         settings.b24_webhook_user_id,
         settings.b24_webhook_token,
+        BITRIX24_ENDPOINT,
     )
 
     base_params = {
