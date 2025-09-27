@@ -1,5 +1,7 @@
 # MasterMobile — Middleware & Integrations (FastAPI)
 
+[![Docs CI](https://github.com/mastermobile/mastermobile/actions/workflows/docs-ci.yml/badge.svg)](https://github.com/mastermobile/mastermobile/actions/workflows/docs-ci.yml)
+
 ## Что это
 Единый middleware-сервис: интеграция 1С (УТ 10.3/11), Bitrix24 и «Walking Warehouse».
 
