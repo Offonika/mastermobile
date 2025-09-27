@@ -113,7 +113,9 @@ def export_call_registry(
         .where(CallRecord.call_started_at <= period_to)
         .order_by(CallRecord.call_started_at.asc(), CallRecord.id.asc())
     )
-    rows = session.scalars(stmt).all()
+    rows = session.execute(
+        stmt.execution_options(stream_results=True)
+    ).scalars()
 
     filename = (
         f"registry/calls_{period_from.strftime('%Y%m%dT%H%M%S')}"
