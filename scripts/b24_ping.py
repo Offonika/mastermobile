@@ -5,7 +5,9 @@ Usage:
     python scripts/b24_ping.py
 
 Required environment variables (can be provided via a `.env` file in the project root):
-    B24_BASE_URL         Base URL of the Bitrix24 portal, for example https://example.bitrix24.ru
+    B24_BASE_URL         Base URL of the Bitrix24 portal, for example
+                         https://example.bitrix24.ru/rest (the script also accepts
+                         https://example.bitrix24.ru)
     B24_WEBHOOK_USER_ID  Numeric identifier of the webhook user (the first number in the webhook URL)
     B24_WEBHOOK_TOKEN    Secret token part of the webhook URL
 
@@ -41,6 +43,8 @@ def build_request_url(base_url: str, user_id: str, token: str) -> str:
     """Construct the Bitrix24 REST endpoint URL."""
 
     normalized_base = base_url.rstrip("/")
+    if normalized_base.endswith("/rest"):
+        normalized_base = normalized_base[: -len("/rest")]
     return f"{normalized_base}/rest/{user_id}/{token}/voximplant.statistic.get.json"
 
 
