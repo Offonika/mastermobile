@@ -33,7 +33,7 @@
 | `DB_NAME`       | `mastermobile`         | Имя базы данных                     |
 | `REDIS_HOST`    | `redis`                | Хост Redis                          |
 | `REDIS_PORT`    | `6379`                 | Порт Redis                          |
-| `B24_BASE_URL`  | `https://example.bitrix24.ru/rest` | Базовый URL REST Bitrix24 |
+| `B24_BASE_URL`  | `https://example.bitrix24.ru/rest` | Базовый URL REST Bitrix24 (можно указывать с или без завершающего `/rest`) |
 | `B24_WEBHOOK_USER_ID` | `1`            | Идентификатор пользователя webhook Bitrix24 |
 | `B24_WEBHOOK_TOKEN` | `changeme`        | Токен webhook Bitrix24 (замените в `.env`) |
 | `B24_RATE_LIMIT_RPS` | `2.0`            | Лимит запросов к Bitrix24 в секунду |
