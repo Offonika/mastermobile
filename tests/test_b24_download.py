@@ -100,6 +100,7 @@ async def test_storage_local_persists_file_with_checksum(tmp_path: Path) -> None
         "abc",
         generator(),
         started_at=datetime(2024, 9, 2, 15, 30, tzinfo=timezone.utc),
+        record_identifier="rec-abc",
     )
 
     expected_path = (
@@ -108,7 +109,7 @@ async def test_storage_local_persists_file_with_checksum(tmp_path: Path) -> None
         / "2024"
         / "09"
         / "02"
-        / "call_abc.mp3"
+        / "call_abc_rec-abc.mp3"
     )
 
     assert Path(result.path) == expected_path
@@ -164,6 +165,42 @@ async def test_download_workflow_skips_when_already_downloaded(
 
 
 @pytest.mark.asyncio
+async def test_download_records_with_same_call_id_store_distinct_files() -> None:
+    """Different Bitrix recordings for the same call ID keep separate files."""
+
+    first = _call_record()
+    second = _call_record()
+    second.record_id = "1002"
+
+    payloads = {
+        (first.call_id, first.record_id): b"first-audio",
+        (second.call_id, second.record_id): b"second-audio",
+    }
+
+    async def fake_stream(call_id: str, record_id: str | None):
+        yield payloads[(call_id, record_id)]
+
+    storage = StorageService(settings=get_settings())
+
+    result_first = await download_call_record(
+        first,
+        storage=storage,
+        stream_factory=fake_stream,
+    )
+    result_second = await download_call_record(
+        second,
+        storage=storage,
+        stream_factory=fake_stream,
+    )
+
+    assert result_first is not None
+    assert result_second is not None
+    assert result_first.path != result_second.path
+    assert Path(result_first.path).read_bytes() == b"first-audio"
+    assert Path(result_second.path).read_bytes() == b"second-audio"
+
+
+@pytest.mark.asyncio
 async def test_download_workflow_respects_retry_limit(
     respx_mock: "respx.MockRouter",
 ) -> None:
@@ -204,7 +241,7 @@ async def test_storage_s3_backend_uses_configured_bucket(
     )
     stubber = Stubber(client)
 
-    expected_key = "raw/2024/09/01/call_42.mp3"
+    expected_key = "raw/2024/09/01/call_42_1001.mp3"
     stubber.add_response(
         "put_object",
         {},
@@ -226,10 +263,11 @@ async def test_storage_s3_backend_uses_configured_bucket(
         "42",
         generator(),
         started_at=datetime(2024, 9, 1, tzinfo=timezone.utc),
+        record_identifier="1001",
     )
 
     stubber.deactivate()
     stubber.assert_no_pending_responses()
-    assert result.path == "s3://test-bucket/raw/2024/09/01/call_42.mp3"
+    assert result.path == "s3://test-bucket/raw/2024/09/01/call_42_1001.mp3"
     assert result.checksum == hashlib.sha256(b"cloud-bytes").hexdigest()
     assert result.backend == "s3"
