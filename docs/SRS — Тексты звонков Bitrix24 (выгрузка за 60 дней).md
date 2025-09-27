@@ -4,7 +4,7 @@ SRS — Тексты звонков Bitrix24 (выгрузка за 60 дней)
 Дата: 21.09.2025
 Владелец: Интеграции / DataOps
 
-Связанные документы: PRD — Тексты звонков Bitrix24 v1.0.0 (19.09.2025), ONE-PAGER — «Тексты всех звонков за 60 дней из Bitrix24» v1.1.0 (Draft), Runbook — docs/runbooks/call_export.md, Data Dictionary — docs/data/call_registry_dictionary.md
+Связанные документы: PRD — Тексты звонков Bitrix24 v1.0.0 (19.09.2025), ONE-PAGER — «Тексты всех звонков за 60 дней из Bitrix24» v1.1.0 (Draft), Runbook — docs/runbooks/call_export.md, YAML Schema — docs/specs/call_registry_schema.yaml
 
 
 1. Назначение
