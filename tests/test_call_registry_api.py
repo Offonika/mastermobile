@@ -127,7 +127,12 @@ async def test_export_call_registry_streams_csv(
     assert response.status_code == 200
     assert response.headers["Content-Type"].startswith("text/csv")
     assert response.headers["X-Request-Id"] == "req-call-registry-1"
-    assert response.headers["Content-Disposition"].endswith('.csv"')
+    expected_filename = (
+        "registry/calls_20240101T000000_20240101T235959.csv"
+    )
+    assert response.headers["Content-Disposition"] == (
+        f'attachment; filename="{expected_filename}"'
+    )
 
     content = response.content
     assert content.startswith(codecs.BOM_UTF8)
