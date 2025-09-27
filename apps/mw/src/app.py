@@ -21,12 +21,14 @@ from apps.mw.src.api.schemas import Error, Health
 from apps.mw.src.health import get_health_payload
 from apps.mw.src.observability import (
     RequestContextMiddleware,
+    RequestMetricsMiddleware,
     create_logging_lifespan,
     register_metrics,
 )
 
 app = FastAPI(title="MasterMobile MW", lifespan=create_logging_lifespan())
 app.add_middleware(RequestContextMiddleware)
+app.add_middleware(RequestMetricsMiddleware)
 register_metrics(app)
 
 app.include_router(system_router.router)
