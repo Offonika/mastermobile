@@ -13,6 +13,7 @@ from apps.mw.src.api.dependencies import (
     build_error,
     provide_request_id,
 )
+from apps.mw.src.api.routes import metrics as metrics_router
 from apps.mw.src.api.routes import returns as returns_router
 from apps.mw.src.api.routes import system as system_router
 from apps.mw.src.api.schemas import Error, Health
@@ -22,6 +23,7 @@ app = FastAPI(title="MasterMobile MW")
 
 app.include_router(system_router.router)
 app.include_router(returns_router.router)
+app.include_router(metrics_router.router)
 
 
 @app.get("/health", response_model=Health)
