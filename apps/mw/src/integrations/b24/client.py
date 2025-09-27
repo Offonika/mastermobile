@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any
 
 import httpx
+from loguru import logger
 
 from apps.mw.src.config import get_settings
 
@@ -40,9 +41,21 @@ async def _fetch_page(
 
     attempt = 0
     while True:
+        logger.bind(
+            event="call_export.fetch_calls",
+            stage="request",
+            call_id=None,
+            attempt=attempt + 1,
+        ).debug("Requesting Bitrix24 call list page")
         response = await client.get(url, params=params)
         if response.status_code == httpx.codes.OK:
             try:
+                logger.bind(
+                    event="call_export.fetch_calls",
+                    stage="success",
+                    call_id=None,
+                    attempt=attempt + 1,
+                ).debug("Received Bitrix24 call list page")
                 return response.json()
             except ValueError as exc:  # pragma: no cover - defensive guard
                 raise RuntimeError("Unexpected Bitrix24 payload") from exc
@@ -54,6 +67,13 @@ async def _fetch_page(
 
             delay = backoff_base * (2 ** (attempt - 1)) if backoff_base > 0 else 0.0
             if delay > 0:
+                logger.bind(
+                    event="call_export.fetch_calls",
+                    stage="retry",
+                    call_id=None,
+                    attempt=attempt,
+                    retry_delay=delay,
+                ).warning("Retrying Bitrix24 page fetch")
                 await asyncio.sleep(delay)
             continue
 
@@ -84,6 +104,14 @@ async def list_calls(date_from: str | datetime, date_to: str | datetime) -> list
     calls: list[dict[str, Any]] = []
     start_token: str | None = None
 
+    logger.bind(
+        event="call_export.fetch_calls",
+        stage="start",
+        call_id=None,
+        date_from=base_params["FILTER[DATE_FROM]"],
+        date_to=base_params["FILTER[DATE_TO]"],
+    ).info("Starting Bitrix24 call export window")
+
     async with httpx.AsyncClient(timeout=float(settings.request_timeout_s)) as client:
         while True:
             params = dict(base_params)
@@ -101,6 +129,20 @@ async def list_calls(date_from: str | datetime, date_to: str | datetime) -> list
 
             start_token = str(next_token)
             if rate_limit_delay > 0:
+                logger.bind(
+                    event="call_export.fetch_calls",
+                    stage="throttle",
+                    call_id=None,
+                    attempt=0,
+                    rate_limit_delay=rate_limit_delay,
+                ).debug("Sleeping to respect Bitrix24 rate limit")
                 await asyncio.sleep(rate_limit_delay)
+
+    logger.bind(
+        event="call_export.fetch_calls",
+        stage="completed",
+        call_id=None,
+        total_calls=len(calls),
+    ).info("Completed Bitrix24 call export window")
 
     return calls
