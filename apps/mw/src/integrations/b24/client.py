@@ -1,0 +1,105 @@
+"""Async Bitrix24 Voximplant statistics client."""
+from __future__ import annotations
+
+import asyncio
+from datetime import datetime
+from typing import Any
+
+import httpx
+
+from apps.mw.src.config import get_settings
+
+BITRIX24_ENDPOINT = "voximplant.statistic.get.json"
+MAX_RETRY_ATTEMPTS = 5
+
+
+def _build_request_url(base_url: str, user_id: int, token: str) -> str:
+    """Return the fully-qualified Bitrix24 REST endpoint URL."""
+
+    normalized = base_url.rstrip("/")
+    if normalized.endswith("/rest"):
+        normalized = normalized[: -len("/rest")]
+    return f"{normalized}/rest/{user_id}/{token}/{BITRIX24_ENDPOINT}"
+
+
+def _coerce_datetime(value: str | datetime) -> str:
+    """Return the ISO8601 string representation for the provided value."""
+
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return value
+
+
+async def _fetch_page(
+    client: httpx.AsyncClient,
+    url: str,
+    params: dict[str, Any],
+    backoff_base: float,
+) -> dict[str, Any]:
+    """Fetch a page of Bitrix24 calls with retry/backoff logic."""
+
+    attempt = 0
+    while True:
+        response = await client.get(url, params=params)
+        if response.status_code == httpx.codes.OK:
+            try:
+                return response.json()
+            except ValueError as exc:  # pragma: no cover - defensive guard
+                raise RuntimeError("Unexpected Bitrix24 payload") from exc
+
+        if response.status_code == httpx.codes.TOO_MANY_REQUESTS or 500 <= response.status_code < 600:
+            attempt += 1
+            if attempt >= MAX_RETRY_ATTEMPTS:
+                response.raise_for_status()
+
+            delay = backoff_base * (2 ** (attempt - 1)) if backoff_base > 0 else 0.0
+            if delay > 0:
+                await asyncio.sleep(delay)
+            continue
+
+        response.raise_for_status()
+
+
+async def list_calls(date_from: str | datetime, date_to: str | datetime) -> list[dict[str, Any]]:
+    """Return all Voximplant calls between the provided dates."""
+
+    settings = get_settings()
+    request_url = _build_request_url(
+        settings.b24_base_url,
+        settings.b24_webhook_user_id,
+        settings.b24_webhook_token,
+    )
+
+    base_params = {
+        "FILTER[DATE_FROM]": _coerce_datetime(date_from),
+        "FILTER[DATE_TO]": _coerce_datetime(date_to),
+    }
+
+    backoff_base = float(settings.b24_backoff_seconds)
+    rate_limit_delay = 0.0
+    if settings.b24_rate_limit_rps > 0:
+        rate_limit_delay = 1.0 / float(settings.b24_rate_limit_rps)
+
+    calls: list[dict[str, Any]] = []
+    start_token: str | None = None
+
+    async with httpx.AsyncClient(timeout=float(settings.request_timeout_s)) as client:
+        while True:
+            params = dict(base_params)
+            if start_token is not None:
+                params["start"] = str(start_token)
+
+            payload = await _fetch_page(client, request_url, params, backoff_base)
+            page_calls = payload.get("result") or []
+            if isinstance(page_calls, list):
+                calls.extend([call for call in page_calls if isinstance(call, dict)])
+
+            next_token = payload.get("next")
+            if next_token is None:
+                break
+
+            start_token = str(next_token)
+            if rate_limit_delay > 0:
+                await asyncio.sleep(rate_limit_delay)
+
+    return calls
