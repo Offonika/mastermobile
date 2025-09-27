@@ -66,6 +66,24 @@
 
 > При пустом `OPENAI_API_KEY` или значении `STT_MAX_FILE_MINUTES=0` сервис стартует без обработки STT: запросы на транскрибацию пропускаются, очередь заданий не создаётся.
 
+## Bitrix24 клиент
+
+Асинхронный помощник для получения статистики звонков теперь доступен из пакета `apps.mw.src.integrations.b24`:
+
+```python
+from datetime import datetime, UTC
+
+from apps.mw.src.integrations.b24 import list_calls
+
+
+calls = await list_calls(
+    date_from=datetime(2024, 8, 1, tzinfo=UTC),
+    date_to=datetime(2024, 8, 31, 23, 59, 59, tzinfo=UTC),
+)
+```
+
+Клиент автоматически использует переменные окружения `B24_BASE_URL`, `B24_WEBHOOK_USER_ID`, `B24_WEBHOOK_TOKEN`, `B24_RATE_LIMIT_RPS` и `B24_BACKOFF_SECONDS`, применяя пагинацию и экспоненциальный бэкофф (`429`/`5xx`).
+
 ## Архитектура (вкратце)
 - FastAPI (apps/mw/src)
 - Postgres (данные)
