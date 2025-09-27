@@ -8,6 +8,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import Column, Table, create_engine
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError, StatementError
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
@@ -312,3 +313,74 @@ async def test_export_b24_calls_validates_period(
     body = response.json()
     assert body["title"] == "Invalid date range"
     assert body["status"] == 400
+
+
+def _make_export(session: Session) -> CallExport:
+    export = CallExport(
+        period_from=datetime(2024, 3, 1, 0, 0, 0),
+        period_to=datetime(2024, 3, 2, 0, 0, 0),
+        status=CallExportStatus.PENDING,
+    )
+    session.add(export)
+    session.flush()
+    return export
+
+
+def _base_call_record_kwargs() -> dict[str, object]:
+    return {
+        "call_id": "CALL-INVALID",
+        "record_id": "REC-INVALID",
+        "duration_sec": 10,
+        "status": CallRecordStatus.PENDING,
+    }
+
+
+def test_call_record_rejects_invalid_direction(sqlite_engine: Engine) -> None:
+    with Session(sqlite_engine) as session:
+        export = _make_export(session)
+        record = CallRecord(
+            export=export,
+            direction="sideways",
+            from_number="+79999999999",
+            to_number="+79999999998",
+            **_base_call_record_kwargs(),
+        )
+        session.add(record)
+
+        with pytest.raises(StatementError):
+            session.flush()
+        session.rollback()
+
+
+def test_call_record_rejects_null_numbers(sqlite_engine: Engine) -> None:
+    with Session(sqlite_engine) as session:
+        export = _make_export(session)
+        null_from = CallRecord(
+            export=export,
+            direction="inbound",
+            from_number=None,
+            to_number="+78888888888",
+            **_base_call_record_kwargs(),
+        )
+        session.add(null_from)
+
+        with pytest.raises(IntegrityError):
+            session.flush()
+        session.rollback()
+
+
+def test_call_record_rejects_blank_numbers(sqlite_engine: Engine) -> None:
+    with Session(sqlite_engine) as session:
+        export = _make_export(session)
+        blank_to = CallRecord(
+            export=export,
+            direction="inbound",
+            from_number="+78888888888",
+            to_number="   ",
+            **_base_call_record_kwargs(),
+        )
+        session.add(blank_to)
+
+        with pytest.raises(IntegrityError):
+            session.flush()
+        session.rollback()
