@@ -8,8 +8,8 @@ services:
     command: >-
       uvicorn apps.mw.src.app:app --host 0.0.0.0 --port ${APP_PORT:-8000} --reload
     env_file:
-      - .env
       - .env.example
+      - .env
     environment:
       B24_BASE_URL: ${B24_BASE_URL:-https://example.bitrix24.ru/rest}
       B24_WEBHOOK_USER_ID: ${B24_WEBHOOK_USER_ID:-1}
