@@ -1,0 +1,32 @@
+{
+  "generator": {
+    "script": "tests/data/stt_smoke/generate_clips.py",
+    "pip_dependencies": [
+      "gTTS>=2.5.4"
+    ],
+    "notes": "Run the script from the repository root to (re)generate deterministic MP3 fixtures before executing smoke tests."
+  },
+  "clips": [
+    {
+      "filename": "en_hello_world.mp3",
+      "text": "Hello world, this is a smoke test.",
+      "language": "en",
+      "expected_duration_seconds": 2.952,
+      "sha256": "f89cca688532409af27222115673b1705129f48e679e9e1ed78efd812a8d939c"
+    },
+    {
+      "filename": "es_buenos_dias.mp3",
+      "text": "Buenos días, esto es una prueba.",
+      "language": "es",
+      "expected_duration_seconds": 2.952,
+      "sha256": "3d76ea45eb9d474dfbc2ac80d1a9c47be977eb613f674af74ade9ed0586d2162"
+    },
+    {
+      "filename": "fr_bonjour_tout_le_monde.mp3",
+      "text": "Bonjour tout le monde, ceci est un test.",
+      "language": "fr",
+      "expected_duration_seconds": 2.856,
+      "sha256": "4b4ca0d72950cbbbcecc092b19c725a9aeea780177b40bf1716e3fb6881e3359"
+    }
+  ]
+}
