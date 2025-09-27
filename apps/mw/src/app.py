@@ -13,6 +13,7 @@ from apps.mw.src.api.dependencies import (
     build_error,
     provide_request_id,
 )
+from apps.mw.src.api.routes import b24_calls as b24_calls_router
 from apps.mw.src.api.routes import call_registry as call_registry_router
 from apps.mw.src.api.routes import returns as returns_router
 from apps.mw.src.api.routes import system as system_router
@@ -29,6 +30,7 @@ app.add_middleware(RequestContextMiddleware)
 register_metrics(app)
 
 app.include_router(system_router.router)
+app.include_router(b24_calls_router.router)
 app.include_router(call_registry_router.router)
 app.include_router(returns_router.router)
 

@@ -14,6 +14,8 @@ tags:
     description: Service monitoring and diagnostic endpoints.
   - name: returns
     description: Endpoints for managing merchandise returns.
+  - name: b24-calls
+    description: Bitrix24 call exports and registry endpoints.
 paths:
   /health:
     get:
@@ -181,6 +183,119 @@ paths:
           headers:
             X-Request-Id:
               $ref: '#/components/headers/XRequestId'
+  /api/v1/b24-calls/export.csv:
+    get:
+      tags:
+        - b24-calls
+      summary: Download Bitrix24 call records as CSV
+      description: Streams Bitrix24 call records filtered by optional parameters as a UTF-8 CSV file.
+      operationId: exportB24CallsCsv
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - name: employee_id
+          in: query
+          required: false
+          description: Filter by Bitrix24 employee identifier.
+          schema:
+            type: string
+            maxLength: 128
+        - name: date_from
+          in: query
+          required: false
+          description: Start of the call start timestamp range (inclusive).
+          schema:
+            type: string
+            format: date-time
+        - name: date_to
+          in: query
+          required: false
+          description: End of the call start timestamp range (inclusive).
+          schema:
+            type: string
+            format: date-time
+        - name: has_text
+          in: query
+          required: false
+          description: When true, return only calls that have a transcript; false for calls without transcripts.
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Filtered Bitrix24 call records exported as CSV.
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '400':
+          description: Invalid date range supplied.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/b24-calls/export.json:
+    get:
+      tags:
+        - b24-calls
+      summary: List Bitrix24 call records as JSON
+      description: Returns Bitrix24 call records filtered by optional parameters as a JSON array.
+      operationId: exportB24CallsJson
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - name: employee_id
+          in: query
+          required: false
+          description: Filter by Bitrix24 employee identifier.
+          schema:
+            type: string
+            maxLength: 128
+        - name: date_from
+          in: query
+          required: false
+          description: Start of the call start timestamp range (inclusive).
+          schema:
+            type: string
+            format: date-time
+        - name: date_to
+          in: query
+          required: false
+          description: End of the call start timestamp range (inclusive).
+          schema:
+            type: string
+            format: date-time
+        - name: has_text
+          in: query
+          required: false
+          description: When true, return only calls that have a transcript; false for calls without transcripts.
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Filtered Bitrix24 call records.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/B24CallRecord'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '400':
+          description: Invalid date range supplied.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
         '422':
           description: Validation error.
           content:
@@ -320,6 +435,71 @@ components:
           type: string
           description: Identifier of the service responding to the ping.
           example: master-mobile-middleware
+    B24CallRecord:
+      type: object
+      required:
+        - call_id
+        - duration_sec
+        - has_text
+      properties:
+        call_id:
+          type: string
+          description: Bitrix24 call identifier.
+          example: CALL-100
+        record_id:
+          type: string
+          nullable: true
+          description: Optional Bitrix24 record identifier when a call has multiple segments.
+          example: REC-100
+        employee_id:
+          type: string
+          nullable: true
+          description: Identifier of the Bitrix24 employee associated with the call.
+          example: EMP-900
+        call_started_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when the call started in Bitrix24.
+          example: '2024-02-01T09:00:00Z'
+        from_number:
+          type: string
+          nullable: true
+          description: Caller phone number.
+          example: '+701000001'
+        to_number:
+          type: string
+          nullable: true
+          description: Callee phone number.
+          example: '+701000002'
+        direction:
+          type: string
+          nullable: true
+          description: Direction of the call (inbound, outbound or internal).
+          example: inbound
+        duration_sec:
+          type: integer
+          description: Duration of the call in seconds.
+          example: 240
+        recording_url:
+          type: string
+          nullable: true
+          description: Public URL of the call recording when available.
+          example: https://example.com/records/100.mp3
+        transcript_path:
+          type: string
+          nullable: true
+          description: Storage path for the generated transcript.
+          example: s3://bucket/call_100.txt
+        transcript_lang:
+          type: string
+          nullable: true
+          description: Language detected for the transcript.
+          example: ru
+        has_text:
+          type: boolean
+          description: Indicates whether the call has an associated transcript.
+          example: true
     Error:
       type: object
       required:

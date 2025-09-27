@@ -425,6 +425,7 @@ class CallRecord(Base):
     storage_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     transcript_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     transcript_lang: Mapped[str | None] = mapped_column(Text, nullable=True)
+    employee_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     checksum: Mapped[str | None] = mapped_column(Text, nullable=True)
     cost_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     cost_currency: Mapped[str | None] = mapped_column(

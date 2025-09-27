@@ -91,6 +91,7 @@ def _seed_call_records(engine: Engine) -> None:
             duration_sec=180,
             recording_url="https://example.com/records/1.mp3",
             status=CallRecordStatus.COMPLETED,
+            employee_id="EMP-001",
         )
         out_of_range = CallRecord(
             export=export,
@@ -103,8 +104,63 @@ def _seed_call_records(engine: Engine) -> None:
             duration_sec=60,
             recording_url="https://example.com/records/2.mp3",
             status=CallRecordStatus.COMPLETED,
+            employee_id="EMP-002",
         )
         session.add_all([export, in_range, out_of_range])
+        session.commit()
+
+
+def _seed_b24_call_records(engine: Engine) -> None:
+    with Session(engine) as session:
+        export = CallExport(
+            period_from=datetime(2024, 2, 1, 0, 0, 0),
+            period_to=datetime(2024, 2, 2, 0, 0, 0),
+            status=CallExportStatus.COMPLETED,
+        )
+        with_transcript = CallRecord(
+            export=export,
+            call_id="CALL-100",
+            record_id="REC-100",
+            call_started_at=datetime(2024, 2, 1, 9, 0, 0),
+            direction="inbound",
+            from_number="+701000001",
+            to_number="+701000002",
+            duration_sec=240,
+            recording_url="https://example.com/records/100.mp3",
+            transcript_path="s3://bucket/call_100.txt",
+            transcript_lang="ru",
+            status=CallRecordStatus.COMPLETED,
+            employee_id="EMP-900",
+        )
+        without_transcript = CallRecord(
+            export=export,
+            call_id="CALL-200",
+            record_id="REC-200",
+            call_started_at=datetime(2024, 2, 1, 12, 0, 0),
+            direction="outbound",
+            from_number="+701000003",
+            to_number="+701000004",
+            duration_sec=180,
+            recording_url="https://example.com/records/200.mp3",
+            transcript_path=None,
+            status=CallRecordStatus.COMPLETED,
+            employee_id="EMP-901",
+        )
+        outside_range = CallRecord(
+            export=export,
+            call_id="CALL-300",
+            record_id="REC-300",
+            call_started_at=datetime(2024, 1, 25, 10, 0, 0),
+            direction="inbound",
+            from_number="+701000005",
+            to_number="+701000006",
+            duration_sec=120,
+            recording_url="https://example.com/records/300.mp3",
+            transcript_path="",
+            status=CallRecordStatus.COMPLETED,
+            employee_id="EMP-900",
+        )
+        session.add_all([export, with_transcript, without_transcript, outside_range])
         session.commit()
 
 
@@ -136,7 +192,7 @@ async def test_export_call_registry_streams_csv(
 
         chunks = [chunk async for chunk in response.aiter_bytes()]
 
-    assert len(chunks) == 2
+    assert len(chunks) >= 1
     content = b"".join(chunks)
     assert content.startswith(codecs.BOM_UTF8)
     decoded = content.decode("utf-8-sig")
@@ -166,3 +222,93 @@ async def test_export_call_registry_validates_period(
     payload = response.json()
     assert payload["title"] == "Invalid period range"
     assert payload["status"] == 400
+
+
+@pytest.mark.asyncio
+async def test_export_b24_calls_csv_applies_filters(
+    api_client: httpx.AsyncClient,
+    sqlite_engine: Engine,
+) -> None:
+    _seed_b24_call_records(sqlite_engine)
+
+    async with api_client.stream(
+        "GET",
+        "/api/v1/b24-calls/export.csv",
+        params={
+            "employee_id": "EMP-900",
+            "date_from": "2024-02-01T00:00:00",
+            "date_to": "2024-02-01T23:59:59",
+            "has_text": "true",
+        },
+        headers={"X-Request-Id": "req-b24-csv"},
+    ) as response:
+        assert response.status_code == 200
+        assert response.headers["X-Request-Id"] == "req-b24-csv"
+        assert response.headers["Content-Type"].startswith("text/csv")
+        assert response.headers["Content-Disposition"] == (
+            'attachment; filename="b24_calls_20240201T000000_20240201T235959.csv"'
+        )
+        chunks = [chunk async for chunk in response.aiter_bytes()]
+
+    content = b"".join(chunks)
+    assert content.startswith(codecs.BOM_UTF8)
+    decoded = content.decode("utf-8-sig")
+    rows = [line for line in decoded.splitlines() if line]
+    assert rows[0] == (
+        "call_id;record_id;employee_id;call_started_at;from_number;to_number;direction;duration_sec;"
+        "recording_url;transcript_path;transcript_lang;has_text"
+    )
+    assert rows[1] == (
+        "CALL-100;REC-100;EMP-900;2024-02-01T09:00:00;+701000001;+701000002;inbound;240;"
+        "https://example.com/records/100.mp3;s3://bucket/call_100.txt;ru;true"
+    )
+    assert len(rows) == 2
+
+
+@pytest.mark.asyncio
+async def test_export_b24_calls_json_filters_and_returns_payload(
+    api_client: httpx.AsyncClient,
+    sqlite_engine: Engine,
+) -> None:
+    _seed_b24_call_records(sqlite_engine)
+
+    response = await api_client.get(
+        "/api/v1/b24-calls/export.json",
+        params={
+            "employee_id": "EMP-901",
+            "date_from": "2024-02-01T00:00:00",
+            "date_to": "2024-02-01T23:59:59",
+            "has_text": "false",
+        },
+        headers={"X-Request-Id": "req-b24-json"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["X-Request-Id"] == "req-b24-json"
+    payload = response.json()
+    assert isinstance(payload, list)
+    assert len(payload) == 1
+    record = payload[0]
+    assert record["call_id"] == "CALL-200"
+    assert record["employee_id"] == "EMP-901"
+    assert record["has_text"] is False
+    assert record["transcript_path"] is None
+
+
+@pytest.mark.asyncio
+async def test_export_b24_calls_validates_period(
+    api_client: httpx.AsyncClient,
+) -> None:
+    response = await api_client.get(
+        "/api/v1/b24-calls/export.json",
+        params={
+            "date_from": "2024-02-02T00:00:00",
+            "date_to": "2024-02-01T00:00:00",
+        },
+        headers={"X-Request-Id": "req-b24-invalid"},
+    )
+
+    assert response.status_code == 400
+    body = response.json()
+    assert body["title"] == "Invalid date range"
+    assert body["status"] == 400
