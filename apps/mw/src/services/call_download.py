@@ -1,6 +1,7 @@
 """Workflow helpers for downloading Bitrix24 call recordings."""
 from __future__ import annotations
 
+import hashlib
 from collections.abc import AsyncIterable
 from datetime import datetime, timezone
 from typing import Callable
@@ -66,6 +67,7 @@ async def download_call_record(
             record.call_id,
             stream,
             started_at=record.call_started_at,
+            record_identifier=_resolve_record_identifier(record),
         )
     except httpx.HTTPStatusError as exc:  # pragma: no cover - defensive guard
         _handle_failure(record, f"http_{exc.response.status_code}", str(exc))
@@ -106,3 +108,15 @@ def _handle_failure(record: CallRecord, code: str, message: str) -> None:
         attempt=record.attempts,
         error_code=code,
     ).error("Failed to download call")
+
+
+def _resolve_record_identifier(record: CallRecord) -> str:
+    """Return a stable identifier for storage paths for the given record."""
+
+    if record.record_id and record.record_id.strip():
+        return record.record_id.strip()
+
+    if record.recording_url:
+        return hashlib.sha256(record.recording_url.encode("utf-8")).hexdigest()
+
+    return hashlib.sha256(record.call_id.encode("utf-8")).hexdigest()
