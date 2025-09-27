@@ -6,7 +6,41 @@ import time
 from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import importlib
+import importlib.util
+import os
+import site
+import sys
+
 import pytest
+
+
+def _ensure_httpx() -> None:
+    """Ensure the real httpx package is available for ASGI transport tests."""
+
+    try:
+        import httpx as httpx_module  # type: ignore
+    except ImportError:  # pragma: no cover - optional dependency
+        return
+
+    if hasattr(httpx_module, "ASGITransport"):
+        return
+
+    sys.modules.pop("httpx", None)
+    for path in site.getsitepackages():
+        candidate = os.path.join(path, "httpx", "__init__.py")
+        if not os.path.exists(candidate):
+            continue
+        spec = importlib.util.spec_from_file_location("httpx", candidate)
+        if spec is None or spec.loader is None:
+            continue
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["httpx"] = module
+        spec.loader.exec_module(module)
+        return
+
+
+_ensure_httpx()
 
 try:
     import uvicorn
