@@ -4,11 +4,13 @@ from __future__ import annotations
 import hashlib
 from collections.abc import AsyncIterable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
 import boto3
+from botocore.exceptions import ClientError
+from loguru import logger
 
 from apps.mw.src.config import get_settings
 from apps.mw.src.config.settings import Settings
@@ -22,6 +24,18 @@ class StorageResult:
     checksum: str
     backend: Literal["local", "s3"]
     bytes_stored: int
+
+
+@dataclass(slots=True)
+class CleanupReport:
+    """Summary of files removed during a cleanup run."""
+
+    removed_local_paths: list[str]
+    removed_s3_keys: list[str]
+
+    @property
+    def total_removed(self) -> int:
+        return len(self.removed_local_paths) + len(self.removed_s3_keys)
 
 
 class StorageService:
@@ -60,7 +74,7 @@ class StorageService:
     ) -> StorageResult:
         """Persist a Markdown summary for a call and return its metadata."""
 
-        created_at = created_at or datetime.now(tz=timezone.utc)
+        created_at = created_at or datetime.now(tz=UTC)
         key = self._build_summary_key(call_id, created_at)
         payload = content.encode("utf-8")
 
@@ -150,6 +164,133 @@ class StorageService:
             bytes_stored=len(payload),
         )
 
+    def cleanup_expired_assets(self, *, now: datetime | None = None) -> CleanupReport:
+        """Remove recordings, transcripts and summaries past their retention window."""
+
+        now = now or datetime.now(tz=UTC)
+        removed_local: list[str] = []
+        removed_s3: list[str] = []
+
+        removed_local.extend(
+            self._cleanup_local_directory(
+                Path(self._settings.local_storage_dir) / "raw",
+                self._settings.raw_recording_retention_days,
+                now,
+            )
+        )
+        removed_local.extend(
+            self._cleanup_local_directory(
+                Path(self._settings.local_storage_dir) / "summaries",
+                self._settings.summary_retention_days,
+                now,
+            )
+        )
+        removed_local.extend(
+            self._cleanup_local_directory(
+                Path(self._settings.local_storage_dir) / "transcripts",
+                self._settings.transcript_retention_days,
+                now,
+            )
+        )
+
+        if self._backend == "s3":
+            removed_s3.extend(
+                self._cleanup_s3_prefix("raw/", self._settings.raw_recording_retention_days, now)
+            )
+            removed_s3.extend(
+                self._cleanup_s3_prefix(
+                    "summaries/",
+                    self._settings.summary_retention_days,
+                    now,
+                )
+            )
+
+        return CleanupReport(removed_local_paths=removed_local, removed_s3_keys=removed_s3)
+
+    def _cleanup_local_directory(
+        self, directory: Path, retention_days: int, now: datetime
+    ) -> list[str]:
+        if retention_days <= 0:
+            return []
+
+        removed: list[str] = []
+        if not directory.exists():
+            return removed
+
+        threshold = now - timedelta(days=retention_days)
+        for path in directory.rglob("*"):
+            if not path.is_file():
+                continue
+            try:
+                modified = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
+            except FileNotFoundError:
+                continue
+
+            if modified < threshold:
+                try:
+                    path.unlink(missing_ok=True)
+                    removed.append(str(path))
+                except FileNotFoundError:
+                    continue
+                except OSError:
+                    logger.bind(path=str(path)).exception("Failed to remove expired file")
+
+        self._remove_empty_directories(directory)
+        return removed
+
+    def _remove_empty_directories(self, root: Path) -> None:
+        if not root.exists():
+            return
+
+        for directory in sorted((p for p in root.rglob("*") if p.is_dir()), reverse=True):
+            try:
+                directory.rmdir()
+            except OSError:
+                continue
+
+    def _cleanup_s3_prefix(
+        self, prefix: str, retention_days: int, now: datetime
+    ) -> list[str]:
+        if retention_days <= 0:
+            return []
+
+        client = self._s3_client or self._create_s3_client()
+        threshold = now - timedelta(days=retention_days)
+        removed: list[str] = []
+
+        continuation_token: str | None = None
+        while True:
+            request: dict[str, Any] = {
+                "Bucket": self._settings.s3_bucket,
+                "Prefix": prefix,
+            }
+            if continuation_token:
+                request["ContinuationToken"] = continuation_token
+
+            response = client.list_objects_v2(**request)
+            contents = response.get("Contents", []) or []
+            for obj in contents:
+                key = obj.get("Key")
+                last_modified: datetime | None = obj.get("LastModified")
+                if not key or last_modified is None:
+                    continue
+                moment = last_modified.astimezone(UTC)
+                if moment < threshold:
+                    try:
+                        client.delete_object(Bucket=self._settings.s3_bucket, Key=key)
+                        removed.append(key)
+                    except ClientError:
+                        logger.bind(key=key).exception("Failed to delete expired S3 object")
+
+            if not response.get("IsTruncated"):
+                break
+
+            continuation_token = response.get("NextContinuationToken")
+            if not continuation_token:
+                break
+
+        return removed
+
     def _build_object_key(
         self,
         call_id: str,
@@ -158,10 +299,10 @@ class StorageService:
     ) -> str:
         if started_at is not None:
             if started_at.tzinfo is None:
-                started_at = started_at.replace(tzinfo=timezone.utc)
-            day = started_at.astimezone(timezone.utc).date()
+                started_at = started_at.replace(tzinfo=UTC)
+            day = started_at.astimezone(UTC).date()
         else:
-            day = datetime.now(tz=timezone.utc).date()
+            day = datetime.now(tz=UTC).date()
 
         suffix = self._sanitize_identifier(record_identifier)
 
@@ -175,8 +316,8 @@ class StorageService:
 
     def _build_summary_key(self, call_id: str, created_at: datetime) -> str:
         if created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
-        moment = created_at.astimezone(timezone.utc)
+            created_at = created_at.replace(tzinfo=UTC)
+        moment = created_at.astimezone(UTC)
         sanitized_call_id = self._sanitize_identifier(call_id) or "unknown"
         timestamp = moment.strftime("%Y%m%dT%H%M%SZ")
 

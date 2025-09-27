@@ -45,6 +45,7 @@ class _StubQueue:
         *,
         transcript_path: str,
         language: str | None,
+        summary_path: str | None = None,
     ) -> None:
         session.commit()
 
