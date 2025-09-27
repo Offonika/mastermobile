@@ -20,6 +20,28 @@
 > Для запуска только зависимостей можно выполнить `docker compose up -d db redis`.
 > Метрики Prometheus доступны по адресу `http://localhost:8000/metrics`.
 
+## Smoke-тест распознавания речи
+
+### Предварительные условия
+- Подготовьте `.env` с ключами `OPENAI_API_KEY`, выставленным лимитом `STT_MAX_FILE_MINUTES` и при необходимости прокси `CHATGPT_PROXY_URL` — см. таблицу переменных ниже.
+- Выполните `make init` и `make up`, чтобы скрипт имел доступ к зависимостям (Postgres, Redis) и установленным Python-пакетам.
+- Подложите тестовый плейлист в `playlists/`: каждая папка содержит `playlist.yaml`, подпапку `audio/` с исходными файлами и `expected/` с эталонными транскриптами/отчётами. Подробности и чеклист см. в [docs/testing/stt_smoke.md](docs/testing/stt_smoke.md).
+
+### Команда запуска
+```bash
+python scripts/stt_smoke.py \
+  --playlist playlists/smoke_demo/playlist.yaml \
+  --report build/stt_smoke_report.json
+```
+
+Скрипт складывает транскрипции в `build/stt_smoke/<timestamp>/` и формирует отчёт `build/stt_smoke_report.json`.
+
+### Отчёт и интерпретация
+- Блок `summary` повторяет агрегаты production-отчёта `summary_<period>.md`: количество записей, покрытие, длительность и стоимость (см. [SRS — Тексты звонков Bitrix24](docs/SRS%20—%20Тексты%20звонков%20Bitrix24%20(выгрузка%20за%2060%20дней).md#73-%D0%BE%D1%82%D1%87%D1%91%D1%82-summary_periodmd)).
+- Записи со `status="success"` содержат путь до транскрипта и расчётную стоимость; `status="failure"` включают `error_code`/`error_message` и сверяются с [docs/testing/error_catalog.json](docs/testing/error_catalog.json).
+- Результат CI архивирует как артефакт `stt-smoke-report` (файл `build/stt_smoke_report.json`) внутри workflow **CI › quality**; загрузить можно со страницы запуска в GitHub Actions.
+- Для расширенного runbook и UAT-чеклиста переходите по ссылкам: [docs/runbooks/call_export.md](docs/runbooks/call_export.md), [docs/b24-transcribe/ONE-PAGER.md#uat-чеклист](docs/b24-transcribe/ONE-PAGER.md#uat-%D1%87%D0%B5%D0%BA%D0%BB%D0%B8%D1%81%D1%82), [docs/testing/strategy.md](docs/testing/strategy.md).
+
 ## Переменные окружения Compose
 
 | Переменная      | Значение по умолчанию | Назначение                          |
