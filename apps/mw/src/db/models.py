@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
@@ -11,13 +12,15 @@ from sqlalchemy import (
     BigInteger,
     CheckConstraint,
     DateTime,
+    Enum as SqlEnum,
     ForeignKey,
+    Index,
     Integer,
+    Numeric,
+    String,
     Text,
     func,
-)
-from sqlalchemy import (
-    Enum as SqlEnum,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
@@ -75,6 +78,28 @@ class IntegrationStatus(str, Enum):
     SUCCESS = "success"
     ERROR = "error"
     RETRY = "retry"
+
+
+class CallExportStatus(str, Enum):
+    """Lifecycle states for bulk Bitrix24 call exports."""
+
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    ERROR = "error"
+    CANCELLED = "cancelled"
+
+
+class CallRecordStatus(str, Enum):
+    """Processing state for each exported call record."""
+
+    PENDING = "pending"
+    DOWNLOADING = "downloading"
+    DOWNLOADED = "downloaded"
+    TRANSCRIBING = "transcribing"
+    COMPLETED = "completed"
+    SKIPPED = "skipped"
+    ERROR = "error"
 
 
 JSONBType = JSONB().with_variant(SQLiteJSON(), "sqlite")
@@ -233,3 +258,177 @@ class IntegrationLog(Base):
     response: Mapped[dict[str, Any] | None] = mapped_column(JSONBType, nullable=True)
     error_code: Mapped[str | None] = mapped_column(Text, nullable=True)
     retry_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class CallExport(Base):
+    """Run of Bitrix24 batch call export."""
+
+    __tablename__ = "call_exports"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending','in_progress','completed','error','cancelled')",
+            name="chk_call_exports_status",
+        ),
+        CheckConstraint(
+            "period_to >= period_from",
+            name="chk_call_exports_period",
+        ),
+        Index(
+            "idx_call_exports_status_active",
+            "status",
+            postgresql_where=text(
+                "status IN ('pending','in_progress','error')"
+            ),
+        ),
+    )
+
+    run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+    )
+    period_from: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    period_to: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    status: Mapped[CallExportStatus] = mapped_column(
+        _enum_type(CallExportStatus, name="call_export_status", length=32),
+        nullable=False,
+    )
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    actor_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("core.users.user_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    options: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONBType,
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    records: Mapped[list[CallRecord]] = relationship(
+        back_populates="export",
+        cascade="all, delete-orphan",
+    )
+
+
+class CallRecord(Base):
+    """Single Bitrix24 call entry that belongs to a call export run."""
+
+    __tablename__ = "call_records"
+    __table_args__ = (
+        CheckConstraint(
+            "duration_sec >= 0",
+            name="chk_call_records_duration_non_negative",
+        ),
+        CheckConstraint(
+            "attempts >= 0",
+            name="chk_call_records_attempts_non_negative",
+        ),
+        CheckConstraint(
+            "status IN ('pending','downloading','downloaded','transcribing','completed','skipped','error')",
+            name="chk_call_records_status",
+        ),
+        Index(
+            "idx_call_records_status_run",
+            "status",
+            "run_id",
+            postgresql_where=text(
+                "status IN ('pending','downloading','transcribing','error')"
+            ),
+        ),
+        Index(
+            "idx_call_records_checksum",
+            "checksum",
+            postgresql_where=text("checksum IS NOT NULL"),
+        ),
+        Index(
+            "uq_call_records_run_call_record",
+            "run_id",
+            "call_id",
+            text("coalesce(record_id, '')"),
+            unique=True,
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"),
+        primary_key=True,
+        autoincrement=True,
+    )
+    run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("call_exports.run_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    call_id: Mapped[str] = mapped_column(Text, nullable=False)
+    record_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    call_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    duration_sec: Mapped[int] = mapped_column(Integer, nullable=False)
+    recording_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    storage_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    transcript_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    transcript_lang: Mapped[str | None] = mapped_column(Text, nullable=True)
+    checksum: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cost_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    cost_currency: Mapped[str | None] = mapped_column(
+        String(3),
+        nullable=True,
+        default="RUB",
+        server_default=text("'RUB'"),
+    )
+    status: Mapped[CallRecordStatus] = mapped_column(
+        _enum_type(CallRecordStatus, name="call_record_status", length=32),
+        nullable=False,
+    )
+    error_code: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    attempts: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default=text("0"),
+    )
+    last_attempt_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    export: Mapped[CallExport] = relationship(back_populates="records")
