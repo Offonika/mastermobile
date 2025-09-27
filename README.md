@@ -40,6 +40,7 @@
 | `ENABLE_TRACING` | `false`                | Включение экспорта трассировок OpenTelemetry |
 | `PII_MASKING_ENABLED` | `false`           | Маскирование персональных данных в логах |
 | `DISK_ENCRYPTION_FLAG` | `false`          | Флаг шифрования томов/дисков (prod → `true`) |
+| `CHATGPT_PROXY_URL` | `http://user150107:dx4a5m@102.129.178.65:6517` | Корпоративный прокси для исходящих запросов к ChatGPT/Whisper |
 
 > Все значения можно переопределить в `.env` перед запуском `docker compose` / `make up`.
 
