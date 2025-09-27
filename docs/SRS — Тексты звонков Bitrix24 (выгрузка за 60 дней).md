@@ -158,7 +158,7 @@ LANGUAGE: <iso639-1>
 | error_calls | integer | not null default 0 | Записей в ошибке |
 | total_duration_sec | bigint | not null default 0 | Суммарная длительность |
 | total_cost | numeric(12,2) | not null default 0 | Стоимость в основной валюте |
-| cost_currency | char(3) | not null default 'USD' | Валюта стоимости |
+| currency_code | char(3) | not null default 'USD' | Валюта стоимости |
 | metadata | jsonb | not null default '{}' | Доп. параметры (флаги, concurrency) |
 Индексы: `(status)`, `(period_from, period_to)`, `btree(period_from)` для выборок по периоду. Уникальный индекс `unique(period_from, period_to, actor)` предотвращает параллельный запуск идентичных задач.
 
@@ -180,8 +180,8 @@ LANGUAGE: <iso639-1>
 | summary_path | text | null | Путь к саммари |
 | tags | text | null | Сериализованные теги |
 | language | char(2) | null | ISO 639-1 |
-| cost_value | numeric(10,2) | null | Стоимость |
-| cost_currency | char(3) | null default 'USD' | Валюта |
+| transcription_cost | numeric(10,2) | null | Стоимость |
+| currency_code | char(3) | null default 'USD' | Валюта |
 | retry_count | integer | not null default 0 | Повторные попытки |
 | last_error_code | text | null | Код последней ошибки |
 | last_error_message | text | null | Текст ошибки (PII-маскирование) |
@@ -214,7 +214,7 @@ LANGUAGE: <iso639-1>
 - FR-DOWNLOAD-001. Скачивание аудио сохраняет файл в storage, вычисляет `checksum_sha256`, обновляет `call_records.status = 'downloading' → 'transcribing'`.
 - FR-DOWNLOAD-010. При 5 неудачных попытках загрузки запись переводится в `missing_audio`, фиксируется `last_error_code` и попадает в отчёт.
 - FR-TRANSCRIBE-001. Транскрипция должна обеспечивать ≥ 98% успешных попыток; язык определяется автоматически и записывается в `call_records.language`.
-- FR-TRANSCRIBE-010. Стоимость рассчитывается по тарифу сервиса с округлением минут вверх и сохраняется в `cost_value`, `cost_currency`.
+- FR-TRANSCRIBE-010. Стоимость рассчитывается по тарифу сервиса с округлением минут вверх и сохраняется в `transcription_cost`, `currency_code`.
 - FR-CSV-001. Каждая завершённая запись добавляется в CSV; файл валиден (UTF-8, `;` разделитель) и открывается в Excel/Google Sheets без ошибок.
 - FR-CSV-010. CSV содержит все обязательные поля (§7.1); отсутствующие транскрипты заполняются `status = error|missing_audio`.
 - FR-REPORT-001. Отчёт `summary_<period>.md` формируется автоматически и включает агрегаты (§7.3), список пропусков, QA-выборку.

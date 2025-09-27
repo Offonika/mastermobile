@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 from collections.abc import Iterable
 from datetime import datetime
+from decimal import Decimal
 from io import StringIO
 
 from fastapi import APIRouter, Depends, Query, Response, status
@@ -16,13 +17,26 @@ from apps.mw.src.db.models import CallRecord
 from apps.mw.src.db.session import get_session
 
 _CSV_HEADERS = [
+    "run_id",
+    "call_id",
+    "record_id",
+    "employee",
     "datetime_start",
     "direction",
     "from",
     "to",
     "duration_sec",
     "recording_url",
+    "transcript_path",
+    "summary_path",
+    "text_preview",
+    "transcription_cost",
+    "currency_code",
+    "language",
     "status",
+    "error_code",
+    "retry_count",
+    "checksum",
 ]
 
 router = APIRouter(
@@ -55,19 +69,32 @@ def _encode_row(values: list[str], *, include_bom: bool = False) -> bytes:
 def _row_values(record: CallRecord) -> list[str]:
     """Extract CSV field values from a call record."""
 
-    direction = getattr(record, "direction", None)
-    from_number = getattr(record, "from_number", None)
-    to_number = getattr(record, "to_number", None)
     status = record.status.value if hasattr(record.status, "value") else str(record.status)
 
+    def _format_decimal(value: Decimal | None) -> str:
+        return f"{value:.2f}" if value is not None else ""
+
     return [
+        str(getattr(record, "run_id", "")),
+        record.call_id,
+        getattr(record, "record_id", "") or "",
+        getattr(record, "employee_id", None) or "",
         _format_datetime(getattr(record, "call_started_at", None)),
-        direction or "",
-        from_number or "",
-        to_number or "",
+        getattr(record, "direction", None) or "",
+        getattr(record, "from_number", None) or "",
+        getattr(record, "to_number", None) or "",
         str(record.duration_sec),
-        record.recording_url or "",
+        getattr(record, "recording_url", None) or "",
+        getattr(record, "transcript_path", None) or "",
+        getattr(record, "summary_path", None) or "",
+        getattr(record, "text_preview", None) or "",
+        _format_decimal(getattr(record, "transcription_cost", None)),
+        getattr(record, "currency_code", None) or "",
+        getattr(record, "language", None) or "",
         status,
+        getattr(record, "error_code", None) or "",
+        str(getattr(record, "attempts", 0)),
+        getattr(record, "checksum", None) or "",
     ]
 
 

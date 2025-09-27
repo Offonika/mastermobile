@@ -421,11 +421,16 @@ class CallRecord(Base):
     recording_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     storage_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     transcript_path: Mapped[str | None] = mapped_column(Text, nullable=True)
-    transcript_lang: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    text_preview: Mapped[str | None] = mapped_column(Text, nullable=True)
+    language: Mapped[str | None] = mapped_column(Text, nullable=True)
     employee_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     checksum: Mapped[str | None] = mapped_column(Text, nullable=True)
-    cost_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
-    cost_currency: Mapped[str | None] = mapped_column(
+    transcription_cost: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2),
+        nullable=True,
+    )
+    currency_code: Mapped[str | None] = mapped_column(
         String(3),
         nullable=True,
         default="RUB",

@@ -113,7 +113,7 @@ class STTWorker:
                 session,
                 job,
                 transcript_path=result.transcript_path,
-                transcript_lang=result.language,
+                language=result.language,
             )
             STT_JOBS_TOTAL.labels(status="success").inc()
             logger.bind(call_id=job.call_id, engine=job.engine).info(

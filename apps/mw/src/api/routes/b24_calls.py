@@ -4,11 +4,14 @@ from __future__ import annotations
 import csv
 from collections.abc import Iterable
 from datetime import datetime
+from decimal import Decimal
 from io import StringIO
 
 from fastapi import APIRouter, Depends, Query, Response, status
+from uuid import UUID
+
 from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -20,37 +23,58 @@ from apps.mw.src.db.session import get_session
 class B24CallRecordPayload(BaseModel):
     """Representation of a Bitrix24 call record returned by the export API."""
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
+    run_id: UUID
     call_id: str
     record_id: str | None = None
-    employee_id: str | None = None
-    call_started_at: datetime | None = None
-    from_number: str | None = None
-    to_number: str | None = None
+    employee: str | None = None
+    datetime_start: datetime | None = None
     direction: str | None = None
+    from_: str | None = Field(default=None, alias="from")
+    to: str | None = None
     duration_sec: int
     recording_url: str | None = None
     transcript_path: str | None = None
-    transcript_lang: str | None = None
+    summary_path: str | None = None
+    text_preview: str | None = None
+    transcription_cost: Decimal | None = None
+    currency_code: str | None = None
+    language: str | None = None
+    status: str
+    error_code: str | None = None
+    retry_count: int
+    checksum: str | None = None
     has_text: bool
 
     @classmethod
     def from_record(cls, record: CallRecord) -> "B24CallRecordPayload":
         """Build a payload object using database record attributes."""
 
+        status_value = (
+            record.status.value if hasattr(record.status, "value") else str(record.status)
+        )
         return cls(
+            run_id=record.run_id,
             call_id=record.call_id,
             record_id=record.record_id,
-            employee_id=getattr(record, "employee_id", None),
-            call_started_at=getattr(record, "call_started_at", None),
-            from_number=getattr(record, "from_number", None),
-            to_number=getattr(record, "to_number", None),
+            employee=getattr(record, "employee_id", None),
+            datetime_start=getattr(record, "call_started_at", None),
             direction=getattr(record, "direction", None),
+            from_=getattr(record, "from_number", None),
+            to=getattr(record, "to_number", None),
             duration_sec=record.duration_sec,
             recording_url=getattr(record, "recording_url", None),
             transcript_path=getattr(record, "transcript_path", None),
-            transcript_lang=getattr(record, "transcript_lang", None),
+            summary_path=getattr(record, "summary_path", None),
+            text_preview=getattr(record, "text_preview", None),
+            transcription_cost=getattr(record, "transcription_cost", None),
+            currency_code=getattr(record, "currency_code", None),
+            language=getattr(record, "language", None),
+            status=status_value,
+            error_code=getattr(record, "error_code", None),
+            retry_count=int(getattr(record, "attempts", 0) or 0),
+            checksum=getattr(record, "checksum", None),
             has_text=bool(getattr(record, "transcript_path", None)),
         )
 
@@ -62,17 +86,26 @@ router = APIRouter(
 )
 
 _CSV_HEADERS = [
+    "run_id",
     "call_id",
     "record_id",
-    "employee_id",
-    "call_started_at",
-    "from_number",
-    "to_number",
+    "employee",
+    "datetime_start",
     "direction",
+    "from",
+    "to",
     "duration_sec",
     "recording_url",
     "transcript_path",
-    "transcript_lang",
+    "summary_path",
+    "text_preview",
+    "transcription_cost",
+    "currency_code",
+    "language",
+    "status",
+    "error_code",
+    "retry_count",
+    "checksum",
     "has_text",
 ]
 
@@ -97,18 +130,30 @@ def _csv_row(record: CallRecord) -> list[str]:
     def _format_datetime(value: datetime | None) -> str:
         return value.isoformat() if value else ""
 
+    def _format_decimal(value: Decimal | None) -> str:
+        return f"{value:.2f}" if value is not None else ""
+
     return [
+        str(payload.run_id),
         payload.call_id,
         payload.record_id or "",
-        payload.employee_id or "",
-        _format_datetime(payload.call_started_at),
-        payload.from_number or "",
-        payload.to_number or "",
+        payload.employee or "",
+        _format_datetime(payload.datetime_start),
         payload.direction or "",
+        payload.from_ or "",
+        payload.to or "",
         str(payload.duration_sec),
         payload.recording_url or "",
         payload.transcript_path or "",
-        payload.transcript_lang or "",
+        payload.summary_path or "",
+        payload.text_preview or "",
+        _format_decimal(payload.transcription_cost),
+        payload.currency_code or "",
+        payload.language or "",
+        payload.status,
+        payload.error_code or "",
+        str(payload.retry_count),
+        payload.checksum or "",
         "true" if payload.has_text else "false",
     ]
 
@@ -283,7 +328,10 @@ def export_b24_calls_json(
         has_text=has_text,
     )
     records = session.execute(stmt).scalars().all()
-    payload = [B24CallRecordPayload.from_record(record).model_dump(mode="json") for record in records]
+    payload = [
+        B24CallRecordPayload.from_record(record).model_dump(mode="json", by_alias=True)
+        for record in records
+    ]
 
     json_response = JSONResponse(content=payload)
     json_response.headers.setdefault("Cache-Control", "no-store")
