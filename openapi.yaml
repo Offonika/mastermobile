@@ -16,6 +16,8 @@ tags:
     description: Endpoints for managing merchandise returns.
   - name: b24-calls
     description: Bitrix24 call exports and registry endpoints.
+  - name: walking-warehouse
+    description: Walking Warehouse couriers and instant orders.
 paths:
   /health:
     get:
@@ -232,6 +234,489 @@ paths:
               $ref: '#/components/headers/XRequestId'
         '400':
           description: Invalid date range supplied.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/ww/couriers:
+    get:
+      tags:
+        - walking-warehouse
+      summary: List Walking Warehouse couriers
+      description: Returns couriers optionally filtered by a search query.
+      operationId: listWalkingWarehouseCouriers
+      security:
+        - bearerAuth: []
+      x-roles:
+        - courier
+        - admin
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - name: q
+          in: query
+          required: false
+          description: Case-insensitive search across courier id, name and phone.
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '200':
+          description: Collection of couriers.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouriersResponse'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '401':
+          description: Authentication required.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '403':
+          description: Principal lacks sufficient privileges.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '422':
+          description: Validation error.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+    post:
+      tags:
+        - walking-warehouse
+      summary: Register a Walking Warehouse courier
+      description: Creates a courier record for Walking Warehouse assignments.
+      operationId: createWalkingWarehouseCourier
+      security:
+        - bearerAuth: []
+      x-roles:
+        - admin
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourierCreate'
+      responses:
+        '201':
+          description: Courier created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Courier'
+          headers:
+            Location:
+              description: URL of the created courier resource.
+              schema:
+                type: string
+                format: uri
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '401':
+          description: Authentication required.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '403':
+          description: Principal lacks sufficient privileges.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '409':
+          description: Courier already exists.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '422':
+          description: Validation error.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/ww/orders:
+    get:
+      tags:
+        - walking-warehouse
+      summary: List Walking Warehouse orders
+      description: Returns instant orders optionally filtered by status and search query.
+      operationId: listWalkingWarehouseOrders
+      security:
+        - bearerAuth: []
+      x-roles:
+        - courier
+        - admin
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - name: status
+          in: query
+          required: false
+          description: Filter orders by status; multiple values allowed.
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/WWOrderStatus'
+          style: form
+          explode: true
+        - name: q
+          in: query
+          required: false
+          description: Case-insensitive search across id, title and customer name.
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '200':
+          description: Collection of orders.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderListResponse'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '401':
+          description: Authentication required.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '403':
+          description: Principal lacks sufficient privileges.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '422':
+          description: Validation error.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+    post:
+      tags:
+        - walking-warehouse
+      summary: Create Walking Warehouse order
+      description: Creates a new instant order in Walking Warehouse.
+      operationId: createWalkingWarehouseOrder
+      security:
+        - bearerAuth: []
+      x-roles:
+        - courier
+        - admin
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreate'
+      responses:
+        '201':
+          description: Order created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+          headers:
+            Location:
+              description: URL of the created order resource.
+              schema:
+                type: string
+                format: uri
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '401':
+          description: Authentication required.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '403':
+          description: Principal lacks sufficient privileges.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '404':
+          description: Referenced courier was not found.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '409':
+          description: Order already exists.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '422':
+          description: Validation error.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/ww/orders/{order_id}:
+    parameters:
+      - $ref: '#/components/parameters/OrderId'
+    patch:
+      tags:
+        - walking-warehouse
+      summary: Update Walking Warehouse order
+      description: Applies partial updates to an existing instant order.
+      operationId: updateWalkingWarehouseOrder
+      security:
+        - bearerAuth: []
+      x-roles:
+        - courier
+        - admin
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderUpdate'
+      responses:
+        '200':
+          description: Updated order representation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '401':
+          description: Authentication required.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '403':
+          description: Principal lacks sufficient privileges.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '404':
+          description: Order was not found.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '422':
+          description: Validation error.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/ww/orders/{order_id}/assign:
+    parameters:
+      - $ref: '#/components/parameters/OrderId'
+    post:
+      tags:
+        - walking-warehouse
+      summary: Assign courier to order
+      description: Assigns or unassigns a courier for an instant order.
+      operationId: assignWalkingWarehouseOrder
+      security:
+        - bearerAuth: []
+      x-roles:
+        - courier
+        - admin
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderAssign'
+      responses:
+        '200':
+          description: Updated order representation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '401':
+          description: Authentication required.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '403':
+          description: Principal lacks sufficient privileges.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '404':
+          description: Order or courier was not found.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '422':
+          description: Validation error.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/ww/orders/{order_id}/status:
+    parameters:
+      - $ref: '#/components/parameters/OrderId'
+    post:
+      tags:
+        - walking-warehouse
+      summary: Update Walking Warehouse order status
+      description: Transitions an instant order to a new status.
+      operationId: updateWalkingWarehouseOrderStatus
+      security:
+        - bearerAuth: []
+      x-roles:
+        - courier
+        - admin
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderStatusUpdate'
+      responses:
+        '200':
+          description: Updated order representation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '401':
+          description: Authentication required.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '403':
+          description: Principal lacks sufficient privileges.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '404':
+          description: Order was not found.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '422':
+          description: Validation error.
           content:
             application/problem+json:
               schema:
@@ -821,6 +1306,281 @@ components:
           type: boolean
           description: Indicates if there is another page after the current one.
           example: true
+    Courier:
+      type: object
+      required:
+        - id
+        - display_name
+        - is_active
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          description: Unique identifier of the courier.
+          example: courier-101
+        display_name:
+          type: string
+          description: Human readable name of the courier.
+          example: John Doe
+        phone:
+          type: string
+          nullable: true
+          description: Contact phone number for the courier.
+          example: '+79001002030'
+        is_active:
+          type: boolean
+          description: Whether the courier is active and available for assignments.
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the courier was registered.
+          example: '2024-09-01T12:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp of the last courier update.
+          example: '2024-09-01T12:05:00Z'
+    CourierCreate:
+      type: object
+      required:
+        - id
+        - display_name
+      properties:
+        id:
+          type: string
+          description: Unique identifier of the courier.
+          example: courier-101
+        display_name:
+          type: string
+          description: Human readable name of the courier.
+          example: John Doe
+        phone:
+          type: string
+          nullable: true
+          description: Contact phone number for the courier.
+        is_active:
+          type: boolean
+          description: Whether the courier is active and available for assignments.
+          default: true
+    CouriersResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          description: List of couriers matching the filters.
+          items:
+            $ref: '#/components/schemas/Courier'
+    WWOrderStatus:
+      type: string
+      description: Status values for Walking Warehouse instant orders.
+      enum:
+        - DRAFT
+        - PENDING_APPROVAL
+        - APPROVED
+        - DELIVERED
+        - CANCELLED
+        - REJECTED
+        - TIMEOUT_ESCALATED
+      example: APPROVED
+    OrderItem:
+      type: object
+      required:
+        - sku
+        - name
+        - qty
+        - price
+      properties:
+        sku:
+          type: string
+          description: Stock keeping unit of the product.
+          example: SKU-100
+        name:
+          type: string
+          description: Human readable product name.
+          example: Coffee
+        qty:
+          type: integer
+          minimum: 0
+          description: Quantity to be delivered.
+          example: 2
+        price:
+          type: string
+          description: Unit price in the order currency with two decimal places.
+          example: '250.00'
+    OrderCreateItem:
+      allOf:
+        - $ref: '#/components/schemas/OrderItem'
+    Order:
+      type: object
+      required:
+        - id
+        - title
+        - customer_name
+        - status
+        - currency_code
+        - total_amount
+        - created_at
+        - updated_at
+        - items
+      properties:
+        id:
+          type: string
+          description: Unique identifier of the order.
+          example: order-123
+        title:
+          type: string
+          description: Title of the order shown to the courier.
+          example: Grocery delivery
+        customer_name:
+          type: string
+          description: Customer name associated with the order.
+          example: Alice Smith
+        status:
+          $ref: '#/components/schemas/WWOrderStatus'
+        courier_id:
+          type: string
+          nullable: true
+          description: Identifier of the courier assigned to the order.
+          example: courier-101
+        currency_code:
+          type: string
+          minLength: 3
+          maxLength: 3
+          description: ISO-4217 currency code of the order totals.
+          example: RUB
+        total_amount:
+          type: string
+          description: Total amount including taxes and delivery with two decimal places.
+          example: '990.50'
+        notes:
+          type: string
+          nullable: true
+          description: Optional notes displayed to the courier.
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the order was created.
+          example: '2024-09-01T13:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the order was last updated.
+          example: '2024-09-01T13:05:00Z'
+        items:
+          type: array
+          minItems: 1
+          description: Order lines for the courier to deliver.
+          items:
+            $ref: '#/components/schemas/OrderItem'
+    OrderCreate:
+      type: object
+      required:
+        - title
+        - customer_name
+        - items
+        - total_amount
+      properties:
+        id:
+          type: string
+          nullable: true
+          description: Optional identifier; generated when omitted.
+          example: order-123
+        title:
+          type: string
+          description: Title of the order shown to the courier.
+          example: Grocery delivery
+        customer_name:
+          type: string
+          description: Customer name associated with the order.
+        status:
+          $ref: '#/components/schemas/WWOrderStatus'
+          description: Initial status of the order.
+          default: DRAFT
+        courier_id:
+          type: string
+          nullable: true
+          description: Identifier of the courier assigned to the order.
+        currency_code:
+          type: string
+          minLength: 3
+          maxLength: 3
+          description: ISO-4217 currency code of the order totals.
+          default: RUB
+        total_amount:
+          type: string
+          description: Total amount including taxes and delivery with two decimal places.
+          example: '990.50'
+        notes:
+          type: string
+          nullable: true
+          description: Optional notes displayed to the courier.
+        items:
+          type: array
+          minItems: 1
+          description: Order lines for the courier to deliver.
+          items:
+            $ref: '#/components/schemas/OrderCreateItem'
+    OrderUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Updated title of the order.
+        customer_name:
+          type: string
+          description: Updated customer name.
+        notes:
+          type: string
+          nullable: true
+          description: Updated notes for the courier.
+        currency_code:
+          type: string
+          minLength: 3
+          maxLength: 3
+          description: Updated currency code.
+        total_amount:
+          type: string
+          description: Updated order total with two decimal places.
+        items:
+          type: array
+          description: Replacement set of order lines.
+          items:
+            $ref: '#/components/schemas/OrderCreateItem'
+    OrderAssign:
+      type: object
+      properties:
+        courier_id:
+          type: string
+          nullable: true
+          description: Identifier of the courier or null to unassign.
+    OrderStatusUpdate:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          $ref: '#/components/schemas/WWOrderStatus'
+          description: New status for the order.
+    OrderListResponse:
+      type: object
+      required:
+        - items
+        - total
+      properties:
+        items:
+          type: array
+          description: Orders matching requested filters.
+          items:
+            $ref: '#/components/schemas/Order'
+        total:
+          type: integer
+          minimum: 0
+          description: Total number of orders after filters.
+          example: 5
   parameters:
     XRequestId:
       name: X-Request-Id
@@ -862,6 +1622,13 @@ components:
       in: path
       required: true
       description: Identifier of the return.
+      schema:
+        type: string
+    OrderId:
+      name: order_id
+      in: path
+      required: true
+      description: Identifier of the Walking Warehouse order.
       schema:
         type: string
   headers:
