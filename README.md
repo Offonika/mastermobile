@@ -147,6 +147,31 @@ calls = await list_calls(
 - Контрибьютинг: ./CONTRIBUTING.md
 - Лицензия: ./LICENSE
 
+## Walking Warehouse
+
+«Ходячий склад» (Walking Warehouse) закрывает сквозной процесс доставки и возвратов между 1С УТ 10.3, middleware и мобильным виджетом Bitrix24: менеджер запускает доставку и допродажи из 1С, курьер ведёт маршрут и «рюкзак» в веб-приложении, а сервис фиксирует фото, геометки, наличные и возвраты без новых типов документов. Стратегические договорённости и UX собраны в профильных документах:
+
+- [PRD «Ходячий склад»](docs/PRD%20Ходячий%20склад.md) — цель, роли, потоки доставки/рюкзака/возвратов.
+- [ONE-PAGER «Ходячий рюкзак»](docs/ONE-PAGER-%D0%A5%D0%BE%D0%B4%D1%8F%D1%87%D0%B8%D0%B9%D0%A0%D1%8E%D0%BA%D0%B7%D0%B0%D0%BA.md) — сценарии по шагам и ключевые договорённости по деньгам/штрихкодам.
+- [SRS «Курьерская доставка с “Ходячим складом”»](docs/Software%20Requirements%20Specification%20SRS.md) — требования к API, рюкзаку, идемпотентности и ролям.
+- [UX-скетчи «Рюкзак/Продажа»](docs/UX-%D1%81%D0%BA%D0%B5%D1%82%D1%87%D0%B8-%D0%A0%D1%8E%D0%BA%D0%B7%D0%B0%D0%BA:%D0%9F%D1%80%D0%BE%D0%B4%D0%B0%D0%B6%D0%B0.md) — интерфейс курьера, оффлайн-поведение и правила доступности.
+- [00-Core — Синхронизация документации](docs/00%E2%80%91Core%20%E2%80%94%20%D0%A1%D0%B8%D0%BD%D1%85%D1%80%D0%BE%D0%BD%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D1%8F%20%D0%B4%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B0%D1%86%D0%B8%D0%B8.md) — единые статусы, SoT и style-guide для всех документов.
+
+### Setup & verification
+
+1. Скопируйте `.env.example` в `.env`, задайте доступы 1С/Bitrix24 и флаги Walking Warehouse (например, включение кнопки «Положить в рюкзак» и уведомлений).
+2. Поднимите окружение: `make init && make up`. Метрики FastAPI проверяются на `http://localhost:8000/metrics`; health-пинг — `http://localhost:8000/health`.
+3. Проверьте REST-контракт возвратов: `curl -H "X-Request-Id: doc-readme" http://localhost:8000/api/v1/returns` должен возвращать пагинированный список. Для CRUD сценариев используйте `tests/test_returns_api.py`.
+4. Запустите профильные тесты Walking Warehouse: `pytest tests/test_returns_api.py tests/test_db_models_returns.py` (или общий `make test`). Они подтверждают идемпотентность `/api/v1/returns`, ORM-схему и ограничения по причинам возврата.
+
+### Docs linting
+
+Перед релизом изменений по Walking Warehouse обязательно прогоняйте Docs CI локально:
+
+- `make docs-markdownlint`
+- `make docs-links`
+- `make docs-spellcheck`
+
 ## Документация
 
 ### B24 Transcribe
