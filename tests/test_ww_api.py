@@ -93,8 +93,9 @@ async def _create_order(
     client: httpx.AsyncClient,
     order_id: str | None = None,
     courier_id: str | None = None,
+    idempotency_key: str | None = None,
 ) -> httpx.Response:
-    headers = {"Idempotency-Key": f"order-{uuid4()}"}
+    headers = {"Idempotency-Key": idempotency_key or f"order-{uuid4()}"}
     return await client.post(
         "/api/v1/ww/orders",
         json=_order_payload(order_id=order_id, courier_id=courier_id),
@@ -198,6 +199,38 @@ async def test_error_scenarios(api_client: httpx.AsyncClient) -> None:
         f"/api/v1/ww/orders/{uuid4()}", json={"title": "noop"}, headers=headers
     )
     assert update_missing.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_create_order_replay_returns_cached_response(
+    api_client: httpx.AsyncClient,
+) -> None:
+    await _create_courier(api_client, "courier-401")
+
+    idempotency_key = "order-repeat-key"
+    payload = _order_payload(courier_id="courier-401")
+
+    first_response = await api_client.post(
+        "/api/v1/ww/orders",
+        json=payload,
+        headers={"Idempotency-Key": idempotency_key},
+    )
+    assert first_response.status_code == 201
+    first_body = first_response.json()
+
+    second_response = await api_client.post(
+        "/api/v1/ww/orders",
+        json=payload,
+        headers={"Idempotency-Key": idempotency_key},
+    )
+    assert second_response.status_code == 200
+    assert second_response.json() == first_body
+    assert second_response.headers.get("Location") == first_response.headers.get("Location")
+
+    list_response = await api_client.get("/api/v1/ww/orders")
+    orders = list_response.json()["items"]
+    assert len(orders) == 1
+    assert orders[0]["id"] == first_body["id"]
 
     assign_headers = {"Idempotency-Key": f"assign-{uuid4()}"}
     assign_response = await api_client.post(

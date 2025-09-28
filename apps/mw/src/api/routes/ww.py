@@ -10,6 +10,7 @@ from apps.mw.src.api.dependencies import (
     ProblemDetailException,
     build_error,
     enforce_idempotency_key,
+    IdempotencyContext,
     provide_request_id,
 )
 from apps.mw.src.api.schemas import (
@@ -100,7 +101,7 @@ async def create_courier(
     payload: CourierCreate,
     response: Response,
     repository: WalkingWarehouseCourierRepository = Depends(get_courier_repository),
-    _idempotency_key: str = Depends(enforce_idempotency_key),
+    _idempotency: IdempotencyContext = Depends(enforce_idempotency_key),
 ) -> Courier:
     """Register a new courier in the Walking Warehouse registry."""
 
@@ -166,9 +167,26 @@ async def create_order(
     response: Response,
     order_repository: WalkingWarehouseOrderRepository = Depends(get_order_repository),
     courier_repository: WalkingWarehouseCourierRepository = Depends(get_courier_repository),
-    _idempotency_key: str = Depends(enforce_idempotency_key),
+    idempotency: IdempotencyContext = Depends(enforce_idempotency_key),
 ) -> Order:
     """Create a new instant order."""
+
+    if idempotency.is_replay:
+        cached_headers = idempotency.get_replay_headers()
+        for name, value in cached_headers.items():
+            response.headers[name] = value
+        response.status_code = status.HTTP_200_OK
+        cached_payload = idempotency.get_replay_payload()
+        if cached_payload is None:
+            raise ProblemDetailException(
+                build_error(
+                    status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    title="Idempotency replay failed",
+                    detail="Cached response payload is missing.",
+                    request_id=response.headers.get("X-Request-Id"),
+                )
+            )
+        return cached_payload  # type: ignore[return-value]
 
     if payload.courier_id is not None:
         try:
@@ -207,7 +225,13 @@ async def create_order(
         raise ProblemDetailException(error) from exc
 
     response.headers["Location"] = f"/api/v1/ww/orders/{record.id}"
-    return _serialize_order(record)
+    serialized = _serialize_order(record)
+    idempotency.store_response(
+        status_code=status.HTTP_201_CREATED,
+        payload=serialized,
+        headers={"Location": response.headers["Location"]},
+    )
+    return serialized
 
 
 @router.get(
@@ -260,7 +284,7 @@ async def update_order(
     response: Response,
     order_id: str = Path(..., description="Identifier of the order to update."),
     order_repository: WalkingWarehouseOrderRepository = Depends(get_order_repository),
-    _idempotency_key: str = Depends(enforce_idempotency_key),
+    _idempotency: IdempotencyContext = Depends(enforce_idempotency_key),
 ) -> Order:
     """Apply partial updates to an order."""
 
@@ -307,7 +331,7 @@ async def assign_order(
     order_id: str = Path(..., description="Identifier of the order to update."),
     order_repository: WalkingWarehouseOrderRepository = Depends(get_order_repository),
     courier_repository: WalkingWarehouseCourierRepository = Depends(get_courier_repository),
-    _idempotency_key: str = Depends(enforce_idempotency_key),
+    _idempotency: IdempotencyContext = Depends(enforce_idempotency_key),
 ) -> Order:
     """Assign or unassign a courier for an order."""
 
@@ -353,7 +377,7 @@ async def update_order_status(
     response: Response,
     order_id: str = Path(..., description="Identifier of the order to update."),
     order_repository: WalkingWarehouseOrderRepository = Depends(get_order_repository),
-    _idempotency_key: str = Depends(enforce_idempotency_key),
+    _idempotency: IdempotencyContext = Depends(enforce_idempotency_key),
 ) -> Order:
     """Transition an order to a new status."""
 
