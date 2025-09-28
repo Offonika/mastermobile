@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import hashlib
 import threading
-from dataclasses import dataclass
-from typing import Annotated
+from dataclasses import dataclass, field
+from typing import Annotated, Mapping
 from uuid import uuid4
 
 from fastapi import Depends, Header, Request, Response, status
@@ -27,7 +27,60 @@ _PrincipalRolesHeader = Annotated[
     str | None, Header(alias="X-Principal-Roles", max_length=512)
 ]
 
-_IDEMPOTENCY_CACHE: dict[tuple[str, str, str], str] = {}
+@dataclass(slots=True)
+class _IdempotencyRecord:
+    """Stored fingerprint and response snapshot for an idempotent request."""
+
+    digest: str
+    response_status: int | None = None
+    response_payload: object | None = None
+    response_headers: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
+class IdempotencyContext:
+    """Context returned by :func:`enforce_idempotency_key` for route handlers."""
+
+    key: str
+    cache_key: tuple[str, str, str]
+    record: _IdempotencyRecord
+
+    @property
+    def is_replay(self) -> bool:
+        """Indicate whether the incoming request matches a cached response."""
+
+        return self.record.response_payload is not None
+
+    def get_replay_payload(self) -> object:
+        """Return cached payload for replayed requests."""
+
+        return self.record.response_payload
+
+    def get_replay_headers(self) -> dict[str, str]:
+        """Return cached headers associated with the original response."""
+
+        return dict(self.record.response_headers)
+
+    def store_response(
+        self,
+        *,
+        status_code: int,
+        payload: object,
+        headers: Mapping[str, str] | None = None,
+    ) -> None:
+        """Persist the response snapshot for future identical requests."""
+
+        with _IDEMPOTENCY_LOCK:
+            entry = _IDEMPOTENCY_CACHE.get(self.cache_key)
+            if entry is None or entry.response_payload is not None:
+                return
+
+            entry.response_status = status_code
+            entry.response_payload = payload
+            entry.response_headers = dict(headers or {})
+
+
+_IDEMPOTENCY_CACHE: dict[tuple[str, str, str], _IdempotencyRecord] = {}
 _IDEMPOTENCY_LOCK = threading.Lock()
 
 
@@ -88,10 +141,11 @@ async def enforce_idempotency_key(
     response.headers["Idempotency-Key"] = key
 
     with _IDEMPOTENCY_LOCK:
-        existing = _IDEMPOTENCY_CACHE.get(cache_key)
-        if existing is None:
-            _IDEMPOTENCY_CACHE[cache_key] = digest
-        elif existing != digest:
+        record = _IDEMPOTENCY_CACHE.get(cache_key)
+        if record is None:
+            record = _IdempotencyRecord(digest=digest)
+            _IDEMPOTENCY_CACHE[cache_key] = record
+        elif record.digest != digest:
             raise ProblemDetailException(
                 build_error(
                     status.HTTP_409_CONFLICT,
@@ -102,7 +156,8 @@ async def enforce_idempotency_key(
             )
 
     request.state.idempotency_key = key
-    return key
+    request.state.idempotency_record = record
+    return IdempotencyContext(key=key, cache_key=cache_key, record=record)
 
 
 def reset_idempotency_cache() -> None:
