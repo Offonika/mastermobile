@@ -1,5 +1,6 @@
 .PHONY: init up down logs lint typecheck test fmt openapi db-upgrade db-downgrade run seed worker \
-	docs-markdownlint docs-links docs-spellcheck docs-ci docs-ci-smoke
+        docs-markdownlint docs-links docs-spellcheck docs-ci docs-ci-smoke \
+        1c-verify 1c-pack-kmp4 1c-dump-txt
 
 VENV_DIR := .venv
 VENV_BIN := $(VENV_DIR)/bin
@@ -14,6 +15,14 @@ LYCHEE_IMAGE := ghcr.io/lycheeverse/lychee:latest
 MARKDOWNLINT_TARGETS ?= '**/*.md'
 LYCHEE_TARGETS ?= README.md docs/
 DOCS_SMOKE_DIR := build/docs-ci-smoke
+POWERSHELL ?= pwsh
+ONEC_LOG_DIR := build/1c
+ONEC_VERIFY_SCRIPT := scripts/1c/verify_1c_tree.py
+ONEC_VERIFY_LOG := $(ONEC_LOG_DIR)/verify.log
+ONEC_PACK_SCRIPT := scripts/1c/pack_kmp4.ps1
+ONEC_PACK_LOG := $(ONEC_LOG_DIR)/pack_kmp4.log
+ONEC_DUMP_SCRIPT := scripts/1c/dump_config_to_txt.ps1
+ONEC_DUMP_LOG := $(ONEC_LOG_DIR)/dump_config_to_txt.log
 
 init: $(VENV_SENTINEL)
 
@@ -96,3 +105,39 @@ seed:
 
 worker:
 	docker compose up stt-worker
+
+1c-verify: $(VENV_SENTINEL)
+	@mkdir -p "$(ONEC_LOG_DIR)"
+	@LOG="$(ONEC_VERIFY_LOG)"; \
+	if $(PYTHON) "$(ONEC_VERIFY_SCRIPT)" > "$$LOG" 2>&1; then \
+		cat "$$LOG"; \
+	else \
+		cat "$$LOG"; \
+		exit 1; \
+	fi
+
+1c-pack-kmp4:
+	@mkdir -p "$(ONEC_LOG_DIR)"
+	@LOG="$(ONEC_PACK_LOG)"; \
+	if "$(POWERSHELL)" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$(ONEC_PACK_SCRIPT)" > "$$LOG" 2>&1; then \
+		cat "$$LOG"; \
+	else \
+		cat "$$LOG"; \
+		exit 1; \
+	fi
+
+1c-dump-txt:
+	@mkdir -p "$(ONEC_LOG_DIR)"
+	@LOG="$(ONEC_DUMP_LOG)"; \
+	if command -v 1cv8.exe >/dev/null 2>&1; then \
+		if "$(POWERSHELL)" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$(ONEC_DUMP_SCRIPT)" > "$$LOG" 2>&1; then \
+			cat "$$LOG"; \
+		else \
+			cat "$$LOG"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "1c-dump-txt requires 1cv8.exe to be available on PATH." > "$$LOG"; \
+		cat "$$LOG"; \
+		exit 2; \
+	fi
