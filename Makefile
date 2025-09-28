@@ -19,8 +19,10 @@ POWERSHELL ?= pwsh
 ONEC_LOG_DIR := build/1c
 ONEC_VERIFY_SCRIPT := scripts/1c/verify_1c_tree.py
 ONEC_VERIFY_LOG := $(ONEC_LOG_DIR)/verify.log
-ONEC_PACK_SCRIPT := scripts/1c/pack_kmp4.ps1
+ONEC_PACK_SCRIPT := scripts/1c/pack_external_epf.ps1
 ONEC_PACK_LOG := $(ONEC_LOG_DIR)/pack_kmp4.log
+ONEC_PACK_SOURCE := 1c/external/kmp4_delivery_report/src
+ONEC_PACK_ARTIFACT := build/1c/kmp4_delivery_report.epf
 ONEC_DUMP_SCRIPT := scripts/1c/dump_config_to_txt.ps1
 ONEC_DUMP_LOG := $(ONEC_LOG_DIR)/dump_config_to_txt.log
 
@@ -117,14 +119,19 @@ worker:
 	fi
 
 1c-pack-kmp4:
-	@mkdir -p "$(ONEC_LOG_DIR)"
-	@LOG="$(ONEC_PACK_LOG)"; \
-	if "$(POWERSHELL)" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$(ONEC_PACK_SCRIPT)" > "$$LOG" 2>&1; then \
-		cat "$$LOG"; \
-	else \
-		cat "$$LOG"; \
-		exit 1; \
-	fi
+        @mkdir -p "$(ONEC_LOG_DIR)"
+        @LOG="$(ONEC_PACK_LOG)"; \
+        ARTIFACT="$(ONEC_PACK_ARTIFACT)"; \
+        if "$(POWERSHELL)" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$(ONEC_PACK_SCRIPT)" -SourceDirectory "$(ONEC_PACK_SOURCE)" -OutputFile "$(ONEC_PACK_ARTIFACT)" > "$$LOG" 2>&1; then \
+                cat "$$LOG"; \
+                if [ ! -f "$$ARTIFACT" ]; then \
+                        echo "Expected artifact $$ARTIFACT to be created." >&2; \
+                        exit 1; \
+                fi; \
+        else \
+                cat "$$LOG"; \
+                exit 1; \
+        fi
 
 1c-dump-txt:
 	@mkdir -p "$(ONEC_LOG_DIR)"

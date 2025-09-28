@@ -25,11 +25,14 @@ if (-not $SourceDirectory) {
     $SourceDirectory = Join-Path -Path $repoRoot -ChildPath '1c/external/kmp4_delivery_report/src'
 }
 if (-not $OutputFile) {
-    $OutputFile = Join-Path -Path $repoRoot -ChildPath '1c/external/kmp4_delivery_report/КМП4.epf'
+    $OutputFile = Join-Path -Path $repoRoot -ChildPath 'build/1c/kmp4_delivery_report.epf'
 }
 if (-not $LogFile) {
     $LogFile = Join-Path -Path $repoRoot -ChildPath 'build/1c/pack_kmp4.log'
 }
+
+$buildDirectory = Join-Path -Path $repoRoot -ChildPath 'build/1c'
+$null = New-Item -ItemType Directory -Path $buildDirectory -Force
 
 $resolvedSource = Resolve-Path -Path $SourceDirectory
 $absoluteOutput = [System.IO.Path]::GetFullPath($OutputFile)
