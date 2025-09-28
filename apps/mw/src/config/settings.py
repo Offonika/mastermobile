@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -107,6 +107,19 @@ class Settings(BaseSettings):
     pii_masking_enabled: bool = Field(default=False, alias="PII_MASKING_ENABLED")
     disk_encryption_flag: bool = Field(default=False, alias="DISK_ENCRYPTION_FLAG")
     call_summary_enabled: bool = Field(default=False, alias="CALL_SUMMARY_ENABLED")
+
+    @model_validator(mode="before")
+    @classmethod
+    def enable_pii_masking_by_default(cls, data: dict[str, Any]) -> dict[str, Any]:
+        """Turn on PII masking by default for non-local environments."""
+
+        if isinstance(data, dict) and not any(
+            key in data for key in ("PII_MASKING_ENABLED", "pii_masking_enabled")
+        ):
+            app_env = data.get("APP_ENV", data.get("app_env", "local"))
+            if isinstance(app_env, str) and app_env != "local":
+                data["pii_masking_enabled"] = True
+        return data
 
     @property
     def sqlalchemy_database_uri(self) -> str:
