@@ -38,6 +38,10 @@ from apps.mw.src.integrations.ww import (
     WalkingWarehouseCourierRepository,
     WalkingWarehouseOrderRepository,
 )
+from apps.mw.src.observability.metrics import (
+    WW_ORDER_STATUS_TRANSITIONS_TOTAL,
+    WWExportTracker,
+)
 
 router = APIRouter(
     prefix="/api/v1/ww",
@@ -190,10 +194,13 @@ async def create_order(
             )
         return cached_payload  # type: ignore[return-value]
 
+    tracker = WWExportTracker("order_create")
+
     if payload.courier_id is not None:
         try:
             courier_repository.get(payload.courier_id)
         except CourierNotFoundError as exc:
+            tracker.failure("courier_not_found")
             error = build_error(
                 status.HTTP_404_NOT_FOUND,
                 title="Courier not found",
@@ -218,6 +225,7 @@ async def create_order(
             items=items,
         )
     except OrderAlreadyExistsError as exc:
+        tracker.failure("duplicate_order")
         error = build_error(
             status.HTTP_409_CONFLICT,
             title="Order already exists",
@@ -225,7 +233,11 @@ async def create_order(
             request_id=response.headers.get("X-Request-Id"),
         )
         raise ProblemDetailException(error) from exc
+    except Exception:
+        tracker.failure("unexpected_error")
+        raise
 
+    tracker.success()
     response.headers["Location"] = f"/api/v1/ww/orders/{record.id}"
     serialized = _serialize_order(record)
     idempotency.store_response(
@@ -290,6 +302,7 @@ async def update_order(
 ) -> Order:
     """Apply partial updates to an order."""
 
+    tracker = WWExportTracker("order_update")
     update_data = payload.model_dump(exclude_unset=True)
     items_payload = update_data.pop("items", None)
     items = _serialize_items(items_payload) if items_payload is not None else None
@@ -305,6 +318,7 @@ async def update_order(
             currency_code=update_data.get("currency_code"),
         )
     except OrderNotFoundError as exc:
+        tracker.failure("order_not_found")
         error = build_error(
             status.HTTP_404_NOT_FOUND,
             title="Order not found",
@@ -312,7 +326,11 @@ async def update_order(
             request_id=response.headers.get("X-Request-Id"),
         )
         raise ProblemDetailException(error) from exc
+    except Exception:
+        tracker.failure("unexpected_error")
+        raise
 
+    tracker.success()
     return _serialize_order(record)
 
 
@@ -337,10 +355,12 @@ async def assign_order(
 ) -> Order:
     """Assign or unassign a courier for an order."""
 
+    tracker = WWExportTracker("order_assign")
     if payload.courier_id is not None:
         try:
             courier_repository.get(payload.courier_id)
         except CourierNotFoundError as exc:
+            tracker.failure("courier_not_found")
             error = build_error(
                 status.HTTP_404_NOT_FOUND,
                 title="Courier not found",
@@ -352,6 +372,7 @@ async def assign_order(
     try:
         record = order_repository.get(order_id)
     except OrderNotFoundError as exc:
+        tracker.failure("order_not_found")
         error = build_error(
             status.HTTP_404_NOT_FOUND,
             title="Order not found",
@@ -366,6 +387,12 @@ async def assign_order(
         detail = (
             f"Cannot transition order {order_id} from {exc.current} to {exc.new}."
         )
+        WW_ORDER_STATUS_TRANSITIONS_TOTAL.labels(
+            exc.current.value,
+            exc.new.value,
+            "failure",
+        ).inc()
+        tracker.failure("invalid_transition")
         error = build_error(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             title="Invalid order status transition",
@@ -375,16 +402,24 @@ async def assign_order(
         return ProblemDetailException(error)
 
     if payload.courier_id is not None:
+        previous_status = machine.current.value
         try:
             machine.ensure_transition(WWOrderStatus.ASSIGNED)
         except InvalidOrderStatusTransitionError as exc:
             raise _transition_error(exc) from exc
 
+        WW_ORDER_STATUS_TRANSITIONS_TOTAL.labels(
+            previous_status,
+            machine.current.value,
+            "success",
+        ).inc()
         order_repository.assign_courier(order_id, payload.courier_id)
         record = order_repository.update_status(order_id, machine.current.value)
+        tracker.success()
         return _serialize_order(record)
 
     if payload.decline and record.courier_id is None:
+        tracker.failure("invalid_assignment_state")
         error = build_error(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             title="Invalid assignment state",
@@ -394,20 +429,33 @@ async def assign_order(
         raise ProblemDetailException(error)
 
     if payload.decline:
+        previous_status = machine.current.value
         try:
             machine.ensure_transition(WWOrderStatus.DECLINED)
         except InvalidOrderStatusTransitionError as exc:
             raise _transition_error(exc) from exc
-        order_repository.update_status(order_id, machine.current.value)
+        WW_ORDER_STATUS_TRANSITIONS_TOTAL.labels(
+            previous_status,
+            machine.current.value,
+            "success",
+        ).inc()
+        record = order_repository.update_status(order_id, machine.current.value)
 
     target_status = WWOrderStatus.NEW
+    previous_status = machine.current.value
     try:
         machine.ensure_transition(target_status)
     except InvalidOrderStatusTransitionError as exc:
         raise _transition_error(exc) from exc
 
+    WW_ORDER_STATUS_TRANSITIONS_TOTAL.labels(
+        previous_status,
+        machine.current.value,
+        "success",
+    ).inc()
     order_repository.assign_courier(order_id, None)
     record = order_repository.update_status(order_id, machine.current.value)
+    tracker.success()
     return _serialize_order(record)
 
 
@@ -431,9 +479,11 @@ async def update_order_status(
 ) -> Order:
     """Transition an order to a new status."""
 
+    tracker = WWExportTracker("order_status_update")
     try:
         record = order_repository.get(order_id)
     except OrderNotFoundError as exc:
+        tracker.failure("order_not_found")
         error = build_error(
             status.HTTP_404_NOT_FOUND,
             title="Order not found",
@@ -445,9 +495,16 @@ async def update_order_status(
     new_status = payload.status if isinstance(payload.status, WWOrderStatus) else WWOrderStatus(payload.status)
     machine = OrderStateMachine.from_raw(record.status)
 
+    previous_status = machine.current.value
     try:
         machine.ensure_transition(new_status)
     except InvalidOrderStatusTransitionError as exc:
+        WW_ORDER_STATUS_TRANSITIONS_TOTAL.labels(
+            exc.current.value,
+            exc.new.value,
+            "failure",
+        ).inc()
+        tracker.failure("invalid_transition")
         error = build_error(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             title="Invalid order status transition",
@@ -456,5 +513,11 @@ async def update_order_status(
         )
         raise ProblemDetailException(error) from exc
 
+    WW_ORDER_STATUS_TRANSITIONS_TOTAL.labels(
+        previous_status,
+        machine.current.value,
+        "success",
+    ).inc()
     record = order_repository.update_status(order_id, machine.current.value)
+    tracker.success()
     return _serialize_order(record)

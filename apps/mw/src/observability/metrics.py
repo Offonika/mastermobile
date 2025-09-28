@@ -1,6 +1,5 @@
 """Prometheus metrics helpers for the middleware services."""
 from __future__ import annotations
-
 from time import perf_counter
 from typing import Final
 
@@ -36,6 +35,79 @@ HTTP_REQUEST_DURATION_SECONDS: Final[Histogram] = Histogram(
     labelnames=("method", "status_code", "path"),
 )
 """Histogram measuring HTTP server latency distribution."""
+
+WW_EXPORT_ATTEMPTS_TOTAL: Final[Counter] = Counter(
+    "ww_export_attempts_total",
+    "Number of Walking Warehouse export operations that were attempted.",
+    labelnames=("operation",),
+)
+"""Counter tracking how often each Walking Warehouse export handler runs."""
+
+WW_EXPORT_SUCCESS_TOTAL: Final[Counter] = Counter(
+    "ww_export_success_total",
+    "Number of Walking Warehouse export operations that completed successfully.",
+    labelnames=("operation",),
+)
+"""Counter tracking successful Walking Warehouse export handler executions."""
+
+WW_EXPORT_FAILURE_TOTAL: Final[Counter] = Counter(
+    "ww_export_failure_total",
+    "Number of Walking Warehouse export operations that failed.",
+    labelnames=("operation", "reason"),
+)
+"""Counter tracking failed Walking Warehouse export handler executions grouped by reason."""
+
+WW_EXPORT_DURATION_SECONDS: Final[Histogram] = Histogram(
+    "ww_export_duration_seconds",
+    "Histogram of Walking Warehouse export handler execution time in seconds.",
+    labelnames=("operation", "outcome"),
+)
+"""Histogram tracking latency of Walking Warehouse export handlers by outcome."""
+
+WW_ORDER_STATUS_TRANSITIONS_TOTAL: Final[Counter] = Counter(
+    "ww_order_status_transitions_total",
+    "Number of Walking Warehouse order status transitions processed.",
+    labelnames=("from_status", "to_status", "result"),
+)
+"""Counter monitoring Walking Warehouse order status transition attempts and outcomes."""
+
+
+class WWExportTracker:
+    """Helper recording Prometheus metrics for Walking Warehouse export operations."""
+
+    __slots__ = ("_operation", "_started", "_completed")
+
+    def __init__(self, operation: str) -> None:
+        self._operation = operation
+        self._started = perf_counter()
+        self._completed = False
+        WW_EXPORT_ATTEMPTS_TOTAL.labels(operation=operation).inc()
+
+    def success(self) -> None:
+        """Record a successful export execution."""
+
+        if self._completed:
+            return
+        elapsed = perf_counter() - self._started
+        WW_EXPORT_SUCCESS_TOTAL.labels(operation=self._operation).inc()
+        WW_EXPORT_DURATION_SECONDS.labels(
+            operation=self._operation, outcome="success"
+        ).observe(elapsed)
+        self._completed = True
+
+    def failure(self, reason: str) -> None:
+        """Record a failed export execution with the provided reason."""
+
+        if self._completed:
+            return
+        elapsed = perf_counter() - self._started
+        WW_EXPORT_FAILURE_TOTAL.labels(
+            operation=self._operation, reason=reason
+        ).inc()
+        WW_EXPORT_DURATION_SECONDS.labels(
+            operation=self._operation, outcome="failure"
+        ).observe(elapsed)
+        self._completed = True
 
 
 class RequestMetricsMiddleware(BaseHTTPMiddleware):
@@ -83,5 +155,11 @@ __all__ = [
     "RequestMetricsMiddleware",
     "STT_JOBS_TOTAL",
     "STT_JOB_DURATION_SECONDS",
+    "WW_EXPORT_ATTEMPTS_TOTAL",
+    "WW_EXPORT_SUCCESS_TOTAL",
+    "WW_EXPORT_FAILURE_TOTAL",
+    "WW_EXPORT_DURATION_SECONDS",
+    "WW_ORDER_STATUS_TRANSITIONS_TOTAL",
+    "WWExportTracker",
     "register_metrics",
 ]
