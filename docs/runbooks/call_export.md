@@ -35,10 +35,14 @@
     панель в папке `MasterMobile / Integrations` с прогрессом, длительностью и статусами.
   - [STT SLO & Alerts](https://grafana.example.com/d/mastermobile-stt/stt-alerts?orgId=1) —
     витрина `Speech-to-Text` для отслеживания SLO, burn rate и алертов `Alertmanager`.
-- **Прометей:** ключевые запросы
+- **Прометей:** ключевые запросы и метрики
   - Общее количество запусков: `sum by (status) (call_export_runs_total{environment="prod"})`
+  - Время выполнения run: `histogram_quantile(0.95, sum(rate(call_export_duration_seconds_bucket{environment="prod"}[30m])) by (le))`
+  - Загрузки аудио: `sum by (status) (rate(call_export_downloads_total{environment="prod"}[5m]))`
+  - Время скачивания: `histogram_quantile(0.90, sum(rate(call_export_download_duration_seconds_bucket{environment="prod"}[15m])) by (le))`
+  - Ретраи по стадиям: `sum by (stage, reason) (increase(call_export_retry_total{environment="prod"}[1h]))`
+  - DLQ-эскалации: `sum by (stage, reason) (increase(call_export_dlq_total{environment="prod"}[1h]))`
   - Стоимость транскрипций: `call_export_cost_total{environment="prod"}`
-  - Дополнительно: `call_export_duration_seconds`, `call_transcripts_total`, `call_export_retry_total`.
   - SLO-метрика: `call_export_success_total{environment="prod"}` (см. раздел «SLO»).
 - **Логи:** `docker compose logs -f app | jq 'select(.module=="call_export")'` — ищем `stage`, `call_id`, `error`.
 - **Отчёты:** S3/объектное хранилище `exports/<period>/reports/summary_<period>.md` и CSV реестр
@@ -62,10 +66,10 @@
 | --- | --- | --- |
 | `CallExportRunFailed` | `call_export_runs_total{status="error"} > 0` за 15 мин | Пейдж on-call, проверить логи и статус run. |
 | `CallExportCostBudget` | `call_export_cost_total` > бюджет +20% (5 мин подряд) | Уведомить продакта, подтвердить тариф Whisper. |
-| `CallExportRetryStorm` | `call_export_retry_total` > 50 за 15 мин | Проверить ошибки Bitrix24/Whisper, включить throttling. |
+| `CallExportRetryStorm` | `increase(call_export_retry_total{stage="download"}[15m]) > 50` | Проверить ошибки Bitrix24/Whisper, включить throttling. |
 | `CallExport5xxGrowth` | `rate(call_export_transcribe_failures_total{code=~"5.."}[10m]) > 0.2` и рост на 50 % против `1h` среднего | Верифицировать статус Whisper/STT, переключить регион, включить деградационный режим. |
-| `CallExportDLQSpike` | `increase(events_dlq_total{queue="call_export"}[15m]) > 10` | Проверить DLQ в Grafana, очистить/перепроиграть сообщения после анализа. |
-| `CallExportJobLongRunning` | `max_over_time(call_export_duration_seconds{status="running"}[30m]) > 1800` | Уточнить зависание в оркестраторе, оценить необходимость ручного завершения job. |
+| `CallExportDLQSpike` | `increase(call_export_dlq_total{stage="download"}[15m]) > 10` | Проверить DLQ в Grafana, очистить/перепроиграть сообщения после анализа. |
+| `CallExportJobLongRunning` | `histogram_quantile(0.99, sum(rate(call_export_duration_seconds_bucket{status=~"success|error"}[30m])) by (le)) > 1800` | Уточнить зависание в оркестраторе, оценить необходимость ручного завершения job. |
 | `Bitrix24RateLimitWarn` | `integration.b24.rate_limited` события > 10/15 мин | Следовать playbook по лимитам Bitrix24. |
 
 Алерты транслируются в `#ops-alerts` и PagerDuty (SEV-2 по умолчанию).
@@ -106,7 +110,7 @@
   Затем выполнить `python -m jobs.call_export --resume --run-id <run_id>`.
 - **Повторный запуск периода:** только после подтверждения отсутствия дублей в `call_exports`. Используйте `--dry-run` для
   предварительной оценки стоимости и времени.
-- **DLQ:** если запись ушла в DLQ после 24 часов ретраев — вынести в отдельный тикет, обновить отчёт и уведомить заказчика.
+- **DLQ:** если запись ушла в DLQ после 24 часов ретраев — вынести в отдельный тикет, обновить отчёт и уведомить заказчика. Значение `call_export_dlq_total{stage="download"}` фиксирует каждую эскалацию.
 
 ## Связанные материалы
 - PRD: [Тексты звонков Bitrix24](../PRD%20—%20Тексты%20звонков%20Bitrix24.md)

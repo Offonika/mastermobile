@@ -23,6 +23,48 @@ STT_JOB_DURATION_SECONDS: Final[Histogram] = Histogram(
 )
 """Histogram that records how long a job spent in the worker pipeline."""
 
+CALL_EXPORT_RUNS_TOTAL: Final[Counter] = Counter(
+    "call_export_runs_total",
+    "Total number of call export runs executed grouped by final status.",
+    labelnames=("status",),
+)
+"""Counter that records how many call export runs reached each status."""
+
+CALL_EXPORT_DURATION_SECONDS: Final[Histogram] = Histogram(
+    "call_export_duration_seconds",
+    "Histogram of call export run durations in seconds grouped by final status.",
+    labelnames=("status",),
+)
+"""Histogram that captures the run time of call export executions."""
+
+CALL_EXPORT_DOWNLOADS_TOTAL: Final[Counter] = Counter(
+    "call_export_downloads_total",
+    "Total number of call recording download attempts grouped by outcome.",
+    labelnames=("status",),
+)
+"""Counter tracking download attempts for Bitrix24 call recordings."""
+
+CALL_EXPORT_DOWNLOAD_DURATION_SECONDS: Final[Histogram] = Histogram(
+    "call_export_download_duration_seconds",
+    "Histogram of call recording download durations in seconds grouped by outcome.",
+    labelnames=("status",),
+)
+"""Histogram measuring download latency for Bitrix24 recordings."""
+
+CALL_EXPORT_RETRY_TOTAL: Final[Counter] = Counter(
+    "call_export_retry_total",
+    "Total number of retry attempts performed by the call export workflow.",
+    labelnames=("stage", "reason"),
+)
+"""Counter that records retry activity across call export workflow stages."""
+
+CALL_EXPORT_DLQ_TOTAL: Final[Counter] = Counter(
+    "call_export_dlq_total",
+    "Total number of call export workflow items moved to the DLQ.",
+    labelnames=("stage", "reason"),
+)
+"""Counter capturing DLQ escalations within the call export workflow."""
+
 HTTP_REQUESTS_TOTAL: Final[Counter] = Counter(
     "http_requests_total",
     "Total number of HTTP requests processed by the middleware service.",
@@ -78,6 +120,12 @@ def register_metrics(app: FastAPI) -> None:
 
 
 __all__ = [
+    "CALL_EXPORT_DLQ_TOTAL",
+    "CALL_EXPORT_DOWNLOADS_TOTAL",
+    "CALL_EXPORT_DOWNLOAD_DURATION_SECONDS",
+    "CALL_EXPORT_DURATION_SECONDS",
+    "CALL_EXPORT_RETRY_TOTAL",
+    "CALL_EXPORT_RUNS_TOTAL",
     "HTTP_REQUESTS_TOTAL",
     "HTTP_REQUEST_DURATION_SECONDS",
     "RequestMetricsMiddleware",

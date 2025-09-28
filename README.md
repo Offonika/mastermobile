@@ -20,6 +20,7 @@
 > Для запуска только зависимостей можно выполнить `docker compose up -d db redis`.
 > Метрики Prometheus для FastAPI-приложения доступны по адресу `http://localhost:8000/metrics`.
 > Экспортер фонового STT-воркера публикует метрики на `http://localhost:${WORKER_METRICS_PORT:-9100}/metrics`.
+> Основные метрики пайплайна `call_export`: `call_export_runs_total`, `call_export_duration_seconds`, `call_export_downloads_total`, `call_export_download_duration_seconds`, `call_export_retry_total`, `call_export_dlq_total`.
 
 ## Smoke-тест распознавания речи
 
