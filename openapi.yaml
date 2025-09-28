@@ -1378,14 +1378,13 @@ components:
       type: string
       description: Status values for Walking Warehouse instant orders.
       enum:
-        - DRAFT
-        - PENDING_APPROVAL
-        - APPROVED
-        - DELIVERED
-        - CANCELLED
+        - NEW
+        - ASSIGNED
+        - IN_TRANSIT
+        - DONE
         - REJECTED
-        - TIMEOUT_ESCALATED
-      example: APPROVED
+        - DECLINED
+      example: ASSIGNED
     OrderItem:
       type: object
       required:
@@ -1557,6 +1556,9 @@ components:
           type: string
           nullable: true
           description: Identifier of the courier or null to unassign.
+        decline:
+          type: boolean
+          description: Set to true when the courier declines the assignment.
     OrderStatusUpdate:
       type: object
       required:
