@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import AsyncIterable
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock
@@ -199,6 +200,68 @@ async def test_download_workflow_skips_when_already_downloaded(
     assert route.call_count == 0
     assert record.attempts == 3
     assert record.status is CallRecordStatus.DOWNLOADED
+
+
+def _http_status_error(status_code: int, message: str) -> httpx.HTTPStatusError:
+    request = httpx.Request("GET", "https://example.bitrix24.ru/rest/recording")
+    response = httpx.Response(status_code, request=request)
+    return httpx.HTTPStatusError(message, request=request, response=response)
+
+
+@pytest.mark.asyncio
+async def test_download_marks_missing_audio_after_limit_on_404() -> None:
+    """Final retry on 404 switches the record to missing audio without checksum."""
+
+    record = _call_record(status=CallRecordStatus.ERROR)
+    record.attempts = MAX_RETRY_ATTEMPTS - 1
+
+    storage = AsyncMock(spec=StorageService)
+    storage.store_call_recording = AsyncMock()
+
+    def failing_stream_factory(call_id: str, record_id: str | None) -> AsyncIterable[bytes]:  # type: ignore[override]
+        raise _http_status_error(404, "Recording not found")
+
+    with pytest.raises(httpx.HTTPStatusError):
+        await download_call_record(
+            record,
+            storage=storage,
+            stream_factory=failing_stream_factory,
+        )
+
+    assert record.status is CallRecordStatus.MISSING_AUDIO
+    assert record.attempts == MAX_RETRY_ATTEMPTS
+    assert record.checksum is None
+    assert record.storage_path is None
+    assert record.error_code == "http_404"
+    storage.store_call_recording.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_download_marks_missing_audio_after_limit_on_403() -> None:
+    """Forbidden response after exhausting retries marks the record as missing audio."""
+
+    record = _call_record(status=CallRecordStatus.ERROR)
+    record.attempts = MAX_RETRY_ATTEMPTS - 1
+
+    storage = AsyncMock(spec=StorageService)
+    storage.store_call_recording = AsyncMock()
+
+    def failing_stream_factory(call_id: str, record_id: str | None) -> AsyncIterable[bytes]:  # type: ignore[override]
+        raise _http_status_error(403, "Forbidden")
+
+    with pytest.raises(httpx.HTTPStatusError):
+        await download_call_record(
+            record,
+            storage=storage,
+            stream_factory=failing_stream_factory,
+        )
+
+    assert record.status is CallRecordStatus.MISSING_AUDIO
+    assert record.attempts == MAX_RETRY_ATTEMPTS
+    assert record.checksum is None
+    assert record.storage_path is None
+    assert record.error_code == "http_403"
+    storage.store_call_recording.assert_not_awaited()
 
 
 @pytest.mark.asyncio

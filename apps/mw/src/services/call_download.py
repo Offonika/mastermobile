@@ -10,6 +10,7 @@ import httpx
 from loguru import logger
 
 from apps.mw.src.db.models import CallRecord, CallRecordStatus
+from apps.mw.src.domain import register_http_failure
 from apps.mw.src.integrations.b24.client import MAX_RETRY_ATTEMPTS
 from apps.mw.src.integrations.b24.downloader import stream_recording
 from apps.mw.src.services.storage import StorageResult, StorageService
@@ -36,9 +37,10 @@ async def download_call_record(
         return None
 
     if record.attempts >= MAX_RETRY_ATTEMPTS:
-        record.status = CallRecordStatus.ERROR
-        record.error_code = "max_attempts"
-        record.error_message = "Maximum download attempts exceeded"
+        if record.status is not CallRecordStatus.MISSING_AUDIO:
+            record.status = CallRecordStatus.ERROR
+            record.error_code = "max_attempts"
+            record.error_message = "Maximum download attempts exceeded"
         record.last_attempt_at = datetime.now(tz=timezone.utc)
         logger.bind(
             event="call_export.download",
@@ -52,13 +54,13 @@ async def download_call_record(
     storage = storage or StorageService()
 
     record.status = CallRecordStatus.DOWNLOADING
-    record.attempts += 1
     record.last_attempt_at = datetime.now(tz=timezone.utc)
+    attempt_number = record.attempts + 1
     logger.bind(
         event="call_export.download",
         stage="start",
         call_id=record.call_id,
-        attempt=record.attempts,
+        attempt=attempt_number,
     ).info("Starting call download")
 
     try:
@@ -70,7 +72,7 @@ async def download_call_record(
             record_identifier=_resolve_record_identifier(record),
         )
     except httpx.HTTPStatusError as exc:  # pragma: no cover - defensive guard
-        _handle_failure(record, f"http_{exc.response.status_code}", str(exc))
+        _register_http_failure(record, exc)
         raise
     except httpx.HTTPError as exc:
         _handle_failure(record, exc.__class__.__name__, str(exc))
@@ -79,6 +81,7 @@ async def download_call_record(
         _handle_failure(record, exc.__class__.__name__, str(exc))
         raise
 
+    record.attempts = attempt_number
     record.storage_path = result.path
     record.checksum = result.checksum
     record.status = CallRecordStatus.DOWNLOADED
@@ -98,9 +101,26 @@ async def download_call_record(
 
 
 def _handle_failure(record: CallRecord, code: str, message: str) -> None:
+    record.attempts += 1
+    record.last_attempt_at = datetime.now(tz=timezone.utc)
     record.status = CallRecordStatus.ERROR
     record.error_code = code
     record.error_message = message
+    _log_failure(record, code)
+
+
+def _register_http_failure(record: CallRecord, exc: httpx.HTTPStatusError) -> None:
+    status_code = exc.response.status_code
+    register_http_failure(
+        record,
+        status_code=status_code,
+        message=str(exc),
+        max_attempts=MAX_RETRY_ATTEMPTS,
+    )
+    _log_failure(record, f"http_{status_code}")
+
+
+def _log_failure(record: CallRecord, code: str) -> None:
     logger.bind(
         event="call_export.download",
         stage="error",
