@@ -2,19 +2,22 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, status
 from redis import Redis
 from sqlalchemy.orm import Session
 
 from apps.mw.src.api.dependencies import (
+    Principal,
     ProblemDetailException,
     build_error,
-    provide_request_id,
+    require_admin,
 )
 from apps.mw.src.api.schemas import STTDLQRequeueResponse, STTJobPayload
 from apps.mw.src.db.session import get_session
 from apps.mw.src.services.stt_queue import STTQueue, create_redis_client
+from loguru import logger
 
 router = APIRouter(
     prefix="/api/v1/admin/stt",
@@ -42,10 +45,11 @@ def requeue_stt_dlq_entry(
     *,
     session: Session = Depends(get_session),
     queue: STTQueue = Depends(_get_stt_queue),
-    request_id: str = Depends(provide_request_id),
+    admin: Principal = Depends(require_admin),
 ) -> STTDLQRequeueResponse:
     """Requeue a DLQ job by identifier returning the restored metadata."""
 
+    request_id = admin.request_id
     entry = queue.requeue_dlq_entry(session, entry_id)
     if entry is None:
         raise ProblemDetailException(
@@ -56,6 +60,19 @@ def requeue_stt_dlq_entry(
                 request_id=request_id,
             )
         )
+
+    audit_context = {
+        "audit": True,
+        "event": "stt_dlq_requeue",
+        "entry_id": entry_id,
+        "who": admin.subject,
+        "when": datetime.now(tz=UTC).isoformat(),
+        "why": "manual_requeue",
+        "request_id": request_id,
+        "call_id": entry.job.call_id,
+        "record_id": entry.job.record_id,
+    }
+    logger.bind(**audit_context).info("Admin requeued STT DLQ entry", reason=entry.reason)
 
     job = entry.job
     return STTDLQRequeueResponse(

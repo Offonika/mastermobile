@@ -1,8 +1,9 @@
-"""Reusable FastAPI dependencies for headers and idempotency handling."""
+"""Reusable FastAPI dependencies for headers, security and idempotency."""
 from __future__ import annotations
 
 import hashlib
 import threading
+from dataclasses import dataclass
 from typing import Annotated
 from uuid import uuid4
 
@@ -21,6 +22,10 @@ class ProblemDetailException(Exception):
 
 _RequestIdHeader = Annotated[str | None, Header(alias="X-Request-Id", max_length=128)]
 _IdempotencyKeyHeader = Annotated[str, Header(alias="Idempotency-Key", max_length=128)]
+_PrincipalIdHeader = Annotated[str | None, Header(alias="X-Principal-Id", max_length=128)]
+_PrincipalRolesHeader = Annotated[
+    str | None, Header(alias="X-Principal-Roles", max_length=512)
+]
 
 _IDEMPOTENCY_CACHE: dict[tuple[str, str, str], str] = {}
 _IDEMPOTENCY_LOCK = threading.Lock()
@@ -105,3 +110,57 @@ def reset_idempotency_cache() -> None:
 
     with _IDEMPOTENCY_LOCK:
         _IDEMPOTENCY_CACHE.clear()
+
+
+@dataclass(slots=True, frozen=True)
+class Principal:
+    """Authenticated principal extracted from request headers."""
+
+    subject: str
+    roles: frozenset[str]
+    request_id: str
+
+
+def _parse_roles(raw_roles: str | None) -> frozenset[str]:
+    if not raw_roles:
+        return frozenset()
+    roles = {role.strip().lower() for role in raw_roles.split(",") if role.strip()}
+    return frozenset(roles)
+
+
+def get_current_principal(
+    principal_id: _PrincipalIdHeader = None,
+    roles_header: _PrincipalRolesHeader = None,
+    request_id: str = Depends(provide_request_id),
+) -> Principal:
+    """Build a :class:`Principal` from trusted proxy headers."""
+
+    subject = (principal_id or "").strip()
+    if not subject:
+        raise ProblemDetailException(
+            build_error(
+                status.HTTP_401_UNAUTHORIZED,
+                title="Missing principal identifier",
+                detail="Header X-Principal-Id is required for authenticated requests.",
+                request_id=request_id,
+            )
+        )
+
+    roles = _parse_roles(roles_header)
+    return Principal(subject=subject, roles=roles, request_id=request_id)
+
+
+def require_admin(principal: Principal = Depends(get_current_principal)) -> Principal:
+    """Ensure the current principal carries the administrator role."""
+
+    if "admin" not in principal.roles:
+        raise ProblemDetailException(
+            build_error(
+                status.HTTP_403_FORBIDDEN,
+                title="Admin privileges required",
+                detail="This endpoint is restricted to administrator principals.",
+                request_id=principal.request_id,
+            )
+        )
+
+    return principal
