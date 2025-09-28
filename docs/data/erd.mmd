@@ -54,6 +54,18 @@ erDiagram
         text correlation_id "CorrelationId (уникальный, nullable)"
     }
 
+    DELIVERY_LOGS {
+        bigserial id PK "Запись журнала доставки"
+        uuid order_id FK "FK → delivery_orders.order_id"
+        uuid assignment_id FK "FK → delivery_assignments.assignment_id (nullable)"
+        uuid courier_id FK "FK → couriers.courier_id (nullable)"
+        text status "Статус сообщения: info|success|warning|error"
+        text event_type "Тип события (machine-readable)"
+        text message "Человеко-читаемое описание (nullable)"
+        jsonb payload "Детали события (всегда содержит kmp4_exported:boolean)"
+        timestamptz created_at "Создано (UTC)"
+    }
+
     CALL_EXPORTS {
         uuid run_id PK "Идентификатор запуска (UUID)"
         timestamptz period_from "Начало периода выгрузки (UTC)"
