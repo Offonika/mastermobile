@@ -21,19 +21,18 @@ from apps.mw.src.config import Settings, get_settings
 from apps.mw.src.services.stt_queue import STTJob
 
 try:  # pragma: no cover - import wiring depends on optional dependencies
-    from apps.mw.src.services.stt_worker import (
+    from apps.mw.src.services.stt_providers import (
         PlaceholderTranscriber as WorkerPlaceholderTranscriber,
+        ProviderRouter as WorkerProviderRouter,
         SpeechToTextProvider as WorkerSpeechToTextProvider,
         TranscriptionError as WorkerTranscriptionError,
+        TranscriptionResult as WorkerTranscriptionResult,
     )
 except ModuleNotFoundError as exc:  # pragma: no cover - fallback for optional deps
     if exc.name != "prometheus_client":
         raise
 
-    @dataclass(slots=True)
-    class TranscriptionResult:
-        transcript_path: str
-        language: str | None = None
+    TranscriptionResult = WorkerTranscriptionResult
 
     class TranscriptionError(Exception):
         """Raised when a transcription attempt failed."""
@@ -64,11 +63,22 @@ except ModuleNotFoundError as exc:  # pragma: no cover - fallback for optional d
                 )
             return TranscriptionResult(transcript_path=str(target), language=getattr(job, "language", None))
 
+    class ProviderRouter:
+        """Fallback router that always returns a placeholder transcriber."""
+
+        def __init__(self, *, settings: Settings) -> None:  # type: ignore[override]
+            transcripts_dir = Path(settings.local_storage_dir) / "transcripts"
+            self._delegate = PlaceholderTranscriber(transcripts_dir)
+
+        def transcribe(self, job: Any) -> TranscriptionResult:  # pragma: no cover - simple delegation
+            return self._delegate.transcribe(job)
+
 else:  # pragma: no cover - main path when optional deps available
 
     TranscriptionError = WorkerTranscriptionError
     SpeechToTextProvider = WorkerSpeechToTextProvider
     PlaceholderTranscriber = WorkerPlaceholderTranscriber
+    ProviderRouter = WorkerProviderRouter
 
 DEFAULT_PATTERNS = ("*.wav", "*.mp3", "*.m4a", "*.flac", "*.ogg")
 DEFAULT_REPORT_BASENAME = "stt_smoke_report"
@@ -97,8 +107,11 @@ class FileReport:
 def build_transcriber(settings: Settings) -> SpeechToTextProvider:
     """Return the STT provider instance based on configuration."""
 
-    transcripts_dir = Path(settings.local_storage_dir) / "transcripts"
-    return PlaceholderTranscriber(transcripts_dir)
+    try:
+        return ProviderRouter(settings=settings)
+    except TypeError:
+        transcripts_dir = Path(settings.local_storage_dir) / "transcripts"
+        return PlaceholderTranscriber(transcripts_dir)
 
 
 def gather_playlist(playlist_dir: Path, patterns: Iterable[str]) -> list[Path]:
