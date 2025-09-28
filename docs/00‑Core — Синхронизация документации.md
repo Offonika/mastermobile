@@ -171,6 +171,18 @@ Status‑Dictionary v1
 3.2. Instant Orders (быстрые продажи курьера)
  DRAFT → PENDING_APPROVAL → APPROVED → (DELIVERED|CANCELLED)
  Отказы: REJECTED, эскалация тайм‑аута: TIMEOUT_ESCALATED.
+ KMP4 использует нормализованные коды статусов Walking Warehouse. Маппинг, закреплённый в `apps.mw` и тестах:
+
+| WW status | KMP4 code |
+| --- | --- |
+| NEW | new |
+| ASSIGNED | assigned_to_courier |
+| IN_TRANSIT | courier_on_route |
+| DONE | completed |
+| REJECTED | cancelled_by_manager |
+| DECLINED | declined_by_courier |
+
+Изменения словаря требуют обновления `WW_TO_KMP4_STATUS` и документации в `1c/README.md`.
 3.3. Возвраты (return / return_line)
 Подпроцесс: pending → accepted | rejected (cancelled — отмена заявки до обработки).
 Событие return_ready в MW переводит возврат в pending.

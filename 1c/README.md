@@ -7,6 +7,21 @@ This directory collects artifacts exported from the 1C platform that are consume
 
 The tree is designed to let automation discover configuration and vendor deliverables without relying on historical paths such as `core_subset/` or `src/`.
 
+## Walking Warehouse status mapping
+
+KMP4 expects Walking Warehouse order states to be normalized before upload. The middleware exports the following one-to-one mapping and fails fast when an unknown status appears:
+
+| WW status | KMP4 code | Description |
+| --- | --- | --- |
+| `NEW` | `new` | Order registered in MW and not yet assigned. |
+| `ASSIGNED` | `assigned_to_courier` | Courier picked up the task and is preparing the order. |
+| `IN_TRANSIT` | `courier_on_route` | Order is on the way to the customer. |
+| `DONE` | `completed` | Delivery finished, including cash handling. |
+| `REJECTED` | `cancelled_by_manager` | Order cancelled after manual review or customer refusal. |
+| `DECLINED` | `declined_by_courier` | Courier declined the task; MW re-queues the order. |
+
+The same table powers the `apps.mw` KMP4 export and is covered by automated tests to ensure the mapping stays in sync with the source enum.
+
 ## Automation helpers
 
 > **Prerequisites**
