@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import sys
 from pathlib import Path
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, Iterator, List
 
 MANIFEST: Dict[str, Dict[str, object]] = {
     "config_dump_txt/Документ.ВозвратТоваровОтПокупателя.Макет.Накладная.Макет.mxl": {
@@ -320,6 +321,10 @@ MANIFEST: Dict[str, Dict[str, object]] = {
         "size": 12688,
         "sha256": "b2e6cfc0fb082ddc5d2c7b86c5d202b16ee7ae61a14cde048dbe25b7ca5ece65"
     },
+    "external/kmp4_delivery_report/fixtures/valid_delivery_report.csv": {
+        "size": 235,
+        "sha256": "7a0c689e2cc4d3bc065b3bf06fee97d3a100f08df5dfee465b0e411f3c05b343"
+    },
     "external/kmp4_delivery_report/src/КМП4/Templates/ПрайсЛистРуб.xml": {
         "size": 1290,
         "sha256": "94cc83c3173fae609cceba0d16b84a05aa9cfa596ed0dfdac3a8955c147220d4"
@@ -330,6 +335,22 @@ MANIFEST: Dict[str, Dict[str, object]] = {
     }
 }
 
+TEN_MEBIBYTES = 10 * 1024 * 1024
+ALLOWED_CONTROL_CODES = {0x09, 0x0A, 0x0D}
+KMP4_MAGIC_HEADER = ["#KMP4_DELIVERY_REPORT", "v1"]
+KMP4_REQUIRED_COLUMNS = [
+    "order_id",
+    "title",
+    "customer_name",
+    "status_code",
+    "total_amount",
+    "currency_code",
+    "courier_id",
+    "notes",
+    "created_at",
+    "updated_at",
+]
+
 def sha256sum(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open('rb') as handle:
@@ -338,12 +359,102 @@ def sha256sum(path: Path) -> str:
     return digest.hexdigest()
 
 
+def check_kmp4_build_artifact(
+    repo_root: Path, *, size_limit: int = TEN_MEBIBYTES
+) -> List[str]:
+    """Ensure the packaged KMP4 delivery report is present and under the limit."""
+
+    errors: List[str] = []
+    artifact = repo_root / 'build' / '1c' / 'kmp4_delivery_report.epf'
+    if not artifact.exists():
+        errors.append(
+            "Missing build artifact: build/1c/kmp4_delivery_report.epf. "
+            "Run `make 1c-pack-kmp4` to regenerate it before verifying."
+        )
+        return errors
+
+    size = artifact.stat().st_size
+    if size >= size_limit:
+        errors.append(
+            "build/1c/kmp4_delivery_report.epf exceeds the 10 MiB limit; "
+            "regenerate the package or prune unused assets."
+        )
+    return errors
+
+
+def iter_kmp4_csv_files(base: Path) -> Iterator[Path]:
+    """Yield CSV artifacts that should comply with the KMP4 export contract."""
+
+    csv_root = base / 'external' / 'kmp4_delivery_report'
+    if not csv_root.exists():
+        return
+    for path in csv_root.rglob('*.csv'):
+        if path.is_file():
+            yield path
+
+
+def _detect_forbidden_characters(path: Path, payload: str) -> List[str]:
+    errors: List[str] = []
+    line = 1
+    column = 1
+    for char in payload:
+        code = ord(char)
+        if char == '\n':
+            line += 1
+            column = 1
+            continue
+        if char == '\r':
+            column = 1
+            continue
+        if code < 32 and code not in ALLOWED_CONTROL_CODES:
+            errors.append(
+                f"Forbidden control character U+{code:04X} at line {line}, column {column} in {path.as_posix()}."
+            )
+        column += 1
+    return errors
+
+
+def validate_kmp4_csv_file(path: Path) -> List[str]:
+    """Validate forbidden characters and header structure for a CSV export."""
+
+    errors: List[str] = []
+    text = path.read_text(encoding='utf-8-sig')
+    errors.extend(_detect_forbidden_characters(path, text))
+    if errors:
+        return errors
+
+    rows = list(csv.reader(text.splitlines()))
+    if not rows:
+        return [f"CSV artifact is empty: {path}"]
+
+    magic_row = rows[0]
+    if magic_row != KMP4_MAGIC_HEADER:
+        errors.append(
+            f"Invalid KMP4 header in {path.as_posix()}: expected {KMP4_MAGIC_HEADER}, got {magic_row}."
+        )
+        return errors
+
+    if len(rows) < 2:
+        errors.append(f"CSV artifact {path} is missing the column header row.")
+        return errors
+
+    header_row = rows[1]
+    missing = [column for column in KMP4_REQUIRED_COLUMNS if column not in header_row]
+    if missing:
+        errors.append(
+            f"CSV artifact {path} is missing required columns: {', '.join(missing)}."
+        )
+    return errors
+
+
 def validate_tree(repo_root: Path) -> List[str]:
     errors: List[str] = []
     base = repo_root / '1c'
     if not base.exists():
         errors.append(f"Missing directory: {base}")
         return errors
+
+    errors.extend(check_kmp4_build_artifact(repo_root))
 
     for relative, metadata in sorted(MANIFEST.items()):
         expected_size = int(metadata['size'])
@@ -363,6 +474,9 @@ def validate_tree(repo_root: Path) -> List[str]:
             errors.append(
                 f"Hash mismatch for {relative}: expected {expected_hash}, got {actual_hash}"
             )
+
+    for csv_path in iter_kmp4_csv_files(base):
+        errors.extend(validate_kmp4_csv_file(csv_path))
 
     expected_paths = {(base / rel).resolve() for rel in MANIFEST}
     actual_paths = {

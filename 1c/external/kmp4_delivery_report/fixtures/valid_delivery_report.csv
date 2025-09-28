@@ -1,0 +1,3 @@
+#KMP4_DELIVERY_REPORT,v1
+order_id,title,customer_name,status_code,total_amount,currency_code,courier_id,notes,created_at,updated_at
+12345,Order Title,John Doe,NEW,100.50,RUB,42,Initial sync,2024-05-01T12:00:00Z,2024-05-01T12:30:00Z
