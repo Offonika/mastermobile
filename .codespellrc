@@ -1,0 +1,3 @@
+[codespell]
+skip = ./.git,./.venv,./build,./dist,./docs/testing/error_catalog.json
+ignore-words-list = masterdata,mastermobile,redis

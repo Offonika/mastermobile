@@ -1,0 +1,33 @@
+# Configuration for the lychee link checker used in CI.
+# Reference: https://github.com/lycheeverse/lychee
+
+verbose = "info"
+no_progress = true
+cache = true
+max_cache_age = "1d"
+max_redirects = 10
+max_retries = 2
+retry_wait_time = 2
+timeout = 20
+user_agent = "mastermobile-docs-ci/1.0"
+accept = ["200", "206", "429"]
+include_verbatim = false
+include_mail = true
+scheme = ["http", "https", "mailto"]
+require_https = false
+
+# Skip generated directories and local cache folders that may contain
+# machine-specific links when running locally.
+exclude_path = [
+  "^\\.git/",
+  "^\\.venv/",
+  "^build/",
+  "^dist/"
+]
+
+# Ignore localhost references that are only valid in developer environments.
+exclude = [
+  "^https?://localhost",
+  "^https?://127\\.0\\.0\\.1",
+  "^https?://0\\.0\\.0\\.0"
+]
