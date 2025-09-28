@@ -21,6 +21,7 @@ from apps.mw.src.api.routes import call_registry as call_registry_router
 from apps.mw.src.api.routes import returns as returns_router
 from apps.mw.src.api.routes import stt_admin as stt_admin_router
 from apps.mw.src.api.routes import system as system_router
+from apps.mw.src.api.routes import ww_orders as ww_orders_router
 from apps.mw.src.api.schemas import Error, Health
 from apps.mw.src.health import get_health_payload
 from apps.mw.src.observability import (
@@ -42,6 +43,7 @@ app.include_router(b24_calls_router.router)
 app.include_router(call_registry_router.router)
 app.include_router(returns_router.router)
 app.include_router(stt_admin_router.router)
+app.include_router(ww_orders_router.router)
 
 
 @app.on_event("startup")

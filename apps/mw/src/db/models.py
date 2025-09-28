@@ -218,6 +218,90 @@ class ReturnLine(Base):
     return_: Mapped[Return] = relationship(back_populates="lines")
 
 
+class DeliveryOrderStatus(str, Enum):
+    """Lifecycle statuses for Walking Warehouse orders."""
+
+    DRAFT = "draft"
+    READY = "ready"
+    ASSIGNED = "assigned"
+    IN_TRANSIT = "in_transit"
+    DELIVERED = "delivered"
+    CANCELLED = "cancelled"
+
+
+class DeliveryOrder(Base):
+    """Walking Warehouse order persisted in the middleware database."""
+
+    __tablename__ = "ww_orders"
+
+    order_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+    )
+    external_id: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    status: Mapped[DeliveryOrderStatus] = mapped_column(
+        _enum_type(DeliveryOrderStatus, name="delivery_order_status", length=32),
+        nullable=False,
+        default=DeliveryOrderStatus.DRAFT,
+        server_default=DeliveryOrderStatus.DRAFT.value,
+    )
+    courier_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    payload_json: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONBType,
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    logs: Mapped[list["DeliveryLog"]] = relationship(
+        back_populates="order",
+        cascade="all, delete-orphan",
+    )
+
+
+class DeliveryLog(Base):
+    """Audit trail entry for Walking Warehouse order operations."""
+
+    __tablename__ = "delivery_logs"
+    __table_args__ = (
+        Index("idx_delivery_logs_order_created", "order_id", "created_at"),
+    )
+
+    log_id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"),
+        primary_key=True,
+        autoincrement=True,
+    )
+    order_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ww_orders.order_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    actor: Mapped[str] = mapped_column(Text, nullable=False)
+    action: Mapped[str] = mapped_column(Text, nullable=False)
+    payload_json: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONBType,
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    order: Mapped[DeliveryOrder] = relationship(back_populates="logs")
+
+
 class IntegrationLog(Base):
     """Structured integration log entry persisted in PostgreSQL."""
 

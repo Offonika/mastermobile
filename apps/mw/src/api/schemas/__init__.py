@@ -11,6 +11,14 @@ from .returns import (
     ReturnItem,
 )
 from .stt import STTDLQRequeueResponse, STTJobPayload
+from .ww import (
+    DeliveryLogEntry,
+    WWOrder,
+    WWOrderAssign,
+    WWOrderCreate,
+    WWOrderStatusChange,
+    WWOrderUpdate,
+)
 
 __all__ = [
     "Error",
@@ -21,6 +29,12 @@ __all__ = [
     "ReturnCreate",
     "ReturnCreateItem",
     "ReturnItem",
+    "DeliveryLogEntry",
+    "WWOrder",
+    "WWOrderAssign",
+    "WWOrderCreate",
+    "WWOrderStatusChange",
+    "WWOrderUpdate",
     "STTDLQRequeueResponse",
     "STTJobPayload",
 ]
