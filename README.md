@@ -174,6 +174,12 @@ calls = await list_calls(
 
 ## Документация
 
+### Walking Warehouse
+
+- [PRD — Ходячий склад](docs/PRD%20Ходячий%20склад.md)
+- [ONE-PAGER — Рюкзак курьера](docs/ONE-PAGER-%D0%A5%D0%BE%D0%B4%D1%8F%D1%87%D0%B8%D0%B9%D0%A0%D1%8E%D0%BA%D0%B7%D0%B0%D0%BA.md)
+- [Runbook: операционные логи](docs/runbooks/ww.md)
+
 ### B24 Transcribe
 
 - [PRD — Тексты звонков Bitrix24](docs/PRD%20—%20Тексты%20звонков%20Bitrix24.md)

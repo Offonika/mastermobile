@@ -11,6 +11,7 @@
 - Дополнительные поля: `module`, `function`, `line`, `duration_ms`, `error` (структура `{type, message, stack}`), `extra` (dict).
 - Логирование персональных данных запрещено. Включаем маскирование для телефонов, email, адресов; используем флаг `PII_MASKING_ENABLED`.
 - Хранение: Loki/ELK ≥ 30 дней, архив ≥ 180 дней для расследований.
+- Walking Warehouse: пошаговый runbook по логам — [docs/runbooks/ww.md](runbooks/ww.md).
 
 ## Метрики
 | Метрика | Тип | Labels | Цель |
