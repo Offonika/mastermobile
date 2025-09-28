@@ -1,0 +1,32 @@
+# Markdownlint configuration for MasterMobile docs CI
+# See https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+# for rule reference.
+
+# Enable all default rules, then selectively customize exceptions.
+default: true
+
+# Allow long lines in tables and code examples.
+MD013:
+  line_length: 120
+  heading_line_length: 120
+  code_block_line_length: 120
+  tables: false
+
+# Permit inline HTML for diagrams and complex embeds.
+MD033: false
+
+# Allow documents without an initial top-level heading (handled manually).
+MD041: false
+
+# Enforce dash-style unordered lists.
+MD004:
+  style: dash
+
+# Allow duplicate headings only across different sections with same parent.
+MD024:
+  siblings_only: true
+
+# Ensure fenced code blocks always specify a language when practical but
+# keep compatibility with legacy snippets.
+MD040:
+  code_blocks: true

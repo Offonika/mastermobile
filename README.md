@@ -1,5 +1,6 @@
 # MasterMobile — Middleware & Integrations (FastAPI)
 
+[![CI](https://github.com/Offonika/mastermobile/actions/workflows/ci.yml/badge.svg)](https://github.com/Offonika/mastermobile/actions/workflows/ci.yml)
 [![Docs CI](https://github.com/Offonika/mastermobile/actions/workflows/docs-ci.yml/badge.svg)](https://github.com/Offonika/mastermobile/actions/workflows/docs-ci.yml)
 
 ## Что это
@@ -20,6 +21,21 @@
 > Для запуска только зависимостей можно выполнить `docker compose up -d db redis`.
 > Метрики Prometheus для FastAPI-приложения доступны по адресу `http://localhost:8000/metrics`.
 > Экспортер фонового STT-воркера публикует метрики на `http://localhost:${WORKER_METRICS_PORT:-9100}/metrics`.
+
+## CI и Docs-CI
+
+Основной workflow [`ci.yml`](.github/workflows/ci.yml) запускает два набора проверок:
+
+- **Quality** — Python-инструменты (`make lint`, `make typecheck`, `make test` и STT smoke-плейлист при наличии ключей).
+- **Docs quality** — проверки документации и ссылок: `make docs-markdownlint`, `make docs-links`, `make docs-spellcheck` и смоук-тест `make docs-ci-smoke`, который подтверждает, что link-checker корректно ловит ошибочные URL.
+
+Для локального запуска docs-проверок доступны команды Makefile:
+
+- `make docs-markdownlint` — проверка Markdown по правилам из `.markdownlint.yml` (использует контейнер `ghcr.io/igorshubovych/markdownlint-cli`).
+- `make docs-links` — сканирование ссылок через `lychee` с конфигом `.lychee.toml` (контейнер `ghcr.io/lycheeverse/lychee`).
+- `make docs-spellcheck` — орфография через `codespell` c параметрами из `.codespellrc`.
+- `make docs-ci` — последовательный запуск всех проверок.
+- `make docs-ci-smoke` — временно создаёт тестовый markdown с «битой» ссылкой и убеждается, что `lychee` падает с ошибкой.
 
 ## Smoke-тест распознавания речи
 

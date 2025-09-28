@@ -59,3 +59,32 @@ jobs:
           name: stt-smoke-report
           path: ${{ steps.stt-smoke.outputs.report_path }}
           if-no-files-found: warn
+
+  docs-quality:
+    name: Docs quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install documentation tooling
+        run: make init
+
+      - name: Markdownlint
+        run: make docs-markdownlint
+
+      - name: Link checker
+        run: make docs-links
+
+      - name: Spellcheck
+        run: make docs-spellcheck
+
+      - name: Docs CI smoke test
+        run: make docs-ci-smoke
