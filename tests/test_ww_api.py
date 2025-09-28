@@ -349,6 +349,7 @@ async def test_create_order_replay_returns_cached_response(
     assert assign_response.status_code == 404
 
     assign_headers_existing = {"Idempotency-Key": f"assign-{uuid4()}"}
+    await _create_courier(api_client, "courier-301")
     order_id = (await _create_order(api_client, courier_id="courier-301")).json()["id"]
     assign_missing_courier = await api_client.post(
         f"/api/v1/ww/orders/{order_id}/assign",

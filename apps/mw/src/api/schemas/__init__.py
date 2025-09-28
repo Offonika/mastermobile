@@ -25,6 +25,14 @@ from .ww import (
     OrderUpdate,
     WWOrderStatus,
 )
+from .ww_reports import (
+    DeliveryReportResponse,
+    DeliveryReportRow,
+    DeliveryReportTotals,
+    KMP4ExportResponse,
+    KMP4Order,
+    KMP4OrderItem,
+)
 
 __all__ = [
     "Error",
@@ -49,4 +57,10 @@ __all__ = [
     "OrderStatusUpdate",
     "OrderUpdate",
     "WWOrderStatus",
+    "DeliveryReportResponse",
+    "DeliveryReportRow",
+    "DeliveryReportTotals",
+    "KMP4ExportResponse",
+    "KMP4Order",
+    "KMP4OrderItem",
 ]
