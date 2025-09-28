@@ -10,6 +10,10 @@ from .repositories import (
     WalkingWarehouseCourierRepository,
     WalkingWarehouseOrderRepository,
 )
+from .order_state_machine import (
+    InvalidOrderStatusTransitionError,
+    OrderStateMachine,
+)
 
 __all__ = [
     "CourierAlreadyExistsError",
@@ -20,4 +24,6 @@ __all__ = [
     "OrderRecord",
     "WalkingWarehouseCourierRepository",
     "WalkingWarehouseOrderRepository",
+    "InvalidOrderStatusTransitionError",
+    "OrderStateMachine",
 ]

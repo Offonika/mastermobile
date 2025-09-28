@@ -29,9 +29,11 @@ from apps.mw.src.api.schemas import (
 from apps.mw.src.integrations.ww import (
     CourierAlreadyExistsError,
     CourierNotFoundError,
+    InvalidOrderStatusTransitionError,
     OrderAlreadyExistsError,
     OrderItemRecord,
     OrderNotFoundError,
+    OrderStateMachine,
     WalkingWarehouseCourierRepository,
     WalkingWarehouseOrderRepository,
 )
@@ -324,7 +326,7 @@ async def assign_order(
             raise ProblemDetailException(error) from exc
 
     try:
-        record = order_repository.assign_courier(order_id, payload.courier_id)
+        record = order_repository.get(order_id)
     except OrderNotFoundError as exc:
         error = build_error(
             status.HTTP_404_NOT_FOUND,
@@ -334,6 +336,54 @@ async def assign_order(
         )
         raise ProblemDetailException(error) from exc
 
+    machine = OrderStateMachine.from_raw(record.status)
+
+    def _transition_error(exc: InvalidOrderStatusTransitionError) -> ProblemDetailException:
+        detail = (
+            f"Cannot transition order {order_id} from {exc.current} to {exc.new}."
+        )
+        error = build_error(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            title="Invalid order status transition",
+            detail=detail,
+            request_id=response.headers.get("X-Request-Id"),
+        )
+        return ProblemDetailException(error)
+
+    if payload.courier_id is not None:
+        try:
+            machine.ensure_transition(WWOrderStatus.ASSIGNED)
+        except InvalidOrderStatusTransitionError as exc:
+            raise _transition_error(exc) from exc
+
+        order_repository.assign_courier(order_id, payload.courier_id)
+        record = order_repository.update_status(order_id, machine.current.value)
+        return _serialize_order(record)
+
+    if payload.decline and record.courier_id is None:
+        error = build_error(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            title="Invalid assignment state",
+            detail="Cannot decline an order without an assigned courier.",
+            request_id=response.headers.get("X-Request-Id"),
+        )
+        raise ProblemDetailException(error)
+
+    if payload.decline:
+        try:
+            machine.ensure_transition(WWOrderStatus.DECLINED)
+        except InvalidOrderStatusTransitionError as exc:
+            raise _transition_error(exc) from exc
+        order_repository.update_status(order_id, machine.current.value)
+
+    target_status = WWOrderStatus.NEW
+    try:
+        machine.ensure_transition(target_status)
+    except InvalidOrderStatusTransitionError as exc:
+        raise _transition_error(exc) from exc
+
+    order_repository.assign_courier(order_id, None)
+    record = order_repository.update_status(order_id, machine.current.value)
     return _serialize_order(record)
 
 
@@ -358,10 +408,7 @@ async def update_order_status(
     """Transition an order to a new status."""
 
     try:
-        record = order_repository.update_status(
-            order_id,
-            payload.status.value if isinstance(payload.status, WWOrderStatus) else str(payload.status),
-        )
+        record = order_repository.get(order_id)
     except OrderNotFoundError as exc:
         error = build_error(
             status.HTTP_404_NOT_FOUND,
@@ -371,4 +418,19 @@ async def update_order_status(
         )
         raise ProblemDetailException(error) from exc
 
+    new_status = payload.status if isinstance(payload.status, WWOrderStatus) else WWOrderStatus(payload.status)
+    machine = OrderStateMachine.from_raw(record.status)
+
+    try:
+        machine.ensure_transition(new_status)
+    except InvalidOrderStatusTransitionError as exc:
+        error = build_error(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            title="Invalid order status transition",
+            detail=f"Cannot transition order {order_id} from {exc.current} to {exc.new}.",
+            request_id=response.headers.get("X-Request-Id"),
+        )
+        raise ProblemDetailException(error) from exc
+
+    record = order_repository.update_status(order_id, machine.current.value)
     return _serialize_order(record)

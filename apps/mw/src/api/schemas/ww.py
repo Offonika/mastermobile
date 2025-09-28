@@ -18,13 +18,12 @@ class WWBaseModel(BaseModel):
 class WWOrderStatus(str, Enum):
     """Statuses available for Walking Warehouse instant orders."""
 
-    DRAFT = "DRAFT"
-    PENDING_APPROVAL = "PENDING_APPROVAL"
-    APPROVED = "APPROVED"
-    DELIVERED = "DELIVERED"
-    CANCELLED = "CANCELLED"
+    NEW = "NEW"
+    ASSIGNED = "ASSIGNED"
+    IN_TRANSIT = "IN_TRANSIT"
+    DONE = "DONE"
     REJECTED = "REJECTED"
-    TIMEOUT_ESCALATED = "TIMEOUT_ESCALATED"
+    DECLINED = "DECLINED"
 
 
 class CourierCreate(WWBaseModel):
@@ -111,7 +110,7 @@ class OrderCreate(WWBaseModel):
     title: str = Field(description="Title of the order shown to the courier.")
     customer_name: str = Field(description="Customer name associated with the order.")
     status: WWOrderStatus = Field(
-        default=WWOrderStatus.DRAFT,
+        default=WWOrderStatus.NEW,
         description="Initial status of the order.",
     )
     courier_id: str | None = Field(
@@ -176,6 +175,10 @@ class OrderAssign(WWBaseModel):
     courier_id: str | None = Field(
         default=None,
         description="Identifier of the courier or null to unassign.",
+    )
+    decline: bool = Field(
+        default=False,
+        description="Set to true when the courier declines the assignment.",
     )
 
 

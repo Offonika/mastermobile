@@ -60,7 +60,7 @@ def _order_payload(order_id: str | None = None, courier_id: str | None = None, *
         "id": order_id,
         "title": "Grocery delivery",
         "customer_name": "Alice",
-        "status": "DRAFT",
+        "status": "NEW",
         "courier_id": courier_id,
         "currency_code": "RUB",
         "total_amount": "990.50",
@@ -126,10 +126,11 @@ async def test_order_lifecycle_happy_path(api_client: httpx.AsyncClient) -> None
     order = create_response.json()
     order_id = order["id"]
     assert order["courier_id"] == "courier-201"
+    assert order["status"] == "NEW"
 
     list_response = await api_client.get(
         "/api/v1/ww/orders",
-        params=[("status", "DRAFT"), ("q", "grocery")],
+        params=[("status", "NEW"), ("q", "grocery")],
     )
     assert list_response.status_code == 200
     orders = list_response.json()["items"]
@@ -166,15 +167,25 @@ async def test_order_lifecycle_happy_path(api_client: httpx.AsyncClient) -> None
     )
     assert assign_response.status_code == 200
     assert assign_response.json()["courier_id"] == "courier-202"
+    assert assign_response.json()["status"] == "ASSIGNED"
 
     status_headers = {"Idempotency-Key": f"status-{uuid4()}"}
     status_response = await api_client.post(
         f"/api/v1/ww/orders/{order_id}/status",
-        json={"status": "APPROVED"},
+        json={"status": "IN_TRANSIT"},
         headers=status_headers,
     )
     assert status_response.status_code == 200
-    assert status_response.json()["status"] == "APPROVED"
+    assert status_response.json()["status"] == "IN_TRANSIT"
+
+    done_headers = {"Idempotency-Key": f"done-{uuid4()}"}
+    done_response = await api_client.post(
+        f"/api/v1/ww/orders/{order_id}/status",
+        json={"status": "DONE"},
+        headers=done_headers,
+    )
+    assert done_response.status_code == 200
+    assert done_response.json()["status"] == "DONE"
 
 
 @pytest.mark.asyncio
@@ -219,7 +230,65 @@ async def test_error_scenarios(api_client: httpx.AsyncClient) -> None:
     status_headers = {"Idempotency-Key": f"status-{uuid4()}"}
     status_missing = await api_client.post(
         f"/api/v1/ww/orders/{uuid4()}/status",
-        json={"status": "DELIVERED"},
+        json={"status": "IN_TRANSIT"},
         headers=status_headers,
     )
     assert status_missing.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_invalid_status_transition_returns_422(api_client: httpx.AsyncClient) -> None:
+    await _create_courier(api_client, "courier-401")
+    order_id = (await _create_order(api_client, courier_id="courier-401")).json()["id"]
+
+    status_headers = {"Idempotency-Key": f"status-{uuid4()}"}
+    invalid_transition = await api_client.post(
+        f"/api/v1/ww/orders/{order_id}/status",
+        json={"status": "DONE"},
+        headers=status_headers,
+    )
+    assert invalid_transition.status_code == 422
+    body = invalid_transition.json()
+    assert body["title"] == "Invalid order status transition"
+
+
+@pytest.mark.asyncio
+async def test_assignment_decline_resets_order_status(api_client: httpx.AsyncClient) -> None:
+    await _create_courier(api_client, "courier-501")
+    order_id = (await _create_order(api_client, courier_id="courier-501")).json()["id"]
+
+    assign_headers = {"Idempotency-Key": f"assign-{uuid4()}"}
+    assign_response = await api_client.post(
+        f"/api/v1/ww/orders/{order_id}/assign",
+        json={"courier_id": "courier-501"},
+        headers=assign_headers,
+    )
+    assert assign_response.status_code == 200
+    assert assign_response.json()["status"] == "ASSIGNED"
+
+    decline_headers = {"Idempotency-Key": f"decline-{uuid4()}"}
+    decline_response = await api_client.post(
+        f"/api/v1/ww/orders/{order_id}/assign",
+        json={"courier_id": None, "decline": True},
+        headers=decline_headers,
+    )
+    assert decline_response.status_code == 200
+    declined_body = decline_response.json()
+    assert declined_body["courier_id"] is None
+    assert declined_body["status"] == "NEW"
+
+
+@pytest.mark.asyncio
+async def test_decline_without_assignment_returns_422(api_client: httpx.AsyncClient) -> None:
+    await _create_courier(api_client, "courier-601")
+    order_id = (await _create_order(api_client)).json()["id"]
+
+    decline_headers = {"Idempotency-Key": f"decline-{uuid4()}"}
+    decline_response = await api_client.post(
+        f"/api/v1/ww/orders/{order_id}/assign",
+        json={"courier_id": None, "decline": True},
+        headers=decline_headers,
+    )
+    assert decline_response.status_code == 422
+    body = decline_response.json()
+    assert body["title"] == "Invalid assignment state"
