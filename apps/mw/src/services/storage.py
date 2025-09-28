@@ -304,6 +304,7 @@ class StorageService:
         else:
             day = datetime.now(tz=UTC).date()
 
+        sanitized_call_id = self._sanitize_identifier(call_id)
         suffix = self._sanitize_identifier(record_identifier)
 
         return str(
@@ -311,7 +312,7 @@ class StorageService:
             / f"{day.year:04d}"
             / f"{day.month:02d}"
             / f"{day.day:02d}"
-            / f"call_{call_id}_{suffix}.mp3"
+            / f"call_{sanitized_call_id}_{suffix}.mp3"
         )
 
     def _build_summary_key(self, call_id: str, created_at: datetime) -> str:

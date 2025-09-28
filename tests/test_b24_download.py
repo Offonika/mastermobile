@@ -119,6 +119,43 @@ async def test_storage_local_persists_file_with_checksum(tmp_path: Path) -> None
 
 
 @pytest.mark.asyncio
+async def test_storage_local_sanitizes_call_id_path(tmp_path: Path) -> None:
+    """Malicious call IDs cannot escape the configured storage root."""
+
+    settings = get_settings()
+    service = StorageService(settings=settings)
+
+    async def generator():
+        yield b"guarded"
+
+    result = await service.store_call_recording(
+        "../escape/../../call",
+        generator(),
+        started_at=datetime(2024, 9, 2, 15, 30, tzinfo=timezone.utc),
+        record_identifier="segment/../../id",
+    )
+
+    storage_root = Path(settings.local_storage_dir)
+    destination = Path(result.path)
+
+    assert destination.is_relative_to(storage_root)
+
+    sanitized_call_id = service._sanitize_identifier("../escape/../../call")
+    sanitized_record_id = service._sanitize_identifier("segment/../../id")
+
+    expected_path = (
+        storage_root
+        / "raw"
+        / "2024"
+        / "09"
+        / "02"
+        / f"call_{sanitized_call_id}_{sanitized_record_id}.mp3"
+    )
+
+    assert destination == expected_path
+
+
+@pytest.mark.asyncio
 async def test_download_workflow_updates_status_and_checksum(
     respx_mock: "respx.MockRouter",
 ) -> None:
