@@ -2,12 +2,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
 from time import perf_counter, sleep
-from typing import Protocol
-
 from loguru import logger
 from prometheus_client import start_http_server
 from sqlalchemy.orm import Session
@@ -18,6 +15,12 @@ from apps.mw.src.config import Settings, get_settings
 from apps.mw.src.db.session import SessionLocal
 from apps.mw.src.observability import STT_JOB_DURATION_SECONDS, STT_JOBS_TOTAL
 from apps.mw.src.services.summarizer import CallSummarizer
+from apps.mw.src.services.stt_providers import (
+    ProviderRouter,
+    SpeechToTextProvider,
+    TranscriptionError,
+    TranscriptionResult,
+)
 from apps.mw.src.services.stt_queue import DLQEntry, STTJob, STTQueue, create_redis_client
 
 DEFAULT_MAX_RETRIES = 5
@@ -49,46 +52,6 @@ def start_worker_metrics_exporter() -> None:
             port=settings.worker_metrics_port,
         ).info("Started STT worker metrics exporter")
         _metrics_server_started = True
-
-
-@dataclass(slots=True)
-class TranscriptionResult:
-    """Successful transcription metadata."""
-
-    transcript_path: str
-    language: str | None = None
-
-
-class SpeechToTextProvider(Protocol):
-    """Simple protocol for transcription providers."""
-
-    def transcribe(self, job: STTJob) -> TranscriptionResult:  # pragma: no cover - Protocol
-        ...
-
-
-class TranscriptionError(Exception):
-    """Raised by providers when a transcription attempt failed."""
-
-    def __init__(self, status_code: int | None, message: str) -> None:
-        super().__init__(message)
-        self.status_code = status_code
-
-
-class PlaceholderTranscriber:
-    """A minimal local transcriber used until a real backend is wired in."""
-
-    def __init__(self, transcripts_dir: Path) -> None:
-        self._transcripts_dir = transcripts_dir
-
-    def transcribe(self, job: STTJob) -> TranscriptionResult:
-        self._transcripts_dir.mkdir(parents=True, exist_ok=True)
-        target = self._transcripts_dir / f"{job.call_id}.txt"
-        if not target.exists():
-            target.write_text(
-                "Transcription placeholder. Configure a real STT provider to replace this output.\n",
-                encoding="utf-8",
-            )
-        return TranscriptionResult(transcript_path=str(target), language=job.language)
 
 
 class STTWorker:
@@ -327,10 +290,9 @@ def main() -> None:  # pragma: no cover - CLI entry point
     settings = get_settings()
     redis_client = create_redis_client(settings)
     queue = STTQueue(redis_client)
-    transcripts_dir = Path(settings.local_storage_dir) / "transcripts"
-    transcriber = PlaceholderTranscriber(transcripts_dir)
+    transcriber = ProviderRouter(settings=settings)
 
-    worker = STTWorker(queue, transcriber)
+    worker = STTWorker(queue, transcriber, settings=settings)
     worker.run_forever()
 
 

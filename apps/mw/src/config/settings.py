@@ -47,7 +47,23 @@ class Settings(BaseSettings):
         default=0.006,
         alias="WHISPER_RATE_PER_MIN_USD",
     )
+    stt_default_engine: str = Field(default="stub", alias="STT_DEFAULT_ENGINE")
+    stt_default_language: str | None = Field(default=None, alias="STT_DEFAULT_LANGUAGE")
+    stt_openai_model: str = Field(default="whisper-1", alias="STT_OPENAI_MODEL")
+    stt_openai_enabled: bool = Field(default=False, alias="STT_OPENAI_ENABLED")
+    stt_local_enabled: bool = Field(default=False, alias="STT_LOCAL_ENABLED")
     stt_max_file_minutes: int = Field(default=0, alias="STT_MAX_FILE_MINUTES")
+    stt_max_file_size_mb: int = Field(default=25, alias="STT_MAX_FILE_SIZE_MB", ge=0)
+    stt_error_hint_413: str = Field(
+        default="Файл превышает допустимые ограничения.",
+        alias="STT_ERROR_HINT_413",
+    )
+    stt_error_hint_422: str = Field(
+        default="Формат записи не распознан. Попробуйте WAV/MP3/M4A.",
+        alias="STT_ERROR_HINT_422",
+    )
+    local_stt_url: str | None = Field(default=None, alias="LOCAL_STT_URL")
+    local_stt_api_key: str | None = Field(default=None, alias="LOCAL_STT_API_KEY")
     chatgpt_proxy_url: str | None = Field(default=None, alias="CHATGPT_PROXY_URL")
 
     storage_backend: Literal["local", "s3"] = Field(

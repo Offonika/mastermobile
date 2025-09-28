@@ -22,7 +22,8 @@ from apps.mw.src.db.models import (
 from apps.mw.src.services.storage import StorageService
 from apps.mw.src.services.summarizer import CallSummarizer
 from apps.mw.src.services.stt_queue import STTJob, STTQueue
-from apps.mw.src.services.stt_worker import STTWorker, TranscriptionResult
+from apps.mw.src.services.stt_providers import TranscriptionResult
+from apps.mw.src.services.stt_worker import STTWorker
 
 
 class _DummyRedis:
