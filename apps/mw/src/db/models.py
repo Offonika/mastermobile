@@ -25,7 +25,14 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.ext.mutable import MutableDict
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    mapped_column,
+    relationship,
+    validates,
+)
 
 
 class Base(DeclarativeBase):
@@ -829,6 +836,26 @@ class DeliveryLog(Base):
         Index("idx_delivery_logs_status", "status"),
     )
 
+    @staticmethod
+    def normalize_payload(
+        payload: dict[str, Any] | None = None,
+        *,
+        kmp4_exported: bool | None = None,
+    ) -> dict[str, Any]:
+        """Ensure the delivery log payload always has a boolean flag."""
+
+        normalized: dict[str, Any] = dict(payload or {})
+        if kmp4_exported is not None:
+            raw_value: Any = kmp4_exported
+        else:
+            raw_value = normalized.get("kmp4_exported", False)
+
+        if isinstance(raw_value, str):
+            raw_value = raw_value.lower() in {"true", "1", "t", "yes"}
+
+        normalized["kmp4_exported"] = bool(raw_value)
+        return normalized
+
     id: Mapped[int] = mapped_column(
         BigInteger().with_variant(Integer, "sqlite"),
         primary_key=True,
@@ -857,9 +884,11 @@ class DeliveryLog(Base):
     )
     event_type: Mapped[str] = mapped_column(Text, nullable=False)
     message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    payload: Mapped[dict[str, Any] | None] = mapped_column(
-        JSONBType,
-        nullable=True,
+    payload: Mapped[dict[str, Any]] = mapped_column(
+        MutableDict.as_mutable(JSONBType),
+        nullable=False,
+        default=normalize_payload,
+        server_default=text("'{\"kmp4_exported\": false}'"),
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -872,3 +901,9 @@ class DeliveryLog(Base):
         back_populates="logs"
     )
     courier: Mapped[Courier | None] = relationship(back_populates="logs")
+
+    @validates("payload")
+    def _validate_payload(
+        self, key: str, payload: dict[str, Any] | None
+    ) -> dict[str, Any]:
+        return self.normalize_payload(payload)

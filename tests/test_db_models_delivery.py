@@ -91,8 +91,27 @@ def test_delivery_order_relationships_roundtrip() -> None:
         assert loaded_order.assignments[0].status is DeliveryAssignmentStatus.ACCEPTED
         assert loaded_order.logs[0].status is DeliveryLogStatus.SUCCESS
         assert loaded_order.logs[0].assignment.assignment_id == assignment_id
+        assert loaded_order.logs[0].payload["actor"] == "courier"
+        assert loaded_order.logs[0].payload["kmp4_exported"] is False
 
     engine.dispose()
+
+
+def test_delivery_log_payload_normalization() -> None:
+    """Delivery log payloads must always expose the KMP4 export flag."""
+
+    default_payload = DeliveryLog.normalize_payload()
+    assert default_payload == {"kmp4_exported": False}
+
+    explicit_false = DeliveryLog.normalize_payload({"notes": "value"})
+    assert explicit_false["kmp4_exported"] is False
+    assert explicit_false["notes"] == "value"
+
+    explicit_true = DeliveryLog.normalize_payload(
+        {"kmp4_exported": "true", "notes": "value"}
+    )
+    assert explicit_true["kmp4_exported"] is True
+    assert explicit_true["notes"] == "value"
 
 
 def test_delivery_order_amounts_cannot_be_negative() -> None:

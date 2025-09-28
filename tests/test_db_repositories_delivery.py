@@ -187,11 +187,24 @@ def test_delivery_log_repository_records_events(session: Session) -> None:
         payload={"location": "55.75,37.61"},
     )
 
+    flagged_entry = log_repo.create(
+        order_id=order.order_id,
+        status=DeliveryLogStatus.SUCCESS,
+        event_type="kmp4_export",
+        courier_id=courier.courier_id,
+        message="Отчёт выгружен",
+        payload={"actor": "scheduler"},
+        kmp4_exported=True,
+    )
+
     assert log_entry.id is not None
+    assert flagged_entry.payload["kmp4_exported"] is True
 
     logs = log_repo.list_for_order(order.order_id)
-    assert logs == [log_entry]
-    assert logs[0].payload == {"location": "55.75,37.61"}
+    assert logs == [log_entry, flagged_entry]
+    assert logs[0].payload["location"] == "55.75,37.61"
+    assert logs[0].payload["kmp4_exported"] is False
 
+    log_repo.delete(flagged_entry)
     log_repo.delete(log_entry)
     assert log_repo.list_for_order(order.order_id) == []

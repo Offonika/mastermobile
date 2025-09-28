@@ -26,6 +26,7 @@ class DeliveryLogRepository:
         courier_id: UUID | None = None,
         message: str | None = None,
         payload: dict[str, object] | None = None,
+        kmp4_exported: bool = False,
     ) -> DeliveryLog:
         log_entry = DeliveryLog(
             order_id=order_id,
@@ -34,7 +35,9 @@ class DeliveryLogRepository:
             status=status,
             event_type=event_type,
             message=message,
-            payload=payload,
+            payload=DeliveryLog.normalize_payload(
+                payload, kmp4_exported=kmp4_exported
+            ),
         )
         self._session.add(log_entry)
         self._session.flush()
