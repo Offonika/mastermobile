@@ -5,6 +5,23 @@ This directory collects artifacts exported from the 1C platform that are consume
 - `config_dump_txt/` — plain-text configuration fragments extracted from the legacy core subset. They are now grouped here so tooling can treat the folder as a canonical dump.
 - `external/kmp4_delivery_report/` — delivery report extension (`КМП4`) sourced from the upstream repository. The unpacked configuration lives in `src/`, and the packaged XML artifact is stored alongside it.
 
+### Проверка формы «КМП4: Отчет по доставке»
+
+Оператор выполняет три шага: **Открыть внешнюю обработку → Выбрать CSV → Сформировать**. После загрузки валидного файла (см. `fixtures/valid_delivery_report.csv`) форма заполняется автоматически и должна показать:
+
+- **Номер заказа** — `12345`.
+- **Название** — `Order Title`.
+- **Клиент** — `John Doe`.
+- **Статус КМП4** — `new` (конвертированное значение статуса `NEW`).
+- **Сумма** — `100.50`.
+- **Валюта** — `RUB`.
+- **Курьер** — `42`.
+- **Комментарий** — `Initial sync`.
+- **Создано** — `2024-05-01T12:00:00Z`.
+- **Обновлено** — `2024-05-01T12:30:00Z`.
+
+Если какой-либо из показателей пустой или отличается от ожидаемых данных фикстуры, оператор останавливает процесс и уведомляет дежурного интегратора.
+
 The tree is designed to let automation discover configuration and vendor deliverables without relying on historical paths such as `core_subset/` or `src/`.
 
 ## Walking Warehouse status mapping
