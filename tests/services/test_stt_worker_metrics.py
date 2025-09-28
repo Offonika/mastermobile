@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import socket
 from pathlib import Path
+from decimal import Decimal
 from urllib.request import urlopen
 
 from prometheus_client.parser import text_string_to_metric_families
@@ -27,6 +28,7 @@ class _StubQueue:
     def __init__(self, job: STTJob) -> None:
         self._job = job
         self._delivered = False
+        self._record = None
 
     def fetch_job(self, *, timeout: int | None = None) -> STTJob | None:
         if self._delivered:
@@ -36,7 +38,17 @@ class _StubQueue:
 
     def mark_transcribing(self, session: _DummySession, job: STTJob):
         session.commit()
-        return object()
+        if self._record is None:
+            self._record = type(
+                "_Record",
+                (),
+                {
+                    "duration_sec": 180,
+                    "transcription_cost": Decimal("4.20"),
+                    "currency_code": "USD",
+                },
+            )()
+        return self._record
 
     def record_success(
         self,
@@ -142,5 +154,44 @@ def test_worker_metrics_exporter_reports_success(monkeypatch, tmp_path: Path) ->
             break
 
     assert duration_after == duration_before + 1.0
+
+    transcript_metric = after_metrics.get("call_transcripts")
+    assert transcript_metric is not None, f"available metrics: {list(after_metrics)}"
+    success_sample = next(
+        (
+            sample
+            for sample in transcript_metric.samples
+            if sample.labels.get("status") == "success"
+            and sample.labels.get("engine") == "placeholder"
+        ),
+        None,
+    )
+    assert success_sample is not None
+
+    minutes_metric = after_metrics.get("call_transcription_minutes")
+    assert minutes_metric is not None
+    minutes_sample = next(
+        (
+            sample
+            for sample in minutes_metric.samples
+            if sample.labels.get("engine") == "placeholder"
+        ),
+        None,
+    )
+    assert minutes_sample is not None
+    assert minutes_sample.value >= 3.0
+
+    cost_metric = after_metrics.get("call_export_cost")
+    assert cost_metric is not None
+    cost_sample = next(
+        (
+            sample
+            for sample in cost_metric.samples
+            if sample.labels.get("currency") == "USD"
+        ),
+        None,
+    )
+    assert cost_sample is not None
+    assert cost_sample.value >= 4.2
 
     get_settings.cache_clear()

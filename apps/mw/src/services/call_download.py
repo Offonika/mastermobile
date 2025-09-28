@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 from collections.abc import AsyncIterable
 from datetime import datetime, timezone
+from time import perf_counter
 from typing import Callable
 
 import httpx
@@ -12,6 +13,7 @@ from loguru import logger
 from apps.mw.src.db.models import CallRecord, CallRecordStatus
 from apps.mw.src.integrations.b24.client import MAX_RETRY_ATTEMPTS
 from apps.mw.src.integrations.b24.downloader import stream_recording
+from apps.mw.src.observability import CALL_EXPORT_DURATION_SECONDS, CALL_EXPORT_RETRY_TOTAL
 from apps.mw.src.services.storage import StorageResult, StorageService
 
 
@@ -33,6 +35,7 @@ async def download_call_record(
             call_id=record.call_id,
             attempt=record.attempts,
         ).info("Call already downloaded")
+        CALL_EXPORT_DURATION_SECONDS.labels(stage="download", status="skipped").observe(0.0)
         return None
 
     if record.attempts >= MAX_RETRY_ATTEMPTS:
@@ -47,6 +50,7 @@ async def download_call_record(
             attempt=record.attempts,
             max_attempts=MAX_RETRY_ATTEMPTS,
         ).error("Maximum download attempts exceeded")
+        CALL_EXPORT_DURATION_SECONDS.labels(stage="download", status="error").observe(0.0)
         raise RuntimeError("maximum download attempts exceeded")
 
     storage = storage or StorageService()
@@ -61,6 +65,11 @@ async def download_call_record(
         attempt=record.attempts,
     ).info("Starting call download")
 
+    if record.attempts > 1:
+        CALL_EXPORT_RETRY_TOTAL.labels(stage="download").inc()
+
+    start_time = perf_counter()
+
     try:
         stream = stream_factory(record.call_id, record.record_id)
         result = await storage.store_call_recording(
@@ -71,12 +80,21 @@ async def download_call_record(
         )
     except httpx.HTTPStatusError as exc:  # pragma: no cover - defensive guard
         _handle_failure(record, f"http_{exc.response.status_code}", str(exc))
+        CALL_EXPORT_DURATION_SECONDS.labels(stage="download", status="error").observe(
+            perf_counter() - start_time
+        )
         raise
     except httpx.HTTPError as exc:
         _handle_failure(record, exc.__class__.__name__, str(exc))
+        CALL_EXPORT_DURATION_SECONDS.labels(stage="download", status="error").observe(
+            perf_counter() - start_time
+        )
         raise
     except Exception as exc:  # pragma: no cover - defensive guard
         _handle_failure(record, exc.__class__.__name__, str(exc))
+        CALL_EXPORT_DURATION_SECONDS.labels(stage="download", status="error").observe(
+            perf_counter() - start_time
+        )
         raise
 
     record.storage_path = result.path
@@ -93,6 +111,10 @@ async def download_call_record(
         storage_backend=result.backend,
         bytes_stored=result.bytes_stored,
     ).info("Finished call download")
+
+    CALL_EXPORT_DURATION_SECONDS.labels(stage="download", status="success").observe(
+        perf_counter() - start_time
+    )
 
     return result
 

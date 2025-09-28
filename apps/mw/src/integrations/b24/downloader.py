@@ -3,11 +3,13 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
+from time import perf_counter
 
 import httpx
 from loguru import logger
 
 from apps.mw.src.config import get_settings
+from apps.mw.src.observability import CALL_EXPORT_DURATION_SECONDS, CALL_EXPORT_RETRY_TOTAL
 
 from .client import MAX_RETRY_ATTEMPTS, build_rest_method_url
 
@@ -39,6 +41,8 @@ async def stream_recording(call_id: str, record_id: str | None = None) -> AsyncI
 
     backoff_base = float(settings.b24_backoff_seconds)
 
+    started_at = perf_counter()
+
     async with httpx.AsyncClient(timeout=float(settings.request_timeout_s)) as client:
         attempt = 0
         while True:
@@ -65,12 +69,19 @@ async def stream_recording(call_id: str, record_id: str | None = None) -> AsyncI
                                 attempt=attempt + 1,
                                 record_id=record_id,
                             ).info("Completed Bitrix24 call recording stream")
+                            CALL_EXPORT_DURATION_SECONDS.labels(
+                                stage="recording", status="success"
+                            ).observe(perf_counter() - started_at)
                             return
                         except httpx.HTTPError:
                             attempt += 1
                             if attempt >= MAX_RETRY_ATTEMPTS:
+                                CALL_EXPORT_DURATION_SECONDS.labels(
+                                    stage="recording", status="error"
+                                ).observe(perf_counter() - started_at)
                                 raise
                             delay = _compute_backoff_delay(backoff_base, attempt)
+                            CALL_EXPORT_RETRY_TOTAL.labels(stage="recording").inc()
                             should_retry = True
                     elif (
                         response.status_code == httpx.codes.TOO_MANY_REQUESTS
@@ -78,6 +89,9 @@ async def stream_recording(call_id: str, record_id: str | None = None) -> AsyncI
                     ):
                         attempt += 1
                         if attempt >= MAX_RETRY_ATTEMPTS:
+                            CALL_EXPORT_DURATION_SECONDS.labels(
+                                stage="recording", status="error"
+                            ).observe(perf_counter() - started_at)
                             response.raise_for_status()
                         delay = _compute_backoff_delay(backoff_base, attempt)
                         logger.bind(
@@ -88,6 +102,7 @@ async def stream_recording(call_id: str, record_id: str | None = None) -> AsyncI
                             record_id=record_id,
                             retry_delay=delay,
                         ).warning("Retrying Bitrix24 call recording stream")
+                        CALL_EXPORT_RETRY_TOTAL.labels(stage="recording").inc()
                         should_retry = True
                     else:
                         logger.bind(
@@ -98,11 +113,17 @@ async def stream_recording(call_id: str, record_id: str | None = None) -> AsyncI
                             record_id=record_id,
                             status_code=response.status_code,
                         ).error("Received unexpected Bitrix24 response")
+                        CALL_EXPORT_DURATION_SECONDS.labels(
+                            stage="recording", status="error"
+                        ).observe(perf_counter() - started_at)
                         response.raise_for_status()
                         return
             except httpx.RequestError:
                 attempt += 1
                 if attempt >= MAX_RETRY_ATTEMPTS:
+                    CALL_EXPORT_DURATION_SECONDS.labels(
+                        stage="recording", status="error"
+                    ).observe(perf_counter() - started_at)
                     raise
                 delay = _compute_backoff_delay(backoff_base, attempt)
                 logger.bind(
@@ -113,6 +134,7 @@ async def stream_recording(call_id: str, record_id: str | None = None) -> AsyncI
                     record_id=record_id,
                     retry_delay=delay,
                 ).warning("Retrying Bitrix24 call recording stream after transport error")
+                CALL_EXPORT_RETRY_TOTAL.labels(stage="recording").inc()
                 should_retry = True
 
             if should_retry:
@@ -122,5 +144,8 @@ async def stream_recording(call_id: str, record_id: str | None = None) -> AsyncI
 
             # If we reach this point it means the response raised a non-retryable
             # error and the exception has already been propagated.
+            CALL_EXPORT_DURATION_SECONDS.labels(stage="recording", status="error").observe(
+                perf_counter() - started_at
+            )
             return
 

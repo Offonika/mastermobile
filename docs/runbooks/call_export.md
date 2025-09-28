@@ -38,7 +38,9 @@
 - **Прометей:** ключевые запросы
   - Общее количество запусков: `sum by (status) (call_export_runs_total{environment="prod"})`
   - Стоимость транскрипций: `call_export_cost_total{environment="prod"}`
-  - Дополнительно: `call_export_duration_seconds`, `call_transcripts_total`, `call_export_retry_total`.
+  - Длительность стадий: `histogram_quantile(0.95, sum by (le) (rate(call_export_duration_seconds_bucket{stage="download",environment="prod"}[5m])))`
+  - Дополнительно: `call_transcripts_total{status,engine}`, `call_transcription_minutes_total{engine}`, `call_export_retry_total{stage}`,
+    `call_export_transcribe_failures_total{code}`, `call_export_reports_total{format}`.
   - SLO-метрика: `call_export_success_total{environment="prod"}` (см. раздел «SLO»).
 - **Логи:** `docker compose logs -f app | jq 'select(.module=="call_export")'` — ищем `stage`, `call_id`, `error`.
 - **Отчёты:** S3/объектное хранилище `exports/<period>/reports/summary_<period>.md` и CSV реестр
@@ -65,10 +67,16 @@
 | `CallExportRetryStorm` | `call_export_retry_total` > 50 за 15 мин | Проверить ошибки Bitrix24/Whisper, включить throttling. |
 | `CallExport5xxGrowth` | `rate(call_export_transcribe_failures_total{code=~"5.."}[10m]) > 0.2` и рост на 50 % против `1h` среднего | Верифицировать статус Whisper/STT, переключить регион, включить деградационный режим. |
 | `CallExportDLQSpike` | `increase(events_dlq_total{queue="call_export"}[15m]) > 10` | Проверить DLQ в Grafana, очистить/перепроиграть сообщения после анализа. |
-| `CallExportJobLongRunning` | `max_over_time(call_export_duration_seconds{status="running"}[30m]) > 1800` | Уточнить зависание в оркестраторе, оценить необходимость ручного завершения job. |
+| `CallExportJobLongRunning` | `(
+    max_over_time(call_export_duration_seconds_sum{stage="fetch_calls",status="success"}[30m]) /
+    clamp_min(max_over_time(call_export_duration_seconds_count{stage="fetch_calls",status="success"}[30m]), 1)
+  ) > 1800` | Уточнить зависание в оркестраторе, оценить необходимость ручного завершения job. |
 | `Bitrix24RateLimitWarn` | `integration.b24.rate_limited` события > 10/15 мин | Следовать playbook по лимитам Bitrix24. |
 
-Алерты транслируются в `#ops-alerts` и PagerDuty (SEV-2 по умолчанию).
+Алерты транслируются в `#ops-alerts` и PagerDuty (SEV-2 по умолчанию). Исходные правила
+хранятся в репозитории в [`observability/alerts/call_export.yml`](../../observability/alerts/call_export.yml);
+перед загрузкой задайте budget metric `var_call_export_budget` (см. README) для корректной работы
+правила **CallExportCostBudget**.
 
 ## Валидация и синтетические проверки
 1. **Инжект алерта в Alertmanager Sandbox:**

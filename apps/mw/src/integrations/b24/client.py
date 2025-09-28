@@ -3,12 +3,14 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime
+from time import perf_counter
 from typing import Any
 
 import httpx
 from loguru import logger
 
 from apps.mw.src.config import get_settings
+from apps.mw.src.observability import CALL_EXPORT_DURATION_SECONDS, CALL_EXPORT_RETRY_TOTAL
 
 BITRIX24_ENDPOINT = "voximplant.statistic.get.json"
 MAX_RETRY_ATTEMPTS = 5
@@ -74,6 +76,7 @@ async def _fetch_page(
                     attempt=attempt,
                     retry_delay=delay,
                 ).warning("Retrying Bitrix24 page fetch")
+                CALL_EXPORT_RETRY_TOTAL.labels(stage="fetch_calls").inc()
                 await asyncio.sleep(delay)
             continue
 
@@ -112,31 +115,39 @@ async def list_calls(date_from: str | datetime, date_to: str | datetime) -> list
         date_to=base_params["FILTER[DATE_TO]"],
     ).info("Starting Bitrix24 call export window")
 
+    started_at = perf_counter()
+
     async with httpx.AsyncClient(timeout=float(settings.request_timeout_s)) as client:
-        while True:
-            params = dict(base_params)
-            if start_token is not None:
-                params["start"] = str(start_token)
+        try:
+            while True:
+                params = dict(base_params)
+                if start_token is not None:
+                    params["start"] = str(start_token)
 
-            payload = await _fetch_page(client, request_url, params, backoff_base)
-            page_calls = payload.get("result") or []
-            if isinstance(page_calls, list):
-                calls.extend([call for call in page_calls if isinstance(call, dict)])
+                payload = await _fetch_page(client, request_url, params, backoff_base)
+                page_calls = payload.get("result") or []
+                if isinstance(page_calls, list):
+                    calls.extend([call for call in page_calls if isinstance(call, dict)])
 
-            next_token = payload.get("next")
-            if next_token is None:
-                break
+                next_token = payload.get("next")
+                if next_token is None:
+                    break
 
-            start_token = str(next_token)
-            if rate_limit_delay > 0:
-                logger.bind(
-                    event="call_export.fetch_calls",
-                    stage="throttle",
-                    call_id=None,
-                    attempt=0,
-                    rate_limit_delay=rate_limit_delay,
-                ).debug("Sleeping to respect Bitrix24 rate limit")
-                await asyncio.sleep(rate_limit_delay)
+                start_token = str(next_token)
+                if rate_limit_delay > 0:
+                    logger.bind(
+                        event="call_export.fetch_calls",
+                        stage="throttle",
+                        call_id=None,
+                        attempt=0,
+                        rate_limit_delay=rate_limit_delay,
+                    ).debug("Sleeping to respect Bitrix24 rate limit")
+                    await asyncio.sleep(rate_limit_delay)
+        except Exception:
+            CALL_EXPORT_DURATION_SECONDS.labels(stage="fetch_calls", status="error").observe(
+                perf_counter() - started_at
+            )
+            raise
 
     logger.bind(
         event="call_export.fetch_calls",
@@ -144,5 +155,9 @@ async def list_calls(date_from: str | datetime, date_to: str | datetime) -> list
         call_id=None,
         total_calls=len(calls),
     ).info("Completed Bitrix24 call export window")
+
+    CALL_EXPORT_DURATION_SECONDS.labels(stage="fetch_calls", status="success").observe(
+        perf_counter() - started_at
+    )
 
     return calls

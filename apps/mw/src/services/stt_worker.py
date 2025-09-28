@@ -16,7 +16,15 @@ from urllib.parse import urlparse
 
 from apps.mw.src.config import Settings, get_settings
 from apps.mw.src.db.session import SessionLocal
-from apps.mw.src.observability import STT_JOB_DURATION_SECONDS, STT_JOBS_TOTAL
+from apps.mw.src.observability import (
+    CALL_EXPORT_COST_TOTAL,
+    CALL_EXPORT_RETRY_TOTAL,
+    CALL_EXPORT_TRANSCRIBE_FAILURES_TOTAL,
+    CALL_TRANSCRIPTION_MINUTES_TOTAL,
+    CALL_TRANSCRIPTS_TOTAL,
+    STT_JOB_DURATION_SECONDS,
+    STT_JOBS_TOTAL,
+)
 from apps.mw.src.services.summarizer import CallSummarizer
 from apps.mw.src.services.stt_queue import DLQEntry, STTJob, STTQueue, create_redis_client
 
@@ -155,6 +163,7 @@ class STTWorker:
                 summary_path=summary_path,
             )
             STT_JOBS_TOTAL.labels(status="success").inc()
+            self._record_transcription_success(record, job)
             logger.bind(call_id=job.call_id, engine=job.engine).info(
                 "STT job completed",
             )
@@ -184,6 +193,7 @@ class STTWorker:
 
                 delay = self._base_backoff * (2 ** (attempt - 1))
                 STT_JOBS_TOTAL.labels(status="retry").inc()
+                CALL_EXPORT_RETRY_TOTAL.labels(stage="transcribe").inc()
                 logger.bind(
                     call_id=job.call_id,
                     engine=job.engine,
@@ -204,6 +214,8 @@ class STTWorker:
                     )
                     self._queue.push_to_dlq(DLQEntry(job=job, reason=reason))
                     STT_JOBS_TOTAL.labels(status="dlq").inc()
+                    CALL_TRANSCRIPTS_TOTAL.labels(status="failed", engine=job.engine).inc()
+                    CALL_EXPORT_TRANSCRIBE_FAILURES_TOTAL.labels(code="unexpected_error").inc()
                     logger.bind(call_id=job.call_id, engine=job.engine).exception(
                         "Unexpected STT worker failure",
                     )
@@ -211,6 +223,7 @@ class STTWorker:
 
                 delay = self._base_backoff * (2 ** (attempt - 1))
                 STT_JOBS_TOTAL.labels(status="retry").inc()
+                CALL_EXPORT_RETRY_TOTAL.labels(stage="transcribe").inc()
                 logger.bind(
                     call_id=job.call_id,
                     engine=job.engine,
@@ -218,6 +231,26 @@ class STTWorker:
                     delay=delay,
                 ).exception("Retrying after unexpected STT worker error")
                 sleep(delay)
+
+    def _record_transcription_success(self, record: object, job: STTJob) -> None:
+        """Emit Prometheus metrics for a successful transcription."""
+
+        CALL_TRANSCRIPTS_TOTAL.labels(status="success", engine=job.engine).inc()
+
+        duration_sec = getattr(record, "duration_sec", None)
+        if isinstance(duration_sec, (int, float)) and duration_sec >= 0:
+            minutes = duration_sec / 60.0
+            CALL_TRANSCRIPTION_MINUTES_TOTAL.labels(engine=job.engine).inc(minutes)
+
+        cost = getattr(record, "transcription_cost", None)
+        if cost is not None:
+            try:
+                amount = float(cost)
+            except (TypeError, ValueError):  # pragma: no cover - defensive guard
+                amount = None
+            if amount is not None and amount >= 0:
+                currency = getattr(record, "currency_code", None) or "RUB"
+                CALL_EXPORT_COST_TOTAL.labels(currency=currency).inc(amount)
 
     def _maybe_generate_summary(
         self,
@@ -291,6 +324,8 @@ class STTWorker:
             DLQEntry(job=job, reason=reason, status_code=status_code),
         )
         STT_JOBS_TOTAL.labels(status="dlq").inc()
+        CALL_TRANSCRIPTS_TOTAL.labels(status="failed", engine=job.engine).inc()
+        CALL_EXPORT_TRANSCRIBE_FAILURES_TOTAL.labels(code=str(status_code)).inc()
         logger.bind(call_id=job.call_id, engine=job.engine, status_code=status_code).error(
             "STT job moved to DLQ after client error",
         )
@@ -316,6 +351,9 @@ class STTWorker:
             DLQEntry(job=job, reason=reason, status_code=status_code),
         )
         STT_JOBS_TOTAL.labels(status="dlq").inc()
+        failure_code = "max_retries" if status_code is None else str(status_code)
+        CALL_TRANSCRIPTS_TOTAL.labels(status="failed", engine=job.engine).inc()
+        CALL_EXPORT_TRANSCRIBE_FAILURES_TOTAL.labels(code=failure_code).inc()
         logger.bind(call_id=job.call_id, engine=job.engine, status_code=status_code).error(
             "STT job moved to DLQ after exhausting retries",
         )

@@ -1,0 +1,70 @@
+# Prometheus alerting rules for the Bitrix24 call export pipeline.
+# These rules mirror the operational guidance captured in docs/runbooks/call_export.md.
+---
+groups:
+  - name: call_export.rules
+    rules:
+      - alert: CallExportRunFailed
+        expr: increase(call_export_runs_total{status="error"}[15m]) > 0
+        for: 15m
+        labels:
+          severity: critical
+          service: call_export
+        annotations:
+          summary: "Call export run failed"
+          description: |
+            The call export job reported at least one failed run in the last 15 minutes.
+            Inspect the middleware logs and the latest record in the call_exports table.
+          runbook: docs/runbooks/call_export.md
+      - alert: CallExportCostBudget
+        expr: call_export_cost_total > ignoring(currency) var_call_export_budget
+        for: 5m
+        labels:
+          severity: warning
+          service: call_export
+        annotations:
+          summary: "Call export transcription cost exceeded budget"
+          description: |
+            The cumulative transcription cost breached the configured budget threshold.
+            Coordinate with product to validate Whisper pricing and adjust configuration.
+          runbook: docs/runbooks/call_export.md#стоимость-и-бюджет
+      - alert: CallExportRetryStorm
+        expr: increase(call_export_retry_total[15m]) > 50
+        for: 15m
+        labels:
+          severity: warning
+          service: call_export
+        annotations:
+          summary: "Excessive retries observed in call export pipeline"
+          description: |
+            More than 50 retries were registered across download, fetch and transcription stages
+            over the last 15 minutes. Check Bitrix24 and Whisper availability and enable throttling if needed.
+          runbook: docs/runbooks/call_export.md#инциденты
+      - alert: CallExportTranscribe5xxGrowth
+        expr: rate(call_export_transcribe_failures_total{code=~"5.."}[10m]) > 0.2
+        for: 10m
+        labels:
+          severity: critical
+          service: call_export
+        annotations:
+          summary: "Spike of 5xx errors while transcribing calls"
+          description: |
+            The rate of server-side transcription failures grew above the allowed threshold.
+            Validate Whisper/STT health and consider switching to a standby region.
+          runbook: docs/runbooks/call_export.md#инциденты
+      - alert: CallExportJobLongRunning
+        expr: (
+          max_over_time(call_export_duration_seconds_sum{stage="fetch_calls",status="success"}[30m])
+          /
+          clamp_min(max_over_time(call_export_duration_seconds_count{stage="fetch_calls",status="success"}[30m]), 1)
+        ) > 1800
+        for: 30m
+        labels:
+          severity: warning
+          service: call_export
+        annotations:
+          summary: "Call export run is taking longer than expected"
+          description: |
+            The fetch_calls stage exceeded the 30 minute threshold. Review Bitrix24 rate limits,
+            DLQ backlog and consider pausing downstream consumers.
+          runbook: docs/runbooks/call_export.md#отладка-длительных-запусков

@@ -21,6 +21,22 @@
 > Метрики Prometheus для FastAPI-приложения доступны по адресу `http://localhost:8000/metrics`.
 > Экспортер фонового STT-воркера публикует метрики на `http://localhost:${WORKER_METRICS_PORT:-9100}/metrics`.
 
+### Наблюдаемость
+
+- Call Export публикует готовые счётчики и гистограммы: `call_export_runs_total`,
+  `call_export_duration_seconds{stage=…}`, `call_transcripts_total{status,engine}`,
+  `call_transcription_minutes_total{engine}`, `call_export_cost_total{currency}`,
+  `call_export_retry_total{stage}`, `call_export_transcribe_failures_total{code}` и
+  `call_export_reports_total{format}`. Значения появляются автоматически после
+  импорта `apps.mw.src.observability.metrics`.
+- Готовые правила Prometheus/Alertmanager лежат в
+  [`observability/alerts/call_export.yml`](observability/alerts/call_export.yml). Перед
+  загрузкой в Prometheus задайте бюджет через recording rule
+  `var_call_export_budget` (например, `scalar(500)`), чтобы правило
+  **CallExportCostBudget** корректно сравнивалось с целевым лимитом.
+- Runbook с пошаговыми действиями и запросами в Grafana —
+  [docs/runbooks/call_export.md](docs/runbooks/call_export.md).
+
 ## Smoke-тест распознавания речи
 
 ### Предварительные условия

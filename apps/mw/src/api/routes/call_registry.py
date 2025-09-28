@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from datetime import datetime
 from decimal import Decimal
 from io import StringIO
+from time import perf_counter
 
 from fastapi import APIRouter, Depends, Query, Response, status
 from fastapi.responses import StreamingResponse
@@ -15,6 +16,7 @@ from sqlalchemy.orm import Session
 from apps.mw.src.api.dependencies import ProblemDetailException, build_error, provide_request_id
 from apps.mw.src.db.models import CallRecord
 from apps.mw.src.db.session import get_session
+from apps.mw.src.observability import CALL_EXPORT_DURATION_SECONDS, CALL_EXPORT_REPORTS_TOTAL
 
 _CSV_HEADERS = [
     "run_id",
@@ -125,6 +127,7 @@ def export_call_registry(
     """Stream a semicolon-separated CSV of call records for the requested period."""
 
     if period_to < period_from:
+        CALL_EXPORT_DURATION_SECONDS.labels(stage="report", status="error").observe(0.0)
         error = build_error(
             status.HTTP_400_BAD_REQUEST,
             title="Invalid period range",
@@ -132,6 +135,8 @@ def export_call_registry(
             request_id=response.headers.get("X-Request-Id"),
         )
         raise ProblemDetailException(error)
+
+    started_at = perf_counter()
 
     stmt = (
         select(CallRecord)
@@ -155,5 +160,10 @@ def export_call_registry(
     request_id = response.headers.get("X-Request-Id")
     if request_id:
         streaming_response.headers["X-Request-Id"] = request_id
+
+    CALL_EXPORT_DURATION_SECONDS.labels(stage="report", status="success").observe(
+        perf_counter() - started_at
+    )
+    CALL_EXPORT_REPORTS_TOTAL.labels(format="csv").inc()
 
     return streaming_response
