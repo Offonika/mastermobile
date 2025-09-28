@@ -26,6 +26,7 @@ def test_pii_masking_masks_sensitive_fields_when_enabled(monkeypatch) -> None:
     """PII masking replaces sensitive fields with a redacted marker."""
 
     monkeypatch.setenv("PII_MASKING_ENABLED", "true")
+    monkeypatch.setenv("APP_ENV", "local")
     get_settings.cache_clear()
 
     buffer = io.StringIO()
@@ -50,6 +51,7 @@ def test_pii_masking_masks_call_record_numbers(monkeypatch) -> None:
     """PII masking redacts call record number fields and nested structures."""
 
     monkeypatch.setenv("PII_MASKING_ENABLED", "true")
+    monkeypatch.setenv("APP_ENV", "local")
     get_settings.cache_clear()
 
     buffer = io.StringIO()
@@ -117,3 +119,16 @@ async def test_request_context_injects_request_id_into_logs(monkeypatch) -> None
     records = _parse_logs(buffer)
     assert len(records) >= 2
     assert {entry["extra"]["correlation_id"] for entry in records} == {"req-789"}
+
+
+def test_pii_masking_defaults_to_enabled_outside_local(monkeypatch) -> None:
+    """PII masking automatically enables itself for non-local environments."""
+
+    monkeypatch.setenv("APP_ENV", "staging")
+    monkeypatch.delenv("PII_MASKING_ENABLED", raising=False)
+    get_settings.cache_clear()
+
+    settings = get_settings()
+    assert settings.pii_masking_enabled is True
+
+    get_settings.cache_clear()
