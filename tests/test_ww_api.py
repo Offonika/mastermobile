@@ -7,6 +7,7 @@ from uuid import uuid4
 import httpx
 import pytest
 import pytest_asyncio
+from prometheus_client import REGISTRY
 
 from apps.mw.src.app import app
 from apps.mw.src.api.dependencies import reset_idempotency_cache
@@ -15,8 +16,27 @@ from apps.mw.src.integrations.ww import (
     WalkingWarehouseCourierRepository,
     WalkingWarehouseOrderRepository,
 )
+from apps.mw.src.observability.metrics import (
+    WW_EXPORT_ATTEMPTS_TOTAL,
+    WW_EXPORT_FAILURE_TOTAL,
+    WW_EXPORT_SUCCESS_TOTAL,
+    WW_ORDER_STATUS_TRANSITIONS_TOTAL,
+)
 
 BASE_URL = "http://testserver"
+
+
+@pytest.fixture()
+def ww_metrics_reset() -> None:
+    WW_EXPORT_ATTEMPTS_TOTAL.clear()
+    WW_EXPORT_SUCCESS_TOTAL.clear()
+    WW_EXPORT_FAILURE_TOTAL.clear()
+    WW_ORDER_STATUS_TRANSITIONS_TOTAL.clear()
+    yield
+    WW_EXPORT_ATTEMPTS_TOTAL.clear()
+    WW_EXPORT_SUCCESS_TOTAL.clear()
+    WW_EXPORT_FAILURE_TOTAL.clear()
+    WW_ORDER_STATUS_TRANSITIONS_TOTAL.clear()
 
 
 @pytest.fixture(autouse=True)
@@ -101,6 +121,11 @@ async def _create_order(
         json=_order_payload(order_id=order_id, courier_id=courier_id),
         headers=headers,
     )
+
+
+def _metric_value(name: str, labels: dict[str, str] | None = None) -> float:
+    value = REGISTRY.get_sample_value(name, labels=labels or {})
+    return 0.0 if value is None else float(value)
 
 
 @pytest.mark.asyncio
@@ -197,6 +222,78 @@ async def test_error_scenarios(api_client: httpx.AsyncClient) -> None:
 
     create_order_response = await _create_order(api_client, courier_id="missing-courier")
     assert create_order_response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_ww_metrics_instrumentation(
+    api_client: httpx.AsyncClient,
+    ww_metrics_reset: None,
+) -> None:
+    await _create_courier(api_client, "courier-metrics")
+    await _create_courier(api_client, "courier-assignee")
+
+    create_response = await _create_order(api_client, courier_id=None)
+    assert create_response.status_code == 201
+    order_id = create_response.json()["id"]
+
+    assert _metric_value(
+        "ww_export_attempts_total", {"operation": "order_create"}
+    ) == pytest.approx(1.0)
+    assert _metric_value(
+        "ww_export_success_total", {"operation": "order_create"}
+    ) == pytest.approx(1.0)
+
+    invalid_status_response = await api_client.post(
+        f"/api/v1/ww/orders/{order_id}/status",
+        json={"status": "DONE"},
+        headers={"Idempotency-Key": f"invalid-{uuid4()}"},
+    )
+    assert invalid_status_response.status_code == 422
+
+    assert _metric_value(
+        "ww_export_failure_total",
+        {"operation": "order_status_update", "reason": "invalid_transition"},
+    ) == pytest.approx(1.0)
+    assert _metric_value(
+        "ww_order_status_transitions_total",
+        {"from_status": "NEW", "to_status": "DONE", "result": "failure"},
+    ) == pytest.approx(1.0)
+
+    assign_headers = {"Idempotency-Key": f"assign-{uuid4()}"}
+    assign_response = await api_client.post(
+        f"/api/v1/ww/orders/{order_id}/assign",
+        json={"courier_id": "courier-assignee"},
+        headers=assign_headers,
+    )
+    assert assign_response.status_code == 200
+
+    assert _metric_value(
+        "ww_export_success_total", {"operation": "order_assign"}
+    ) == pytest.approx(1.0)
+    assert _metric_value(
+        "ww_order_status_transitions_total",
+        {"from_status": "NEW", "to_status": "ASSIGNED", "result": "success"},
+    ) == pytest.approx(1.0)
+
+    status_headers = {"Idempotency-Key": f"status-{uuid4()}"}
+    status_response = await api_client.post(
+        f"/api/v1/ww/orders/{order_id}/status",
+        json={"status": "IN_TRANSIT"},
+        headers=status_headers,
+    )
+    assert status_response.status_code == 200
+
+    assert _metric_value(
+        "ww_export_success_total", {"operation": "order_status_update"}
+    ) == pytest.approx(1.0)
+    assert _metric_value(
+        "ww_order_status_transitions_total",
+        {
+            "from_status": "ASSIGNED",
+            "to_status": "IN_TRANSIT",
+            "result": "success",
+        },
+    ) == pytest.approx(1.0)
 
     missing_idempotency = await api_client.post(
         "/api/v1/ww/orders",

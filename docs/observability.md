@@ -22,9 +22,15 @@
 | `integration_failures_total` | Counter | `system`, `reason`, `retry_stage` | Алерты при росте ошибок внешних систем |
 | `queue_lag_seconds` | Gauge | `queue_name` | Контроль задержек Redis/Kafka (порог 60 сек) |
 | `events_dlq_total` | Counter | `event_type` | Триггер для ручного разбора |
+| `ww_export_attempts_total` / `ww_export_success_total` | Counter | `operation` | Запуски и успехи WW-обработчиков экспорта/ордеров |
+| `ww_export_failure_total` | Counter | `operation`, `reason` | Контроль отказов WW-операций с расшифровкой причины |
+| `ww_export_duration_seconds` | Histogram | `operation`, `outcome` | Длительность WW-операций (сравнение с SLO) |
+| `ww_order_status_transitions_total` | Counter | `from_status`, `to_status`, `result` | Диагностика переходов статусов заказов WW |
 
 - Экспортер: Prometheus `/metrics`, scrape interval 15с.
 - Alertmanager правила: p95 > SLO 5 мин подряд, `integration_failures_total` +50% за 10 мин, `queue_lag_seconds` > 60с.
+
+WW-метрики используют метку `operation` (`order_create`, `order_update`, `order_assign`, `order_status_update`) и позволяют собрать полный путь: попытка → успех/ошибка → длительность. Для поиска проблемных переходов статусов фильтруйте `ww_order_status_transitions_total{result="failure"}` и уточняйте пары `from_status`, `to_status` (например, `NEW→DONE`).
 
 ### Рекомендуемые PromQL запросы
 

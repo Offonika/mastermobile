@@ -13,6 +13,19 @@
 - **Retention:** prod — 30 дней «горячие» + 180 дней архив; stage — 7 дней; локально — по логротейту Docker.
 - **Alerting:** Alertmanager `WWLoggingGap` — триггерится при отсутствии записей >5 мин в prod.
 
+## Метрики Walking Warehouse
+- **Scrape:** `/metrics`, метки `operation={order_create|order_update|order_assign|order_status_update}`.
+- **Основные:**
+  - `ww_export_attempts_total`, `ww_export_success_total` — объём операций, видно провалы экспорта или API-обработчиков.
+  - `ww_export_failure_total{reason="invalid_transition"}` — подсвечивает нарушения workflow (см. `ww_order_status_transitions_total`).
+  - `ww_export_duration_seconds` — следим за SLA: `histogram_quantile(0.95, sum by (operation, le)(rate(ww_export_duration_seconds_bucket[5m])))`.
+  - `ww_order_status_transitions_total{result="failure"}` — быстрый фильтр для проблемных переходов статусов.
+- **Чек-лист при инциденте:**
+  1. `sum by (operation)(increase(ww_export_attempts_total[5m]))` — есть ли вообще запросы.
+  2. `sum by (reason)(increase(ww_export_failure_total[5m]))` — как распределены ошибки.
+  3. `ww_order_status_transitions_total{result="failure"}` — какая пара статусов ломается.
+  4. Сравнить `ww_export_duration_seconds` с SLO (порог 95-й перцентиль ≤ 400 мс для write-потоков).
+
 ## Формат записи
 Каждая запись должна включать минимальный набор полей:
 
