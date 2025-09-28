@@ -473,3 +473,48 @@ class CallRecord(Base):
     )
 
     export: Mapped[CallExport] = relationship(back_populates="records")
+    transcript: Mapped["B24Transcript | None"] = relationship(
+        back_populates="call_record",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+
+
+class B24Transcript(Base):
+    """Full text transcript linked to a Bitrix24 call record."""
+
+    __tablename__ = "b24_transcripts"
+    __table_args__ = (
+        Index("uq_b24_transcripts_call_record_id", "call_record_id", unique=True),
+    )
+
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"),
+        primary_key=True,
+        autoincrement=True,
+    )
+    call_record_id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"),
+        ForeignKey("call_records.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    text_full: Mapped[str] = mapped_column(Text, nullable=False)
+    text_normalized: Mapped[str | None] = mapped_column(Text, nullable=True)
+    metadata_json: Mapped[dict[str, Any] | None] = mapped_column(
+        "metadata",
+        JSONBType,
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    call_record: Mapped[CallRecord] = relationship(back_populates="transcript")
