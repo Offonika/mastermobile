@@ -724,6 +724,184 @@ paths:
           headers:
             X-Request-Id:
               $ref: '#/components/headers/XRequestId'
+  /api/v1/ww/report/deliveries:
+    get:
+      tags:
+        - walking-warehouse
+      summary: Walking Warehouse delivery report
+      description: >-
+        Returns Walking Warehouse deliveries filtered by optional parameters as a
+        structured report. Set `format=csv` to receive a UTF-8 encoded CSV with a
+        trailing totals row whose first column is `TOTALS` and whose
+        `total_amount`/`duration_min` columns contain aggregated sums.
+      operationId: getWalkingWarehouseDeliveryReport
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - name: status
+          in: query
+          required: false
+          description: Filter by order status; multiple values allowed.
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/WWOrderStatus'
+        - name: courier_id
+          in: query
+          required: false
+          description: Filter deliveries handled by a specific courier identifier.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+        - name: created_from
+          in: query
+          required: false
+          description: Return deliveries created on or after the specified timestamp.
+          schema:
+            type: string
+            format: date-time
+        - name: created_to
+          in: query
+          required: false
+          description: Return deliveries created on or before the specified timestamp.
+          schema:
+            type: string
+            format: date-time
+        - name: format
+          in: query
+          required: false
+          description: Response format; defaults to JSON. Use `csv` for a UTF-8 CSV export.
+          schema:
+            type: string
+            enum:
+              - json
+              - csv
+            default: json
+      responses:
+        '200':
+          description: Delivery report rendered in the requested format.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliveryReportResponse'
+            text/csv:
+              schema:
+                type: string
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '401':
+          description: Authentication required.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '403':
+          description: Principal lacks sufficient privileges.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '422':
+          description: Validation error or invalid date range.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/ww/export/kmp4:
+    get:
+      tags:
+        - walking-warehouse
+      summary: Walking Warehouse KMP4 export
+      description: Serializes deliveries into the payload consumed by the 1C KMP4 upload extension.
+      operationId: exportWalkingWarehouseKMP4
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - name: status
+          in: query
+          required: false
+          description: Filter by order status; multiple values allowed.
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/WWOrderStatus'
+        - name: courier_id
+          in: query
+          required: false
+          description: Filter deliveries handled by a specific courier identifier.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+        - name: created_from
+          in: query
+          required: false
+          description: Return deliveries created on or after the specified timestamp.
+          schema:
+            type: string
+            format: date-time
+        - name: created_to
+          in: query
+          required: false
+          description: Return deliveries created on or before the specified timestamp.
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Orders serialized for the KMP4 upload extension.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KMP4ExportResponse'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '401':
+          description: Authentication required.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '403':
+          description: Principal lacks sufficient privileges.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '422':
+          description: Validation error or invalid date range.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '500':
+          description: Unexpected serialization error.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
   /api/v1/b24-calls/export.json:
     get:
       tags:
@@ -1567,6 +1745,183 @@ components:
         status:
           $ref: '#/components/schemas/WWOrderStatus'
           description: New status for the order.
+    DeliveryReportRow:
+      type: object
+      required:
+        - order_id
+        - status
+        - title
+        - customer_name
+        - total_amount
+        - currency_code
+        - created_at
+        - updated_at
+        - duration_min
+      properties:
+        order_id:
+          type: string
+          description: Identifier of the Walking Warehouse order.
+        courier_id:
+          type: string
+          nullable: true
+          description: Identifier of the courier assigned to the order.
+        courier_name:
+          type: string
+          nullable: true
+          description: Display name of the courier assigned to the order.
+        status:
+          type: string
+          description: Current order status in Walking Warehouse.
+        title:
+          type: string
+          description: Title of the delivery visible to the courier.
+        customer_name:
+          type: string
+          description: Customer associated with the delivery.
+        total_amount:
+          type: string
+          description: Total amount of the order in its currency.
+        currency_code:
+          type: string
+          minLength: 3
+          maxLength: 3
+          description: ISO-4217 currency code of the order amount.
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the order was created in Walking Warehouse.
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the order last changed status.
+        duration_min:
+          type: number
+          format: float
+          minimum: 0
+          description: Elapsed minutes between creation and last update.
+    DeliveryReportTotals:
+      type: object
+      required:
+        - total_orders
+        - total_amount
+        - total_duration_min
+      properties:
+        total_orders:
+          type: integer
+          minimum: 0
+          description: Number of deliveries in the report.
+        total_amount:
+          type: string
+          description: Sum of order totals across all deliveries.
+        total_duration_min:
+          type: number
+          format: float
+          minimum: 0
+          description: Sum of delivery durations in minutes across the report.
+    DeliveryReportResponse:
+      type: object
+      required:
+        - items
+        - totals
+      properties:
+        items:
+          type: array
+          description: Delivery records matching the requested filters.
+          items:
+            $ref: '#/components/schemas/DeliveryReportRow'
+        totals:
+          $ref: '#/components/schemas/DeliveryReportTotals'
+          description: Aggregated totals for convenience in UI/export consumers.
+    KMP4OrderItem:
+      type: object
+      required:
+        - sku
+        - name
+        - qty
+        - price
+      properties:
+        sku:
+          type: string
+          description: Stock keeping unit used in Walking Warehouse.
+        name:
+          type: string
+          description: Item name displayed to the courier.
+        qty:
+          type: integer
+          minimum: 0
+          description: Quantity of the item to deliver.
+        price:
+          type: string
+          description: Unit price encoded as a decimal string.
+    KMP4Order:
+      type: object
+      required:
+        - order_id
+        - title
+        - customer_name
+        - status_code
+        - total_amount
+        - currency_code
+        - created_at
+        - updated_at
+        - items
+      properties:
+        order_id:
+          type: string
+          description: Identifier of the order exported to KMP4.
+        title:
+          type: string
+          description: Order title as displayed in the UI.
+        customer_name:
+          type: string
+          description: Customer associated with the order.
+        status_code:
+          type: string
+          description: Status code mapped to the KMP4 domain.
+        total_amount:
+          type: string
+          description: Total amount of the order in its currency.
+        currency_code:
+          type: string
+          minLength: 3
+          maxLength: 3
+          description: ISO-4217 currency code of the order amount.
+        courier_id:
+          type: string
+          nullable: true
+          description: Identifier of the courier assigned to the order.
+        notes:
+          type: string
+          nullable: true
+          description: Optional notes for the courier exported to KMP4.
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the order was created in Walking Warehouse.
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp of the latest order change exported to KMP4.
+        items:
+          type: array
+          description: Order lines included in the export payload.
+          items:
+            $ref: '#/components/schemas/KMP4OrderItem'
+    KMP4ExportResponse:
+      type: object
+      required:
+        - items
+        - total
+      properties:
+        items:
+          type: array
+          description: Orders ready to be consumed by the KMP4 extension.
+          items:
+            $ref: '#/components/schemas/KMP4Order'
+        total:
+          type: integer
+          minimum: 0
+          description: Number of orders in the export payload.
     OrderListResponse:
       type: object
       required:

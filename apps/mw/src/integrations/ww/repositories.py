@@ -172,12 +172,24 @@ class WalkingWarehouseOrderRepository:
         *,
         statuses: Iterable[str] | None = None,
         q: str | None = None,
+        courier_id: str | None = None,
+        created_from: datetime | None = None,
+        created_to: datetime | None = None,
     ) -> list[OrderRecord]:
         records = list(self._orders.values())
 
         if statuses:
             allowed = {status.lower() for status in statuses}
             records = [record for record in records if record.status.lower() in allowed]
+
+        if courier_id is not None:
+            records = [record for record in records if record.courier_id == courier_id]
+
+        if created_from is not None:
+            records = [record for record in records if record.created_at >= created_from]
+
+        if created_to is not None:
+            records = [record for record in records if record.created_at <= created_to]
 
         if q:
             needle = q.strip().lower()

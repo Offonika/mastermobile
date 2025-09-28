@@ -1,8 +1,11 @@
 """Walking Warehouse API endpoints."""
 from __future__ import annotations
 
+import csv
+import io
+from datetime import datetime
+from typing import Any, Iterable, Literal
 from uuid import uuid4
-from typing import Any, Iterable
 
 from fastapi import APIRouter, Depends, Path, Query, Response, status
 
@@ -26,6 +29,11 @@ from apps.mw.src.api.schemas import (
     OrderStatusUpdate,
     OrderUpdate,
     WWOrderStatus,
+    DeliveryReportResponse,
+    DeliveryReportRow,
+    DeliveryReportTotals,
+    KMP4ExportResponse,
+    KMP4Order,
 )
 from apps.mw.src.integrations.ww import (
     CourierAlreadyExistsError,
@@ -38,10 +46,12 @@ from apps.mw.src.integrations.ww import (
     WalkingWarehouseCourierRepository,
     WalkingWarehouseOrderRepository,
 )
+from apps.mw.src.integrations.ww.kmp4_export import KMP4ExportError, KMP4OrderPayload
 from apps.mw.src.observability.metrics import (
     WW_ORDER_STATUS_TRANSITIONS_TOTAL,
     WWExportTracker,
 )
+from apps.mw.src.services.ww_reports import DeliveryReport, WWReportService
 
 router = APIRouter(
     prefix="/api/v1/ww",
@@ -65,12 +75,95 @@ def get_order_repository() -> WalkingWarehouseOrderRepository:
     return _order_repository
 
 
+def get_report_service(
+    order_repository: WalkingWarehouseOrderRepository = Depends(get_order_repository),
+    courier_repository: WalkingWarehouseCourierRepository = Depends(get_courier_repository),
+) -> WWReportService:
+    """Dependency constructing the Walking Warehouse report service."""
+
+    return WWReportService(order_repository, courier_repository)
+
+
 def _serialize_courier(record: object) -> Courier:
     return Courier.model_validate(record)
 
 
 def _serialize_order(record: object) -> Order:
     return Order.model_validate(record)
+
+
+def _render_delivery_report_csv(report: DeliveryReport) -> str:
+    """Render the delivery report into a UTF-8 CSV string with totals."""
+
+    headers = [
+        "order_id",
+        "courier_id",
+        "courier_name",
+        "status",
+        "title",
+        "customer_name",
+        "total_amount",
+        "currency_code",
+        "created_at",
+        "updated_at",
+        "duration_min",
+    ]
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=headers, extrasaction="ignore")
+    writer.writeheader()
+    for row in report.rows:
+        writer.writerow(
+            {
+                "order_id": row.order_id,
+                "courier_id": row.courier_id or "",
+                "courier_name": row.courier_name or "",
+                "status": row.status,
+                "title": row.title,
+                "customer_name": row.customer_name,
+                "total_amount": str(row.total_amount),
+                "currency_code": row.currency_code,
+                "created_at": row.created_at.isoformat(),
+                "updated_at": row.updated_at.isoformat(),
+                "duration_min": f"{row.duration_min:.2f}",
+            }
+        )
+
+    writer.writerow(
+        {
+            "order_id": "TOTALS",
+            "courier_id": "",
+            "courier_name": "",
+            "status": "",
+            "title": "",
+            "customer_name": "",
+            "total_amount": str(report.total_amount),
+            "currency_code": "",
+            "created_at": "",
+            "updated_at": "",
+            "duration_min": f"{report.total_duration_min:.2f}",
+        }
+    )
+
+    return "\ufeff" + buffer.getvalue()
+
+
+def _as_delivery_response(report: DeliveryReport) -> DeliveryReportResponse:
+    """Convert a delivery report aggregate into the API schema."""
+
+    items = [DeliveryReportRow.model_validate(row) for row in report.rows]
+    totals = DeliveryReportTotals(
+        total_orders=report.total_orders,
+        total_amount=report.total_amount,
+        total_duration_min=report.total_duration_min,
+    )
+    return DeliveryReportResponse(items=items, totals=totals)
+
+
+def _as_kmp4_response(payloads: list[KMP4OrderPayload]) -> KMP4ExportResponse:
+    """Convert serialized KMP4 orders into the API schema."""
+
+    orders = [KMP4Order.model_validate(payload) for payload in payloads]
+    return KMP4ExportResponse(items=orders, total=len(orders))
 
 
 def _serialize_items(items: Iterable[OrderCreateItem | dict[str, Any]]) -> list[OrderItemRecord]:
@@ -457,6 +550,151 @@ async def assign_order(
     record = order_repository.update_status(order_id, machine.current.value)
     tracker.success()
     return _serialize_order(record)
+
+
+@router.get(
+    "/report/deliveries",
+    response_model=DeliveryReportResponse,
+    summary="Walking Warehouse delivery report",
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {"model": Error, "description": "Missing principal."},
+        status.HTTP_403_FORBIDDEN: {"model": Error, "description": "Forbidden."},
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Error, "description": "Validation error."},
+    },
+)
+def get_delivery_report(
+    response: Response,
+    report_service: WWReportService = Depends(get_report_service),
+    status_filter: list[WWOrderStatus] | None = Query(
+        default=None,
+        alias="status",
+        description="Filter by order status; multiple values allowed.",
+    ),
+    courier_id: str | None = Query(
+        default=None,
+        description="Filter deliveries handled by a specific courier.",
+        min_length=1,
+    ),
+    created_from: datetime | None = Query(
+        default=None,
+        description="Return deliveries created on or after the specified timestamp.",
+    ),
+    created_to: datetime | None = Query(
+        default=None,
+        description="Return deliveries created on or before the specified timestamp.",
+    ),
+    output_format: Literal["json", "csv"] = Query(
+        default="json",
+        alias="format",
+        description="Set to `csv` to receive the response as UTF-8 CSV.",
+    ),
+) -> DeliveryReportResponse | Response:
+    """Return aggregated delivery metrics optionally rendered as CSV."""
+
+    tracker = WWExportTracker("deliveries_report")
+    statuses = [status.value for status in status_filter] if status_filter else None
+
+    if created_from and created_to and created_from > created_to:
+        tracker.failure("invalid_date_range")
+        error = build_error(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            title="Invalid date range",
+            detail="`created_from` must be earlier than or equal to `created_to`.",
+            request_id=response.headers.get("X-Request-Id"),
+        )
+        raise ProblemDetailException(error)
+
+    report = report_service.generate_delivery_report(
+        statuses=statuses,
+        courier_id=courier_id,
+        created_from=created_from,
+        created_to=created_to,
+    )
+
+    if output_format == "csv":
+        payload = _render_delivery_report_csv(report)
+        tracker.success()
+        csv_response = Response(content=payload, media_type="text/csv; charset=utf-8")
+        csv_response.headers["Content-Disposition"] = "attachment; filename=deliveries.csv"
+        request_id = response.headers.get("X-Request-Id")
+        if request_id:
+            csv_response.headers["X-Request-Id"] = request_id
+        return csv_response
+
+    tracker.success()
+    return _as_delivery_response(report)
+
+
+@router.get(
+    "/export/kmp4",
+    response_model=KMP4ExportResponse,
+    summary="Walking Warehouse KMP4 export",
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {"model": Error, "description": "Missing principal."},
+        status.HTTP_403_FORBIDDEN: {"model": Error, "description": "Forbidden."},
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Error, "description": "Validation error."},
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "model": Error,
+            "description": "Unexpected export serialization error.",
+        },
+    },
+)
+def export_kmp4(
+    response: Response,
+    report_service: WWReportService = Depends(get_report_service),
+    status_filter: list[WWOrderStatus] | None = Query(
+        default=None,
+        alias="status",
+        description="Filter by order status; multiple values allowed.",
+    ),
+    courier_id: str | None = Query(
+        default=None,
+        description="Filter deliveries handled by a specific courier.",
+        min_length=1,
+    ),
+    created_from: datetime | None = Query(
+        default=None,
+        description="Return deliveries created on or after the specified timestamp.",
+    ),
+    created_to: datetime | None = Query(
+        default=None,
+        description="Return deliveries created on or before the specified timestamp.",
+    ),
+) -> KMP4ExportResponse:
+    """Serialize deliveries into the structure expected by the KMP4 upload."""
+
+    tracker = WWExportTracker("kmp4_export")
+    statuses = [status.value for status in status_filter] if status_filter else None
+
+    if created_from and created_to and created_from > created_to:
+        tracker.failure("invalid_date_range")
+        error = build_error(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            title="Invalid date range",
+            detail="`created_from` must be earlier than or equal to `created_to`.",
+            request_id=response.headers.get("X-Request-Id"),
+        )
+        raise ProblemDetailException(error)
+
+    try:
+        payloads = report_service.build_kmp4_export(
+            statuses=statuses,
+            courier_id=courier_id,
+            created_from=created_from,
+            created_to=created_to,
+        )
+    except KMP4ExportError as exc:
+        tracker.failure("serialization_error")
+        error = build_error(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            title="KMP4 export failed",
+            detail=str(exc),
+            request_id=response.headers.get("X-Request-Id"),
+        )
+        raise ProblemDetailException(error) from exc
+
+    tracker.success()
+    return _as_kmp4_response(payloads)
 
 
 @router.post(
