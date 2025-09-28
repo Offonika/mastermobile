@@ -1,5 +1,23 @@
 """Database models exposed for seed scripts and tests."""
 
-from .models import Base, IntegrationLog, Return, ReturnLine
+from .models import (
+    Base,
+    Courier,
+    DeliveryAssignment,
+    DeliveryLog,
+    DeliveryOrder,
+    IntegrationLog,
+    Return,
+    ReturnLine,
+)
 
-__all__ = ["Base", "IntegrationLog", "Return", "ReturnLine"]
+__all__ = [
+    "Base",
+    "Courier",
+    "DeliveryAssignment",
+    "DeliveryLog",
+    "DeliveryOrder",
+    "IntegrationLog",
+    "Return",
+    "ReturnLine",
+]
