@@ -1,0 +1,14 @@
+groups:
+  - name: ww-kmp4-export
+    rules:
+      - alert: WWKMP4ExportErrors
+        expr: sum(increase(ww_kmp4_exports_total{status="error"}[5m])) > 0
+        for: 0m
+        labels:
+          service: walking-warehouse
+          severity: warning
+        annotations:
+          summary: Walking Warehouse KMP4 export errors detected
+          description: |
+            At least one KMP4 export returned an error within the last 5 minutes.
+            Inspect the serialization pipeline and upstream data quality before re-running.

@@ -24,13 +24,14 @@
 | `events_dlq_total` | Counter | `event_type` | Триггер для ручного разбора |
 | `ww_export_attempts_total` / `ww_export_success_total` | Counter | `operation` | Запуски и успехи WW-обработчиков экспорта/ордеров |
 | `ww_export_failure_total` | Counter | `operation`, `reason` | Контроль отказов WW-операций с расшифровкой причины |
+| `ww_kmp4_exports_total` | Counter | `status` | Ошибки/успехи выгрузки KMP4 для оперативной диагностики |
 | `ww_export_duration_seconds` | Histogram | `operation`, `outcome` | Длительность WW-операций (сравнение с SLO) |
 | `ww_order_status_transitions_total` | Counter | `from_status`, `to_status`, `result` | Диагностика переходов статусов заказов WW |
 
 - Экспортер: Prometheus `/metrics`, scrape interval 15с.
-- Alertmanager правила: p95 > SLO 5 мин подряд, `integration_failures_total` +50% за 10 мин, `queue_lag_seconds` > 60с.
+- Alertmanager правила: p95 > SLO 5 мин подряд, `integration_failures_total` +50% за 10 мин, `queue_lag_seconds` > 60с, `ww_kmp4_exports_total{status="error"}` > 0 за 5 мин.
 
-WW-метрики используют метку `operation` (`order_create`, `order_update`, `order_assign`, `order_status_update`) и позволяют собрать полный путь: попытка → успех/ошибка → длительность. Для поиска проблемных переходов статусов фильтруйте `ww_order_status_transitions_total{result="failure"}` и уточняйте пары `from_status`, `to_status` (например, `NEW→DONE`).
+WW-метрики используют метку `operation` (`order_create`, `order_update`, `order_assign`, `order_status_update`) и позволяют собрать полный путь: попытка → успех/ошибка → длительность. Для поиска проблемных переходов статусов фильтруйте `ww_order_status_transitions_total{result="failure"}` и уточняйте пары `from_status`, `to_status` (например, `NEW→DONE`). KMP4-экспорт дополнительно агрегируется метрикой `ww_kmp4_exports_total{status}`: алерт `WWKMP4ExportErrors` срабатывает, когда ``sum(increase(ww_kmp4_exports_total{status="error"}[5m])) > 0`` — это сигнал к разбору сериализации выгрузки и состояния источника данных.
 
 ### Рекомендуемые PromQL запросы
 
