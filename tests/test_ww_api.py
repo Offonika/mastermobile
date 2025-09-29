@@ -1,7 +1,7 @@
 """Integration tests for Walking Warehouse API endpoints."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Tuple
 from uuid import uuid4
 
 import httpx
@@ -11,8 +11,13 @@ from prometheus_client import REGISTRY
 
 from apps.mw.src.app import app
 from apps.mw.src.api.dependencies import reset_idempotency_cache
-from apps.mw.src.api.routes.ww import get_courier_repository, get_order_repository
+from apps.mw.src.api.routes.ww import (
+    get_assignment_repository,
+    get_courier_repository,
+    get_order_repository,
+)
 from apps.mw.src.integrations.ww import (
+    WalkingWarehouseAssignmentRepository,
     WalkingWarehouseCourierRepository,
     WalkingWarehouseOrderRepository,
 )
@@ -47,14 +52,21 @@ def _reset_idempotency() -> None:
 
 
 @pytest.fixture(autouse=True)
-def override_repositories() -> None:
+def override_repositories() -> Tuple[
+    WalkingWarehouseCourierRepository,
+    WalkingWarehouseOrderRepository,
+    WalkingWarehouseAssignmentRepository,
+]:
     courier_repo = WalkingWarehouseCourierRepository()
     order_repo = WalkingWarehouseOrderRepository()
+    assignment_repo = WalkingWarehouseAssignmentRepository()
     app.dependency_overrides[get_courier_repository] = lambda: courier_repo
     app.dependency_overrides[get_order_repository] = lambda: order_repo
-    yield
+    app.dependency_overrides[get_assignment_repository] = lambda: assignment_repo
+    yield courier_repo, order_repo, assignment_repo
     app.dependency_overrides.pop(get_courier_repository, None)
     app.dependency_overrides.pop(get_order_repository, None)
+    app.dependency_overrides.pop(get_assignment_repository, None)
 
 
 @pytest_asyncio.fixture()
@@ -102,6 +114,22 @@ def _order_payload(order_id: str | None = None, courier_id: str | None = None, *
     }
     payload.update(overrides)
     return payload
+
+
+def _create_assignment(
+    repository: WalkingWarehouseAssignmentRepository,
+    assignment_id: str,
+    order_id: str,
+    courier_id: str,
+    *,
+    status: str = "PENDING",
+) -> None:
+    repository.create(
+        assignment_id=assignment_id,
+        order_id=order_id,
+        courier_id=courier_id,
+        status=status,
+    )
 
 
 async def _create_courier(client: httpx.AsyncClient, courier_id: str = "courier-1") -> httpx.Response:
@@ -423,3 +451,88 @@ async def test_decline_without_assignment_returns_422(api_client: httpx.AsyncCli
     assert decline_response.status_code == 422
     body = decline_response.json()
     assert body["title"] == "Invalid assignment state"
+
+
+@pytest.mark.asyncio
+async def test_assignment_accept_endpoint(
+    api_client: httpx.AsyncClient,
+    override_repositories: Tuple[
+        WalkingWarehouseCourierRepository,
+        WalkingWarehouseOrderRepository,
+        WalkingWarehouseAssignmentRepository,
+    ],
+) -> None:
+    _, order_repo, assignment_repo = override_repositories
+
+    await _create_courier(api_client, "courier-701")
+    order_id = (await _create_order(api_client, courier_id="courier-701")).json()["id"]
+
+    assign_headers = {"Idempotency-Key": f"assign-{uuid4()}"}
+    assign_response = await api_client.post(
+        f"/api/v1/ww/orders/{order_id}/assign",
+        json={"courier_id": "courier-701"},
+        headers=assign_headers,
+    )
+    assert assign_response.status_code == 200
+    assert assign_response.json()["status"] == "ASSIGNED"
+
+    assignment_id = "assignment-701"
+    _create_assignment(assignment_repo, assignment_id, order_id, "courier-701")
+
+    accept_headers = {"Idempotency-Key": f"accept-{uuid4()}"}
+    accept_response = await api_client.post(
+        f"/api/v1/ww/assignments/{assignment_id}/accept",
+        json={"comment": "Heading out"},
+        headers=accept_headers,
+    )
+    assert accept_response.status_code == 200
+    payload = accept_response.json()
+    assert payload["assignment"]["status"] == "ACCEPTED"
+    assert payload["order"]["status"] == "IN_TRANSIT"
+    assert payload["order"]["courier_id"] == "courier-701"
+
+    order_record = order_repo.get(order_id)
+    assert order_record.status == "IN_TRANSIT"
+
+
+@pytest.mark.asyncio
+async def test_assignment_decline_endpoint_resets_order(
+    api_client: httpx.AsyncClient,
+    override_repositories: Tuple[
+        WalkingWarehouseCourierRepository,
+        WalkingWarehouseOrderRepository,
+        WalkingWarehouseAssignmentRepository,
+    ],
+) -> None:
+    _, order_repo, assignment_repo = override_repositories
+
+    await _create_courier(api_client, "courier-801")
+    order_id = (await _create_order(api_client, courier_id="courier-801")).json()["id"]
+
+    assign_headers = {"Idempotency-Key": f"assign-{uuid4()}"}
+    assign_response = await api_client.post(
+        f"/api/v1/ww/orders/{order_id}/assign",
+        json={"courier_id": "courier-801"},
+        headers=assign_headers,
+    )
+    assert assign_response.status_code == 200
+    assert assign_response.json()["status"] == "ASSIGNED"
+
+    assignment_id = "assignment-801"
+    _create_assignment(assignment_repo, assignment_id, order_id, "courier-801")
+
+    decline_headers = {"Idempotency-Key": f"decline-{uuid4()}"}
+    decline_response = await api_client.post(
+        f"/api/v1/ww/assignments/{assignment_id}/decline",
+        json={"reason": "Not available"},
+        headers=decline_headers,
+    )
+    assert decline_response.status_code == 200
+    payload = decline_response.json()
+    assert payload["assignment"]["status"] == "DECLINED"
+    assert payload["order"]["status"] == "NEW"
+    assert payload["order"]["courier_id"] is None
+
+    order_record = order_repo.get(order_id)
+    assert order_record.status == "NEW"
+    assert order_record.courier_id is None
