@@ -8,6 +8,7 @@ from typing import Any, Iterable, Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Path, Query, Response, status
+from loguru import logger
 
 from apps.mw.src.api.dependencies import (
     ProblemDetailException,
@@ -26,7 +27,9 @@ from apps.mw.src.api.schemas import (
     OrderCreate,
     OrderCreateItem,
     OrderListResponse,
+    OrderLogsResponse,
     OrderStatusUpdate,
+    OrderStatusLogEntry,
     OrderUpdate,
     WWOrderStatus,
     DeliveryReportResponse,
@@ -697,7 +700,7 @@ def export_kmp4(
     return _as_kmp4_response(payloads)
 
 
-@router.post(
+@router.patch(
     "/orders/{order_id}/status",
     response_model=Order,
     summary="Update order status",
@@ -756,6 +759,55 @@ async def update_order_status(
         machine.current.value,
         "success",
     ).inc()
-    record = order_repository.update_status(order_id, machine.current.value)
+    record = order_repository.update_status(
+        order_id,
+        machine.current.value,
+        lat=payload.lat,
+        lon=payload.lon,
+        note=payload.note,
+    )
+    logger.bind(
+        order_id=order_id,
+        courier_id=record.courier_id,
+        previous_status=previous_status,
+        new_status=machine.current.value,
+    ).info(
+        "WW order status updated",
+        lat=payload.lat,
+        lon=payload.lon,
+        note=payload.note,
+    )
     tracker.success()
     return _serialize_order(record)
+
+
+@router.get(
+    "/orders/{order_id}/logs",
+    response_model=OrderLogsResponse,
+    summary="List order status logs",
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {"model": Error, "description": "Missing principal."},
+        status.HTTP_403_FORBIDDEN: {"model": Error, "description": "Forbidden."},
+        status.HTTP_404_NOT_FOUND: {"model": Error, "description": "Order not found."},
+    },
+)
+async def list_order_logs(
+    response: Response,
+    order_id: str = Path(..., description="Identifier of the order to inspect."),
+    order_repository: WalkingWarehouseOrderRepository = Depends(get_order_repository),
+) -> OrderLogsResponse:
+    """Retrieve stored status logs for the specified order."""
+
+    try:
+        entries = order_repository.list_logs(order_id)
+    except OrderNotFoundError as exc:
+        error = build_error(
+            status.HTTP_404_NOT_FOUND,
+            title="Order not found",
+            detail=f"Order {order_id} was not found.",
+            request_id=response.headers.get("X-Request-Id"),
+        )
+        raise ProblemDetailException(error) from exc
+
+    items = [OrderStatusLogEntry.model_validate(entry) for entry in entries]
+    return OrderLogsResponse(items=items, total=len(items))

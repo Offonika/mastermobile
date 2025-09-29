@@ -196,22 +196,39 @@ async def test_order_lifecycle_happy_path(api_client: httpx.AsyncClient) -> None
     assert assign_response.json()["status"] == "ASSIGNED"
 
     status_headers = {"Idempotency-Key": f"status-{uuid4()}"}
-    status_response = await api_client.post(
+    status_payload = {
+        "status": "IN_TRANSIT",
+        "lat": 55.7558,
+        "lon": 37.6173,
+        "note": "Courier picked up the order",
+    }
+    status_response = await api_client.patch(
         f"/api/v1/ww/orders/{order_id}/status",
-        json={"status": "IN_TRANSIT"},
+        json=status_payload,
         headers=status_headers,
     )
     assert status_response.status_code == 200
     assert status_response.json()["status"] == "IN_TRANSIT"
 
     done_headers = {"Idempotency-Key": f"done-{uuid4()}"}
-    done_response = await api_client.post(
+    done_response = await api_client.patch(
         f"/api/v1/ww/orders/{order_id}/status",
         json={"status": "DONE"},
         headers=done_headers,
     )
     assert done_response.status_code == 200
     assert done_response.json()["status"] == "DONE"
+
+    logs_response = await api_client.get(f"/api/v1/ww/orders/{order_id}/logs")
+    assert logs_response.status_code == 200
+    logs_body = logs_response.json()
+    assert logs_body["total"] == 2
+    statuses = [entry["status"] for entry in logs_body["items"]]
+    assert statuses == ["IN_TRANSIT", "DONE"]
+    first_entry = logs_body["items"][0]
+    assert first_entry["lat"] == pytest.approx(55.7558)
+    assert first_entry["lon"] == pytest.approx(37.6173)
+    assert first_entry["note"] == "Courier picked up the order"
 
 
 @pytest.mark.asyncio
@@ -243,7 +260,7 @@ async def test_ww_metrics_instrumentation(
         "ww_export_success_total", {"operation": "order_create"}
     ) == pytest.approx(1.0)
 
-    invalid_status_response = await api_client.post(
+    invalid_status_response = await api_client.patch(
         f"/api/v1/ww/orders/{order_id}/status",
         json={"status": "DONE"},
         headers={"Idempotency-Key": f"invalid-{uuid4()}"},
@@ -276,7 +293,7 @@ async def test_ww_metrics_instrumentation(
     ) == pytest.approx(1.0)
 
     status_headers = {"Idempotency-Key": f"status-{uuid4()}"}
-    status_response = await api_client.post(
+    status_response = await api_client.patch(
         f"/api/v1/ww/orders/{order_id}/status",
         json={"status": "IN_TRANSIT"},
         headers=status_headers,

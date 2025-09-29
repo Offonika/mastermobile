@@ -7,6 +7,7 @@ from .repositories import (
     OrderItemRecord,
     OrderNotFoundError,
     OrderRecord,
+    OrderStatusLogRecord,
     WalkingWarehouseCourierRepository,
     WalkingWarehouseOrderRepository,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "OrderItemRecord",
     "OrderNotFoundError",
     "OrderRecord",
+    "OrderStatusLogRecord",
     "WalkingWarehouseCourierRepository",
     "WalkingWarehouseOrderRepository",
     "InvalidOrderStatusTransitionError",

@@ -50,6 +50,18 @@ class OrderRecord:
     created_at: datetime
     updated_at: datetime
     items: list[OrderItemRecord] = field(default_factory=list)
+    logs: list["OrderStatusLogRecord"] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class OrderStatusLogRecord:
+    """Stored status log for a Walking Warehouse order."""
+
+    status: str
+    lat: float | None
+    lon: float | None
+    note: str | None
+    created_at: datetime
 
 
 class CourierAlreadyExistsError(RuntimeError):
@@ -248,10 +260,53 @@ class WalkingWarehouseOrderRepository:
         record.updated_at = _utcnow()
         return record
 
-    def update_status(self, order_id: str, status: str) -> OrderRecord:
+    def append_status_log(
+        self,
+        order_id: str,
+        *,
+        status: str,
+        lat: float | None = None,
+        lon: float | None = None,
+        note: str | None = None,
+        timestamp: datetime | None = None,
+    ) -> OrderStatusLogRecord:
         record = self.get(order_id)
+        log_timestamp = timestamp or _utcnow()
+        entry = OrderStatusLogRecord(
+            status=status,
+            lat=lat,
+            lon=lon,
+            note=note,
+            created_at=log_timestamp,
+        )
+        record.logs.append(entry)
+        record.updated_at = log_timestamp
+        return entry
+
+    def list_logs(self, order_id: str) -> list[OrderStatusLogRecord]:
+        record = self.get(order_id)
+        return list(record.logs)
+
+    def update_status(
+        self,
+        order_id: str,
+        status: str,
+        *,
+        lat: float | None = None,
+        lon: float | None = None,
+        note: str | None = None,
+    ) -> OrderRecord:
+        record = self.get(order_id)
+        timestamp = _utcnow()
         record.status = status
-        record.updated_at = _utcnow()
+        self.append_status_log(
+            order_id,
+            status=status,
+            lat=lat,
+            lon=lon,
+            note=note,
+            timestamp=timestamp,
+        )
         return record
 
     def clear(self) -> None:
