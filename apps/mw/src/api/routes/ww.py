@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import io
+import logging
 from datetime import datetime
 from typing import Any, Iterable, Literal
 from uuid import uuid4
@@ -30,6 +31,8 @@ from apps.mw.src.api.schemas import (
     OrderCreate,
     OrderCreateItem,
     OrderListResponse,
+    OrderStatusLogEntry,
+    OrderStatusLogResponse,
     OrderStatusUpdate,
     OrderUpdate,
     WWOrderStatus,
@@ -65,6 +68,8 @@ router = APIRouter(
     tags=["walking-warehouse"],
     dependencies=[Depends(provide_request_id)],
 )
+
+logger = logging.getLogger(__name__)
 
 _courier_repository = WalkingWarehouseCourierRepository()
 _order_repository = WalkingWarehouseOrderRepository()
@@ -108,6 +113,10 @@ def _serialize_order(record: object) -> Order:
 
 def _serialize_assignment(record: object) -> Assignment:
     return Assignment.model_validate(record)
+
+
+def _serialize_status_log(record: object) -> OrderStatusLogEntry:
+    return OrderStatusLogEntry.model_validate(record)
 
 
 def _render_delivery_report_csv(report: DeliveryReport) -> str:
@@ -953,7 +962,7 @@ def export_kmp4(
     return _as_kmp4_response(payloads)
 
 
-@router.post(
+@router.patch(
     "/orders/{order_id}/status",
     response_model=Order,
     summary="Update order status",
@@ -1012,6 +1021,54 @@ async def update_order_status(
         machine.current.value,
         "success",
     ).inc()
-    record = order_repository.update_status(order_id, machine.current.value)
+    logger.info(
+        "Received order status update for %s: %s -> %s (lat=%s lon=%s note=%r)",
+        order_id,
+        previous_status,
+        machine.current.value,
+        payload.lat,
+        payload.lon,
+        payload.note,
+    )
+    record = order_repository.update_status(
+        order_id,
+        machine.current.value,
+        lat=payload.lat,
+        lon=payload.lon,
+        note=payload.note,
+    )
     tracker.success()
     return _serialize_order(record)
+
+
+@router.get(
+    "/orders/{order_id}/logs",
+    response_model=OrderStatusLogResponse,
+    summary="List order status logs",
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {"model": Error, "description": "Missing principal."},
+        status.HTTP_403_FORBIDDEN: {"model": Error, "description": "Forbidden."},
+        status.HTTP_404_NOT_FOUND: {"model": Error, "description": "Order not found."},
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Error, "description": "Validation error."},
+    },
+)
+def list_order_logs(
+    response: Response,
+    order_id: str = Path(..., description="Identifier of the order to inspect."),
+    order_repository: WalkingWarehouseOrderRepository = Depends(get_order_repository),
+) -> OrderStatusLogResponse:
+    """Return stored status update log entries for the order."""
+
+    try:
+        records = order_repository.list_logs(order_id)
+    except OrderNotFoundError as exc:
+        error = build_error(
+            status.HTTP_404_NOT_FOUND,
+            title="Order not found",
+            detail=f"Order {order_id} was not found.",
+            request_id=response.headers.get("X-Request-Id"),
+        )
+        raise ProblemDetailException(error) from exc
+
+    entries = [_serialize_status_log(record) for record in records]
+    return OrderStatusLogResponse(items=entries)

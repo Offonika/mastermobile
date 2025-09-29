@@ -12,6 +12,10 @@ from .returns import (
 )
 from .stt import STTDLQRequeueResponse, STTJobPayload
 from .ww import (
+    Assignment,
+    AssignmentAcceptRequest,
+    AssignmentActionResponse,
+    AssignmentDeclineRequest,
     Courier,
     CourierCreate,
     CouriersResponse,
@@ -21,8 +25,11 @@ from .ww import (
     OrderCreateItem,
     OrderItem,
     OrderListResponse,
+    OrderStatusLogEntry,
+    OrderStatusLogResponse,
     OrderStatusUpdate,
     OrderUpdate,
+    WWAssignmentStatus,
     WWOrderStatus,
 )
 from .ww_reports import (
@@ -45,6 +52,10 @@ __all__ = [
     "ReturnItem",
     "STTDLQRequeueResponse",
     "STTJobPayload",
+    "Assignment",
+    "AssignmentAcceptRequest",
+    "AssignmentActionResponse",
+    "AssignmentDeclineRequest",
     "Courier",
     "CourierCreate",
     "CouriersResponse",
@@ -54,8 +65,11 @@ __all__ = [
     "OrderCreateItem",
     "OrderItem",
     "OrderListResponse",
+    "OrderStatusLogEntry",
+    "OrderStatusLogResponse",
     "OrderStatusUpdate",
     "OrderUpdate",
+    "WWAssignmentStatus",
     "WWOrderStatus",
     "DeliveryReportResponse",
     "DeliveryReportRow",

@@ -224,7 +224,7 @@ async def test_order_lifecycle_happy_path(api_client: httpx.AsyncClient) -> None
     assert assign_response.json()["status"] == "ASSIGNED"
 
     status_headers = {"Idempotency-Key": f"status-{uuid4()}"}
-    status_response = await api_client.post(
+    status_response = await api_client.patch(
         f"/api/v1/ww/orders/{order_id}/status",
         json={"status": "IN_TRANSIT"},
         headers=status_headers,
@@ -233,7 +233,7 @@ async def test_order_lifecycle_happy_path(api_client: httpx.AsyncClient) -> None
     assert status_response.json()["status"] == "IN_TRANSIT"
 
     done_headers = {"Idempotency-Key": f"done-{uuid4()}"}
-    done_response = await api_client.post(
+    done_response = await api_client.patch(
         f"/api/v1/ww/orders/{order_id}/status",
         json={"status": "DONE"},
         headers=done_headers,
@@ -271,7 +271,7 @@ async def test_ww_metrics_instrumentation(
         "ww_export_success_total", {"operation": "order_create"}
     ) == pytest.approx(1.0)
 
-    invalid_status_response = await api_client.post(
+    invalid_status_response = await api_client.patch(
         f"/api/v1/ww/orders/{order_id}/status",
         json={"status": "DONE"},
         headers={"Idempotency-Key": f"invalid-{uuid4()}"},
@@ -304,7 +304,7 @@ async def test_ww_metrics_instrumentation(
     ) == pytest.approx(1.0)
 
     status_headers = {"Idempotency-Key": f"status-{uuid4()}"}
-    status_response = await api_client.post(
+    status_response = await api_client.patch(
         f"/api/v1/ww/orders/{order_id}/status",
         json={"status": "IN_TRANSIT"},
         headers=status_headers,
@@ -387,7 +387,7 @@ async def test_create_order_replay_returns_cached_response(
     assert assign_missing_courier.status_code == 404
 
     status_headers = {"Idempotency-Key": f"status-{uuid4()}"}
-    status_missing = await api_client.post(
+    status_missing = await api_client.patch(
         f"/api/v1/ww/orders/{uuid4()}/status",
         json={"status": "IN_TRANSIT"},
         headers=status_headers,
@@ -401,7 +401,7 @@ async def test_invalid_status_transition_returns_422(api_client: httpx.AsyncClie
     order_id = (await _create_order(api_client, courier_id="courier-401")).json()["id"]
 
     status_headers = {"Idempotency-Key": f"status-{uuid4()}"}
-    invalid_transition = await api_client.post(
+    invalid_transition = await api_client.patch(
         f"/api/v1/ww/orders/{order_id}/status",
         json={"status": "DONE"},
         headers=status_headers,
@@ -409,6 +409,45 @@ async def test_invalid_status_transition_returns_422(api_client: httpx.AsyncClie
     assert invalid_transition.status_code == 422
     body = invalid_transition.json()
     assert body["title"] == "Invalid order status transition"
+
+
+@pytest.mark.asyncio
+async def test_order_status_logs_flow(api_client: httpx.AsyncClient) -> None:
+    await _create_courier(api_client, "courier-logs")
+    order_id = (await _create_order(api_client, courier_id="courier-logs")).json()["id"]
+
+    first_headers = {"Idempotency-Key": f"status-{uuid4()}"}
+    first_payload = {"status": "ASSIGNED", "lat": 55.751244, "lon": 37.618423, "note": "Picked up"}
+    first_response = await api_client.patch(
+        f"/api/v1/ww/orders/{order_id}/status",
+        json=first_payload,
+        headers=first_headers,
+    )
+    assert first_response.status_code == 200
+    assert first_response.json()["status"] == "ASSIGNED"
+
+    second_headers = {"Idempotency-Key": f"status-{uuid4()}"}
+    second_payload = {"status": "IN_TRANSIT", "lat": 55.76, "lon": 37.64, "note": "Heading out"}
+    second_response = await api_client.patch(
+        f"/api/v1/ww/orders/{order_id}/status",
+        json=second_payload,
+        headers=second_headers,
+    )
+    assert second_response.status_code == 200
+    assert second_response.json()["status"] == "IN_TRANSIT"
+
+    logs_response = await api_client.get(f"/api/v1/ww/orders/{order_id}/logs")
+    assert logs_response.status_code == 200
+    logs = logs_response.json()["items"]
+    assert len(logs) == 2
+    assert logs[0]["status"] == "ASSIGNED"
+    assert logs[0]["note"] == "Picked up"
+    assert logs[0]["lat"] == pytest.approx(55.751244)
+    assert logs[0]["lon"] == pytest.approx(37.618423)
+    assert logs[1]["status"] == "IN_TRANSIT"
+    assert logs[1]["note"] == "Heading out"
+    assert logs[1]["lat"] == pytest.approx(55.76)
+    assert logs[1]["lon"] == pytest.approx(37.64)
 
 
 @pytest.mark.asyncio

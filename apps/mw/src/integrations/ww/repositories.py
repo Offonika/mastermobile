@@ -59,6 +59,18 @@ class OrderRecord:
     created_at: datetime
     updated_at: datetime
     items: list[OrderItemRecord] = field(default_factory=list)
+    logs: list["OrderLogRecord"] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class OrderLogRecord:
+    """Audit record capturing status updates for an order."""
+
+    status: str
+    lat: float | None
+    lon: float | None
+    note: str | None
+    created_at: datetime
 
 
 class CourierAlreadyExistsError(RuntimeError):
@@ -186,6 +198,7 @@ class WalkingWarehouseOrderRepository:
             created_at=timestamp,
             updated_at=timestamp,
             items=list(items),
+            logs=[],
         )
         self._orders[order_id] = record
         return record
@@ -277,14 +290,36 @@ class WalkingWarehouseOrderRepository:
         record.updated_at = _utcnow()
         return record
 
-    def update_status(self, order_id: str, status: str) -> OrderRecord:
+    def update_status(
+        self,
+        order_id: str,
+        status: str,
+        *,
+        lat: float | None = None,
+        lon: float | None = None,
+        note: str | None = None,
+    ) -> OrderRecord:
         record = self.get(order_id)
+        timestamp = _utcnow()
         record.status = status
-        record.updated_at = _utcnow()
+        record.updated_at = timestamp
+        record.logs.append(
+            OrderLogRecord(
+                status=status,
+                lat=lat,
+                lon=lon,
+                note=note,
+                created_at=timestamp,
+            )
+        )
         return record
 
     def clear(self) -> None:
         self._orders.clear()
+
+    def list_logs(self, order_id: str) -> list[OrderLogRecord]:
+        record = self.get(order_id)
+        return list(record.logs)
 
 
 class WalkingWarehouseAssignmentRepository:

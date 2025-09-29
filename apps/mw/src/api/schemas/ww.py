@@ -194,6 +194,55 @@ class OrderStatusUpdate(WWBaseModel):
     """Payload for transitioning an order to a new status."""
 
     status: WWOrderStatus = Field(description="New status for the order.")
+    lat: float | None = Field(
+        default=None,
+        ge=-90,
+        le=90,
+        description="Optional latitude of the courier when the update was sent.",
+    )
+    lon: float | None = Field(
+        default=None,
+        ge=-180,
+        le=180,
+        description="Optional longitude of the courier when the update was sent.",
+    )
+    note: str | None = Field(
+        default=None,
+        max_length=500,
+        description="Optional note accompanying the status update.",
+    )
+
+
+class OrderStatusLogEntry(WWBaseModel):
+    """Representation of a persisted order status update event."""
+
+    status: WWOrderStatus = Field(description="Order status recorded in the log entry.")
+    lat: float | None = Field(
+        default=None,
+        ge=-90,
+        le=90,
+        description="Latitude reported for the update.",
+    )
+    lon: float | None = Field(
+        default=None,
+        ge=-180,
+        le=180,
+        description="Longitude reported for the update.",
+    )
+    note: str | None = Field(
+        default=None,
+        max_length=500,
+        description="Additional note captured with the update.",
+    )
+    created_at: datetime = Field(description="Timestamp when the log entry was created.")
+
+
+class OrderStatusLogResponse(WWBaseModel):
+    """Collection wrapper for order status log entries."""
+
+    items: List[OrderStatusLogEntry] = Field(
+        description="List of log entries ordered from oldest to newest.",
+    )
 
 
 class OrderListResponse(WWBaseModel):
