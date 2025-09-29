@@ -17,6 +17,10 @@ from apps.mw.src.api.dependencies import (
     provide_request_id,
 )
 from apps.mw.src.api.schemas import (
+    Assignment,
+    AssignmentAcceptRequest,
+    AssignmentActionResponse,
+    AssignmentDeclineRequest,
     Courier,
     CourierCreate,
     CouriersResponse,
@@ -36,13 +40,16 @@ from apps.mw.src.api.schemas import (
     KMP4Order,
 )
 from apps.mw.src.integrations.ww import (
+    AssignmentNotFoundError,
     CourierAlreadyExistsError,
     CourierNotFoundError,
+    InvalidAssignmentStatusTransitionError,
     InvalidOrderStatusTransitionError,
     OrderAlreadyExistsError,
     OrderItemRecord,
     OrderNotFoundError,
     OrderStateMachine,
+    WalkingWarehouseAssignmentRepository,
     WalkingWarehouseCourierRepository,
     WalkingWarehouseOrderRepository,
 )
@@ -61,6 +68,7 @@ router = APIRouter(
 
 _courier_repository = WalkingWarehouseCourierRepository()
 _order_repository = WalkingWarehouseOrderRepository()
+_assignment_repository = WalkingWarehouseAssignmentRepository()
 
 
 def get_courier_repository() -> WalkingWarehouseCourierRepository:
@@ -73,6 +81,12 @@ def get_order_repository() -> WalkingWarehouseOrderRepository:
     """Dependency providing the order repository."""
 
     return _order_repository
+
+
+def get_assignment_repository() -> WalkingWarehouseAssignmentRepository:
+    """Dependency providing the assignment repository."""
+
+    return _assignment_repository
 
 
 def get_report_service(
@@ -90,6 +104,10 @@ def _serialize_courier(record: object) -> Courier:
 
 def _serialize_order(record: object) -> Order:
     return Order.model_validate(record)
+
+
+def _serialize_assignment(record: object) -> Assignment:
+    return Assignment.model_validate(record)
 
 
 def _render_delivery_report_csv(report: DeliveryReport) -> str:
@@ -427,6 +445,26 @@ async def update_order(
     return _serialize_order(record)
 
 
+def _assignment_transition_error(
+    *,
+    assignment_id: str,
+    current: str,
+    new: str,
+    response: Response,
+    tracker: WWExportTracker,
+) -> ProblemDetailException:
+    tracker.failure("invalid_assignment_transition")
+    error = build_error(
+        status.HTTP_422_UNPROCESSABLE_ENTITY,
+        title="Invalid assignment status transition",
+        detail=(
+            f"Cannot transition assignment {assignment_id} from {current} to {new}."
+        ),
+        request_id=response.headers.get("X-Request-Id"),
+    )
+    return ProblemDetailException(error)
+
+
 @router.post(
     "/orders/{order_id}/assign",
     response_model=Order,
@@ -550,6 +588,224 @@ async def assign_order(
     record = order_repository.update_status(order_id, machine.current.value)
     tracker.success()
     return _serialize_order(record)
+
+
+@router.post(
+    "/assignments/{assignment_id}/accept",
+    response_model=AssignmentActionResponse,
+    summary="Accept assignment",
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {"model": Error, "description": "Missing principal."},
+        status.HTTP_403_FORBIDDEN: {"model": Error, "description": "Forbidden."},
+        status.HTTP_404_NOT_FOUND: {"model": Error, "description": "Assignment or order not found."},
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Error, "description": "Validation error."},
+    },
+)
+async def accept_assignment(
+    payload: AssignmentAcceptRequest,
+    response: Response,
+    assignment_id: str = Path(..., description="Identifier of the assignment."),
+    assignment_repository: WalkingWarehouseAssignmentRepository = Depends(
+        get_assignment_repository
+    ),
+    order_repository: WalkingWarehouseOrderRepository = Depends(get_order_repository),
+    _idempotency: IdempotencyContext = Depends(enforce_idempotency_key),
+) -> AssignmentActionResponse:
+    """Mark an assignment as accepted and move the order in transit."""
+
+    tracker = WWExportTracker("assignment_accept")
+    try:
+        assignment_record = assignment_repository.get(assignment_id)
+    except AssignmentNotFoundError as exc:
+        tracker.failure("assignment_not_found")
+        error = build_error(
+            status.HTTP_404_NOT_FOUND,
+            title="Assignment not found",
+            detail=f"Assignment {assignment_id} was not found.",
+            request_id=response.headers.get("X-Request-Id"),
+        )
+        raise ProblemDetailException(error) from exc
+
+    try:
+        order_record = order_repository.get(assignment_record.order_id)
+    except OrderNotFoundError as exc:
+        tracker.failure("order_not_found")
+        error = build_error(
+            status.HTTP_404_NOT_FOUND,
+            title="Order not found",
+            detail=(
+                f"Order {assignment_record.order_id} linked to assignment"
+                f" {assignment_id} was not found."
+            ),
+            request_id=response.headers.get("X-Request-Id"),
+        )
+        raise ProblemDetailException(error) from exc
+
+    target_status = WWOrderStatus.IN_TRANSIT
+    machine = OrderStateMachine.from_raw(order_record.status)
+
+    try:
+        probe_machine = OrderStateMachine.from_raw(order_record.status)
+        probe_machine.ensure_transition(target_status)
+    except InvalidOrderStatusTransitionError as exc:
+        detail = (
+            f"Cannot transition order {order_record.id} from {exc.current} to {exc.new}."
+        )
+        WW_ORDER_STATUS_TRANSITIONS_TOTAL.labels(
+            exc.current.value,
+            exc.new.value,
+            "failure",
+        ).inc()
+        tracker.failure("invalid_transition")
+        error = build_error(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            title="Invalid order status transition",
+            detail=detail,
+            request_id=response.headers.get("X-Request-Id"),
+        )
+        raise ProblemDetailException(error) from exc
+
+    try:
+        assignment = assignment_repository.accept(assignment_id)
+    except InvalidAssignmentStatusTransitionError as exc:
+        raise _assignment_transition_error(
+            assignment_id=assignment_id,
+            current=exc.current,
+            new=exc.new,
+            response=response,
+            tracker=tracker,
+        ) from exc
+
+    previous_status = machine.current.value
+    machine.ensure_transition(target_status)
+    WW_ORDER_STATUS_TRANSITIONS_TOTAL.labels(
+        previous_status,
+        machine.current.value,
+        "success",
+    ).inc()
+    updated_order = order_repository.update_status(
+        order_record.id, machine.current.value
+    )
+
+    tracker.success()
+    return AssignmentActionResponse(
+        assignment=_serialize_assignment(assignment),
+        order=_serialize_order(updated_order),
+    )
+
+
+@router.post(
+    "/assignments/{assignment_id}/decline",
+    response_model=AssignmentActionResponse,
+    summary="Decline assignment",
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {"model": Error, "description": "Missing principal."},
+        status.HTTP_403_FORBIDDEN: {"model": Error, "description": "Forbidden."},
+        status.HTTP_404_NOT_FOUND: {"model": Error, "description": "Assignment or order not found."},
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Error, "description": "Validation error."},
+    },
+)
+async def decline_assignment(
+    payload: AssignmentDeclineRequest,
+    response: Response,
+    assignment_id: str = Path(..., description="Identifier of the assignment."),
+    assignment_repository: WalkingWarehouseAssignmentRepository = Depends(
+        get_assignment_repository
+    ),
+    order_repository: WalkingWarehouseOrderRepository = Depends(get_order_repository),
+    _idempotency: IdempotencyContext = Depends(enforce_idempotency_key),
+) -> AssignmentActionResponse:
+    """Decline an assignment and reset the linked order."""
+
+    tracker = WWExportTracker("assignment_decline")
+    try:
+        assignment_record = assignment_repository.get(assignment_id)
+    except AssignmentNotFoundError as exc:
+        tracker.failure("assignment_not_found")
+        error = build_error(
+            status.HTTP_404_NOT_FOUND,
+            title="Assignment not found",
+            detail=f"Assignment {assignment_id} was not found.",
+            request_id=response.headers.get("X-Request-Id"),
+        )
+        raise ProblemDetailException(error) from exc
+
+    try:
+        order_record = order_repository.get(assignment_record.order_id)
+    except OrderNotFoundError as exc:
+        tracker.failure("order_not_found")
+        error = build_error(
+            status.HTTP_404_NOT_FOUND,
+            title="Order not found",
+            detail=(
+                f"Order {assignment_record.order_id} linked to assignment"
+                f" {assignment_id} was not found."
+            ),
+            request_id=response.headers.get("X-Request-Id"),
+        )
+        raise ProblemDetailException(error) from exc
+
+    machine = OrderStateMachine.from_raw(order_record.status)
+
+    try:
+        probe_machine = OrderStateMachine.from_raw(order_record.status)
+        probe_machine.ensure_transition(WWOrderStatus.DECLINED)
+        probe_machine.ensure_transition(WWOrderStatus.NEW)
+    except InvalidOrderStatusTransitionError as exc:
+        WW_ORDER_STATUS_TRANSITIONS_TOTAL.labels(
+            exc.current.value,
+            exc.new.value,
+            "failure",
+        ).inc()
+        tracker.failure("invalid_transition")
+        error = build_error(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            title="Invalid order status transition",
+            detail=(
+                f"Cannot transition order {order_record.id} from {exc.current}"
+                f" to {exc.new}."
+            ),
+            request_id=response.headers.get("X-Request-Id"),
+        )
+        raise ProblemDetailException(error) from exc
+
+    try:
+        assignment = assignment_repository.decline(assignment_id)
+    except InvalidAssignmentStatusTransitionError as exc:
+        raise _assignment_transition_error(
+            assignment_id=assignment_id,
+            current=exc.current,
+            new=exc.new,
+            response=response,
+            tracker=tracker,
+        ) from exc
+
+    previous_status = machine.current.value
+    machine.ensure_transition(WWOrderStatus.DECLINED)
+    WW_ORDER_STATUS_TRANSITIONS_TOTAL.labels(
+        previous_status,
+        machine.current.value,
+        "success",
+    ).inc()
+    order_repository.update_status(order_record.id, machine.current.value)
+
+    previous_status = machine.current.value
+    machine.ensure_transition(WWOrderStatus.NEW)
+    WW_ORDER_STATUS_TRANSITIONS_TOTAL.labels(
+        previous_status,
+        machine.current.value,
+        "success",
+    ).inc()
+    updated_order = assignment_repository.reset_order(
+        order_repository,
+        order_record.id,
+    )
+
+    tracker.success()
+    return AssignmentActionResponse(
+        assignment=_serialize_assignment(assignment),
+        order=_serialize_order(updated_order),
+    )
 
 
 @router.get(

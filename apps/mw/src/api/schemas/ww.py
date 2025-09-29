@@ -26,6 +26,14 @@ class WWOrderStatus(str, Enum):
     DECLINED = "DECLINED"
 
 
+class WWAssignmentStatus(str, Enum):
+    """Statuses describing the lifecycle of a courier assignment."""
+
+    PENDING = "PENDING"
+    ACCEPTED = "ACCEPTED"
+    DECLINED = "DECLINED"
+
+
 class CourierCreate(WWBaseModel):
     """Payload for creating a courier."""
 
@@ -193,3 +201,41 @@ class OrderListResponse(WWBaseModel):
 
     items: List[Order] = Field(description="Orders matching requested filters.")
     total: int = Field(ge=0, description="Total number of orders after filters.")
+
+
+class Assignment(WWBaseModel):
+    """Representation of an order assignment for a courier."""
+
+    id: str = Field(description="Unique identifier of the assignment.")
+    order_id: str = Field(description="Identifier of the linked order.")
+    courier_id: str = Field(description="Identifier of the assigned courier.")
+    status: WWAssignmentStatus = Field(description="Current state of the assignment.")
+    created_at: datetime = Field(description="Timestamp when the assignment was created.")
+    updated_at: datetime = Field(description="Timestamp when the assignment was last updated.")
+
+
+class AssignmentAcceptRequest(WWBaseModel):
+    """Payload confirming that a courier accepted an assignment."""
+
+    comment: str | None = Field(
+        default=None,
+        description="Optional comment accompanying the acceptance.",
+        max_length=500,
+    )
+
+
+class AssignmentDeclineRequest(WWBaseModel):
+    """Payload sent when a courier declines an assignment."""
+
+    reason: str | None = Field(
+        default=None,
+        description="Optional reason for declining the assignment.",
+        max_length=500,
+    )
+
+
+class AssignmentActionResponse(WWBaseModel):
+    """Response wrapper carrying both assignment and order state."""
+
+    assignment: Assignment = Field(description="Updated assignment information.")
+    order: Order = Field(description="Current state of the linked order.")

@@ -7,6 +7,15 @@ from decimal import Decimal
 from typing import Iterable, Sequence
 
 
+class InvalidAssignmentStatusTransitionError(RuntimeError):
+    """Raised when an assignment status transition is not allowed."""
+
+    def __init__(self, current: str, new: str) -> None:
+        self.current = current
+        self.new = new
+        super().__init__(f"Cannot transition assignment status from {current} to {new}.")
+
+
 def _utcnow() -> datetime:
     """Return timezone-aware UTC timestamps."""
 
@@ -66,6 +75,26 @@ class OrderAlreadyExistsError(RuntimeError):
 
 class OrderNotFoundError(RuntimeError):
     """Raised when an order identifier cannot be found."""
+
+
+@dataclass(slots=True)
+class AssignmentRecord:
+    """Stored representation of an order assignment for a courier."""
+
+    id: str
+    order_id: str
+    courier_id: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class AssignmentAlreadyExistsError(RuntimeError):
+    """Raised when attempting to create an assignment with an existing id."""
+
+
+class AssignmentNotFoundError(RuntimeError):
+    """Raised when an assignment identifier cannot be found."""
 
 
 class WalkingWarehouseCourierRepository:
@@ -256,3 +285,79 @@ class WalkingWarehouseOrderRepository:
 
     def clear(self) -> None:
         self._orders.clear()
+
+
+class WalkingWarehouseAssignmentRepository:
+    """In-memory repository for courier order assignments."""
+
+    _ALLOWED_TRANSITIONS = {
+        "PENDING": {"ACCEPTED", "DECLINED"},
+        "ACCEPTED": set(),
+        "DECLINED": set(),
+    }
+
+    def __init__(self) -> None:
+        self._assignments: dict[str, AssignmentRecord] = {}
+
+    def create(
+        self,
+        *,
+        assignment_id: str,
+        order_id: str,
+        courier_id: str,
+        status: str = "PENDING",
+    ) -> AssignmentRecord:
+        if assignment_id in self._assignments:
+            raise AssignmentAlreadyExistsError(assignment_id)
+
+        timestamp = _utcnow()
+        record = AssignmentRecord(
+            id=assignment_id,
+            order_id=order_id,
+            courier_id=courier_id,
+            status=status,
+            created_at=timestamp,
+            updated_at=timestamp,
+        )
+        self._assignments[assignment_id] = record
+        return record
+
+    def get(self, assignment_id: str) -> AssignmentRecord:
+        record = self._assignments.get(assignment_id)
+        if record is None:
+            raise AssignmentNotFoundError(assignment_id)
+        return record
+
+    def _ensure_transition(self, record: AssignmentRecord, status: str) -> None:
+        if record.status == status:
+            return
+        allowed = self._ALLOWED_TRANSITIONS.get(record.status, set())
+        if status not in allowed:
+            raise InvalidAssignmentStatusTransitionError(record.status, status)
+
+    def accept(self, assignment_id: str) -> AssignmentRecord:
+        record = self.get(assignment_id)
+        self._ensure_transition(record, "ACCEPTED")
+        if record.status != "ACCEPTED":
+            record.status = "ACCEPTED"
+            record.updated_at = _utcnow()
+        return record
+
+    def decline(self, assignment_id: str) -> AssignmentRecord:
+        record = self.get(assignment_id)
+        self._ensure_transition(record, "DECLINED")
+        if record.status != "DECLINED":
+            record.status = "DECLINED"
+            record.updated_at = _utcnow()
+        return record
+
+    def reset_order(
+        self,
+        order_repository: WalkingWarehouseOrderRepository,
+        order_id: str,
+    ) -> OrderRecord:
+        order_repository.assign_courier(order_id, None)
+        return order_repository.update_status(order_id, "NEW")
+
+    def clear(self) -> None:
+        self._assignments.clear()
