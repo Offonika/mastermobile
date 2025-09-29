@@ -71,6 +71,13 @@ WW_ORDER_STATUS_TRANSITIONS_TOTAL: Final[Counter] = Counter(
 )
 """Counter monitoring Walking Warehouse order status transition attempts and outcomes."""
 
+WW_KMP4_EXPORTS_TOTAL: Final[Counter] = Counter(
+    "ww_kmp4_exports_total",
+    "Total number of Walking Warehouse KMP4 exports grouped by outcome.",
+    labelnames=("status",),
+)
+"""Counter summarising KMP4 export outcomes exposed on the default registry."""
+
 
 class WWExportTracker:
     """Helper recording Prometheus metrics for Walking Warehouse export operations."""
@@ -159,6 +166,7 @@ __all__ = [
     "WW_EXPORT_SUCCESS_TOTAL",
     "WW_EXPORT_FAILURE_TOTAL",
     "WW_EXPORT_DURATION_SECONDS",
+    "WW_KMP4_EXPORTS_TOTAL",
     "WW_ORDER_STATUS_TRANSITIONS_TOTAL",
     "WWExportTracker",
     "register_metrics",

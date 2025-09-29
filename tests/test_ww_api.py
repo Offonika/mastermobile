@@ -25,6 +25,7 @@ from apps.mw.src.observability.metrics import (
     WW_EXPORT_ATTEMPTS_TOTAL,
     WW_EXPORT_FAILURE_TOTAL,
     WW_EXPORT_SUCCESS_TOTAL,
+    WW_KMP4_EXPORTS_TOTAL,
     WW_ORDER_STATUS_TRANSITIONS_TOTAL,
 )
 
@@ -36,11 +37,13 @@ def ww_metrics_reset() -> None:
     WW_EXPORT_ATTEMPTS_TOTAL.clear()
     WW_EXPORT_SUCCESS_TOTAL.clear()
     WW_EXPORT_FAILURE_TOTAL.clear()
+    WW_KMP4_EXPORTS_TOTAL.clear()
     WW_ORDER_STATUS_TRANSITIONS_TOTAL.clear()
     yield
     WW_EXPORT_ATTEMPTS_TOTAL.clear()
     WW_EXPORT_SUCCESS_TOTAL.clear()
     WW_EXPORT_FAILURE_TOTAL.clear()
+    WW_KMP4_EXPORTS_TOTAL.clear()
     WW_ORDER_STATUS_TRANSITIONS_TOTAL.clear()
 
 
@@ -575,3 +578,36 @@ async def test_assignment_decline_endpoint_resets_order(
     order_record = order_repo.get(order_id)
     assert order_record.status == "NEW"
     assert order_record.courier_id is None
+
+
+@pytest.mark.asyncio
+async def test_kmp4_export_success_increments_metric(
+    api_client: httpx.AsyncClient,
+    ww_metrics_reset: None,
+) -> None:
+    await _create_courier(api_client, "courier-kmp4")
+    create_response = await _create_order(api_client, courier_id="courier-kmp4")
+    assert create_response.status_code == 201
+
+    response = await api_client.get("/api/v1/ww/export/kmp4")
+    assert response.status_code == 200
+    assert _metric_value("ww_kmp4_exports_total", {"status": "success"}) == pytest.approx(1.0)
+    assert _metric_value("ww_kmp4_exports_total", {"status": "error"}) == pytest.approx(0.0)
+
+
+@pytest.mark.asyncio
+async def test_kmp4_export_invalid_range_increments_error(
+    api_client: httpx.AsyncClient,
+    ww_metrics_reset: None,
+) -> None:
+    response = await api_client.get(
+        "/api/v1/ww/export/kmp4",
+        params={
+            "created_from": "2024-01-02T00:00:00+00:00",
+            "created_to": "2024-01-01T00:00:00+00:00",
+        },
+    )
+
+    assert response.status_code == 422
+    assert _metric_value("ww_kmp4_exports_total", {"status": "error"}) == pytest.approx(1.0)
+    assert _metric_value("ww_kmp4_exports_total", {"status": "success"}) == pytest.approx(0.0)

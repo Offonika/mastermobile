@@ -58,6 +58,7 @@ from apps.mw.src.integrations.ww import (
 )
 from apps.mw.src.integrations.ww.kmp4_export import KMP4ExportError, KMP4OrderPayload
 from apps.mw.src.observability.metrics import (
+    WW_KMP4_EXPORTS_TOTAL,
     WW_ORDER_STATUS_TRANSITIONS_TOTAL,
     WWExportTracker,
 )
@@ -950,6 +951,7 @@ def export_kmp4(
         )
     except KMP4ExportError as exc:
         tracker.failure("serialization_error")
+        WW_KMP4_EXPORTS_TOTAL.labels(status="error").inc()
         error = build_error(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             title="KMP4 export failed",
@@ -959,6 +961,7 @@ def export_kmp4(
         raise ProblemDetailException(error) from exc
 
     tracker.success()
+    WW_KMP4_EXPORTS_TOTAL.labels(status="success").inc()
     return _as_kmp4_response(payloads)
 
 
