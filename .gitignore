@@ -13,3 +13,4 @@ htmlcov/
 dist/
 build/
 .env.dev
+.env.dev.local
