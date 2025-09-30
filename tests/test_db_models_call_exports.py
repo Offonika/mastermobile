@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from apps.mw.src.db.models import (
+    B24Transcript,
     Base,
     CallExport,
     CallExportStatus,
@@ -51,7 +52,12 @@ def test_call_export_crud_matches_schema() -> None:
     core_users = _ensure_core_users_table()
     Base.metadata.create_all(
         engine,
-        tables=[core_users, CallExport.__table__, CallRecord.__table__],
+        tables=[
+            core_users,
+            CallExport.__table__,
+            CallRecord.__table__,
+            B24Transcript.__table__,
+        ],
     )
 
     actor_id = uuid4()
@@ -107,7 +113,12 @@ def test_call_record_crud_and_cascade() -> None:
     core_users = _ensure_core_users_table()
     Base.metadata.create_all(
         engine,
-        tables=[core_users, CallExport.__table__, CallRecord.__table__],
+        tables=[
+            core_users,
+            CallExport.__table__,
+            CallRecord.__table__,
+            B24Transcript.__table__,
+        ],
     )
 
     period_from = datetime(2024, 9, 1, tzinfo=timezone.utc)
