@@ -160,7 +160,7 @@ Status‑Dictionary v1
 3.1. Доставка (task / delivery_order)
  Основная цепочка: NEW → PICKING → READY → PICKED_UP → ON_ROUTE → DELIVERED → CASH_RETURNED → DONE.
  Курьер может выставлять: PICKED_UP, ON_ROUTE, DELIVERED, CASH_RETURNED, FAILED (при невыполнении SLA).
- READY/DONE/REFUSED проставляются MW/менеджером; переходы валидируются по матрице (см. API‑Contracts §7).
+ READY/DONE/REFUSED проставляются MW/менеджером; переходы валидируются по [матрице](API%E2%80%91Contracts.md#3-%D0%BC%D0%B0%D1%82%D1%80%D0%B8%D1%86%D0%B0-%D1%81%D1%82%D0%B0%D1%82%D1%83%D1%81%D0%BE%D0%B2-%D0%B4%D0%BE%D1%81%D1%82%D0%B0%D0%B2%D0%BA%D0%B8) в API‑Contracts §3.
  Ветви:
  - FAILED — допускается из ON_ROUTE или DELIVERED (нарушение SLA, требуется ручная обработка).
  - REFUSED — допускается из READY (отказ клиента/менеджера, заказ возвращается в 1С).
