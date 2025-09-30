@@ -1,0 +1,13 @@
+services:
+  app:
+    command: >
+      uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      PYTHONPATH: "/app/apps/mw/src:/app"
+    volumes:
+      - .:/app:cached
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8000/openapi.json"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
