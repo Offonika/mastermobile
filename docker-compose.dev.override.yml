@@ -1,0 +1,5 @@
+services:
+  db:
+    ports: ["0:5432"]
+  redis:
+    ports: ["0:6379"]
