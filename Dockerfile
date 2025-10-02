@@ -13,7 +13,7 @@ RUN apt-get update \
 
 COPY pyproject.toml README.md ./
 COPY apps ./apps
-COPY httpx ./httpx
+
 COPY openapi.yaml ./
 
 RUN pip install --no-cache-dir --upgrade pip \
