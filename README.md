@@ -143,6 +143,7 @@ calls = await list_calls(
 
 ## Полезное
 - Архитектура: [docs/architecture/overview.md](docs/architecture/overview.md)
+- Конституция: [docs/constitution.md](docs/constitution.md)
 - Документация: ./docs
 - Контрибьютинг: ./CONTRIBUTING.md
 - Лицензия: ./LICENSE
