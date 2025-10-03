@@ -50,8 +50,6 @@ WW-метрики используют метку `operation` (`order_create`, `
 - **Queue Lag**: задержка по каждому топику/очереди, глубина, длительность ретраев.
 - **SLO Tracking**: бюджет ошибок, burn rate (1h/6h), прогноз исчерпания.
 
-> Подробные инструкции по реакциям, SLO и синтетическим проверкам для `call_export` перенесены во внутренний Confluence (раздел «Integrations › Call texts»).
-
 ## Инцидентная реакция
 - PagerDuty/Telegram уведомления при `critical` алертах.
 - Runbook содержит шаги проверки (`make logs`, запросы к `/health`, `/metrics`, анализ DLQ`).

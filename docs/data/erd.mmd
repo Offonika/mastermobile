@@ -66,46 +66,6 @@ erDiagram
         timestamptz created_at "Создано (UTC)"
     }
 
-    CALL_EXPORTS {
-        uuid run_id PK "Идентификатор запуска (UUID)"
-        timestamptz period_from "Начало периода выгрузки (UTC)"
-        timestamptz period_to "Конец периода выгрузки (UTC)"
-        text status "Статус: pending|in_progress|completed|error|cancelled"
-        timestamptz started_at "Старт запуска (UTC)"
-        timestamptz finished_at "Завершение запуска (UTC, nullable)"
-        uuid actor_user_id FK "FK → core.users.user_id (nullable, инициатор)"
-        jsonb options "Флаги запуска (generate_summary, language и др.)"
-        timestamptz created_at "Создано (UTC)"
-        timestamptz updated_at "Обновлено (UTC)"
-    }
-
-    CALL_RECORDS {
-        bigserial id PK "Технический идентификатор"
-        uuid run_id FK "FK → call_exports.run_id"
-        text call_id "Идентификатор звонка в Bitrix24"
-        text record_id "Идентификатор записи (nullable)"
-        timestamptz call_started_at "Начало звонка (UTC, nullable)"
-        integer duration_sec "Длительность (сек, CHECK ≥ 0)"
-        text recording_url "Исходный URL записи"
-        text storage_path "Путь к сохранённому аудио (nullable)"
-        text transcript_path "Путь к расшифровке (nullable)"
-        text summary_path "Путь к саммари (nullable)"
-        text text_preview "Первый килобайт текста (nullable)"
-        text language "Определённый язык (nullable)"
-        text employee_id "Идентификатор оператора (nullable)"
-        text checksum "Контрольная сумма аудио (nullable)"
-        numeric transcription_cost "Стоимость распознавания (nullable)"
-        currency_code currency_code "Валюта стоимости (ISO-4217)"
-        text status "Статус: pending|downloading|downloaded|transcribing|completed|skipped|error"
-        text error_code "Код ошибки (nullable)"
-        text error_message "Описание ошибки (nullable)"
-        integer attempts "Количество попыток (CHECK ≥ 0)"
-        timestamptz last_attempt_at "Последняя попытка (UTC, nullable)"
-        timestamptz created_at "Создано (UTC)"
-        timestamptz updated_at "Обновлено (UTC)"
-    }
-
     RETURNS ||--o{ RETURN_LINES : "содержит"
     RETURNS ||--o{ INTEGRATION_LOG : "логирует через resource_ref"
     RETURNS ||--o{ TASK_EVENTS : "формирует события"
-    CALL_EXPORTS ||--o{ CALL_RECORDS : "агрегирует"

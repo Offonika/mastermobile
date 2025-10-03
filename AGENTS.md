@@ -157,7 +157,7 @@ PRD / SRS  →  ER / DDL  →  API Contracts  →  ONE-PAGER / UX
 ### Глоссарий и статусы
 
 - Создать/обновлять `docs/00-Core_glossary-status.md`.
-- Вынести термины: SoT, Delta/Зеркало, MW, Batch-Transcribe и прочие доменные
+- Вынести термины: SoT, Delta/Зеркало, MW и прочие доменные
   определения.
 
 ### Модули / потоки (docs-phase)
@@ -173,7 +173,7 @@ PRD / SRS  →  ER / DDL  →  API Contracts  →  ONE-PAGER / UX
 
 ### UAT-чеклисты
 
-- Примеры чеклистов и шаблонов UAT для интеграций (включая Batch-Transcribe) перенесены во внутренний Confluence.
+- Примеры чеклистов и шаблонов UAT для интеграций перенесены во внутренний Confluence.
 - Итоговый отчёт: минуты и оценка стоимости.
 
 Каждый новый ONE-PAGER должен содержать аналогичный блок UAT.
@@ -200,7 +200,6 @@ PRD / SRS  →  ER / DDL  →  API Contracts  →  ONE-PAGER / UX
 | ER / DDL             | Арх / DB       | Core Sync, Walking Warehouse   |
 | API Contracts        | Арх / API      | Все потоки                     |
 | Walking Warehouse    | Продакт        | Арх / Интеграция / UX          |
-| B24 Transcribe       | Интеграции     | Арх / Аналитика                |
 
 ## 🏁 Переход к коду
 
@@ -210,7 +209,7 @@ PRD / SRS  →  ER / DDL  →  API Contracts  →  ONE-PAGER / UX
 /apps/mw/       # FastAPI-приложение
 /contracts/     # OpenAPI / JSON Schema
 /db/migrations/ # SQL-миграции (ER v0.6.x → …)
-/scripts/       # Утилиты (в т.ч. batch-transcribe)
+/scripts/       # Утилиты
 /docs/          # Источник истины
 /.github/       # PR template, CODEOWNERS, workflows
 ```
@@ -221,9 +220,8 @@ PRD / SRS  →  ER / DDL  →  API Contracts  →  ONE-PAGER / UX
    check-openapi) — выполняется.
 2. Сгенерировать OpenAPI v1 из `schemas/` по `API-Contracts.md` (валидатор зелёный).
 3. Добавить первые SQL-миграции по `ER-диаграмма и DDL.md`.
-4. Зафиксировать CLI интерфейс `scripts/b24_transcribe` (параметры/форматы).
-5. Настроить Docs-CI (markdownlint + link-checker + spellcheck).
-6. Добавить `.github/pull_request_template.md`, `.github/CODEOWNERS` (готово).
+4. Настроить Docs-CI (markdownlint + link-checker + spellcheck).
+5. Добавить `.github/pull_request_template.md`, `.github/CODEOWNERS` (готово).
 
 ## 📁 Шаблоны GitHub
 

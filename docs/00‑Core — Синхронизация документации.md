@@ -11,11 +11,9 @@
 | Поток | PRD | SRS | Привязки |
 | --- | --- | --- | --- |
 | Core Sync (УТ 10.3↔11) | v1.1.2 (18.09.2025) | v1.0.3 (27.09.2025) | 00‑Core v1.3.4, API‑Contracts v1.1.0, ER Freeze v0.6.5 |
-| B24 Batch-Transcribe | v1.0.0 (19.09.2025) | v1.0.0 (21.09.2025) | 00‑Core v1.3.1, API‑Contracts v1.1.0, ER Freeze v0.6.4 |
 | Ассистент мастера | [PRD — «Ассистент мастера» v0.1.1 (Final)](PRD%20—%20«Ассистент%20мастера».md) | — | 00‑Core v1.3.4, [API‑Contracts v1.0.0](API%E2%80%91Contracts.md), [Status‑Dictionary v1](00%E2%80%91Core%20%E2%80%94%20%D0%A1%D0%B8%D0%BD%D1%85%D1%80%D0%BE%D0%BD%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D1%8F%20%D0%B4%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B0%D1%86%D0%B8%D0%B8.md#3-status-dictionary-v1), [SoT = сайт (Bitrix)](00%E2%80%91Core%20%E2%80%94%20%D0%A1%D0%B8%D0%BD%D1%85%D1%80%D0%BE%D0%BD%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D1%8F%20%D0%B4%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B0%D1%86%D0%B8%D0%B8.md#5-sot-matrix-v1-source-of-truth) |
 | КМП4 | — | [SRS — КМП4 (в подготовке)](SRS%20—%20КМП4.md) | Исходные материалы: `1c/config_dump_txt/`, `1c/external/kmp4_delivery_report/` (исходники в `src/`); привязка к 00‑Core v1.3.4 |
 
-> Примечание: поток Batch-Transcribe наследует нормы 00‑Core v1.3.1; изменения 1.3.2+, влияющие на B24, фиксируются отдельным changelog перед раскаткой.
 
 1. Ссылочные документы
 Core‑API‑Style v1 (раздел 2 ниже)
@@ -200,9 +198,9 @@ Status‑Dictionary v1
 
 Для каждого статуса хранится: code, title, role_visible (courier/manager), allowed_prev, allowed_next, webhook_out (куда отправлять события), ui_chip.
 
-4. ER Freeze v0.6.5 (единая БД MW)
+4. ER Freeze v0.6.4 (единая БД MW)
 Ключевые сущности:
- orders, order_lines, instant_orders, instant_order_lines, returns, return_lines, couriers, courier_stock, tasks, task_events, nsi_* (справочники), integration_log, idempotency_key, status_dict, call_exports, call_records.
+ orders, order_lines, instant_orders, instant_order_lines, returns, return_lines, couriers, courier_stock, tasks, task_events, nsi_* (справочники), integration_log, idempotency_key, status_dict.
  Технические нормы:
 Домены/валидации: телефон +7XXXXXXXXXX; email RFC; денежные суммы numeric(12,2) + currency_code ISO‑4217.
 
@@ -283,7 +281,6 @@ Cutover‑gate: чек‑лист отката, readiness review, контакт
 Ключевые метрики: p50/p95 latency по методам, error‑rate (5xx/4xx), success‑rate вебхуков, задержка интеграций (1С/B24), очередь task_events, доля ретраев.
  SLO: p95 чтение ≤ 400 ms, модификации ≤ 700 ms; error‑rate ≤ 1%; webhook delivery ≥ 99% за 15 мин.
  Алерты: превышение SLO 3× за 10 мин; рост 429 > 5% трафика; circuit‑breaker открыт > 60 сек; лаг интеграции > 5 мин.
-Специализированные пайплайны: документация по Batch-Transcribe хранится во внутреннем Confluence (раздел «Integrations › Call texts»).
 
 9. Data Retention & ПДн
 ПДн в логах маскируются; integration_log хранится 90 дней (агрегаты — 365).
@@ -565,9 +562,8 @@ nsi_counterparty
 
 ## Changelog
 
-- 27.09.2025 — Version Map обновлён: Core Sync переведён на API‑Contracts v1.1.0 и ER Freeze v0.6.5; ссылки раздела 1 приведены к актуальному baseline.
+- 27.09.2025 — Version Map обновлён: Core Sync переведён на API‑Contracts v1.1.0 и ER Freeze v0.6.4; ссылки раздела 1 приведены к актуальному baseline.
 - 26.09.2025 — Актуализирована карта версий и ссылки на API‑Contracts: подтверждено использование v1.1.0 вместо упоминаний v1.1.3.
-- 22.09.2025 — ER Freeze обновлён до v0.6.5: добавлены `call_exports`/`call_records` (Batch-Transcribe B24) с FK на `core.users` и каскадом на run_id; отражено в ER-диаграмме и DDL.
 
 - 21.09.2025 — Зафиксированы каноничные статусы возвратов pending/accepted/rejected/cancelled и связь события return_ready → pending.
 - 20.09.2025 — Синхронизировано с API-Contracts v1.0.0: обновлены базовые заголовки, формат ошибок и убран `X-Api-Version`.
