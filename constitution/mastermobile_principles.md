@@ -1,7 +1,8 @@
 # MasterMobile Engineering Principles
 
 ## Code Quality
-- Target Python **3.12+** with FastAPI as the core web framework.
+- Target Python **3.11+** with FastAPI as the core web framework.
+- When raising the minimum Python version (e.g., to 3.12+), update `pyproject.toml`, CI/tooling configs, and all public docs in the same PR.
 - Enforce **strict typing**; `mypy` must pass with `--strict` settings.
 - Run `ruff` with autofix disabled in CI and commit hooks; violations block merges.
 - Maintain **≥95% unit-test coverage** on core modules; surface coverage dashboards in PRs.
