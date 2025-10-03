@@ -156,19 +156,19 @@ alerts-reset: $(VENV_SENTINEL)
 	fi
 
 1c-pack-kmp4:
-        @mkdir -p "$(ONEC_LOG_DIR)"
-        @LOG="$(ONEC_PACK_LOG)"; \
-        ARTIFACT="$(ONEC_PACK_ARTIFACT)"; \
-        if "$(POWERSHELL)" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$(ONEC_PACK_SCRIPT)" -SourceDirectory "$(ONEC_PACK_SOURCE)" -OutputFile "$(ONEC_PACK_ARTIFACT)" > "$$LOG" 2>&1; then \
-                cat "$$LOG"; \
-                if [ ! -f "$$ARTIFACT" ]; then \
-                        echo "Expected artifact $$ARTIFACT to be created." >&2; \
-                        exit 1; \
-                fi; \
-        else \
-                cat "$$LOG"; \
-                exit 1; \
-        fi
+	@mkdir -p "$(ONEC_LOG_DIR)"
+	@LOG="$(ONEC_PACK_LOG)"; \
+	ARTIFACT="$(ONEC_PACK_ARTIFACT)"; \
+	if "$(POWERSHELL)" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$(ONEC_PACK_SCRIPT)" -SourceDirectory "$(ONEC_PACK_SOURCE)" -OutputFile "$(ONEC_PACK_ARTIFACT)" > "$$LOG" 2>&1; then \
+		cat "$$LOG"; \
+		if [ ! -f "$$ARTIFACT" ]; then \
+			echo "Expected artifact $$ARTIFACT to be created." >&2; \
+			exit 1; \
+		fi; \
+	else \
+		cat "$$LOG"; \
+		exit 1; \
+	fi
 
 1c-dump-txt:
 	@mkdir -p "$(ONEC_LOG_DIR)"
