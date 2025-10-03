@@ -123,7 +123,7 @@
 - Ответ 201: `Order` + `Location`.
 - Ошибки: 401, 403, 404 (курьер не найден), 409, 422.
 
-### 5.5 PATCH /api/v1/ww/orders/{orderId}
+### 4.5 PATCH /api/v1/ww/orders/{orderId}
 - Назначение: частичное обновление заказа.
 - Роли: `courier`, `admin`.
 - Заголовки: `Authorization`, `Idempotency-Key`, `X-Request-Id` (опц.).
@@ -131,7 +131,7 @@
 - Ответ 200: `Order`.
 - Ошибки: 401, 403, 404, 422.
 
-### 5.6 POST /api/v1/ww/orders/{orderId}/assign
+### 4.6 POST /api/v1/ww/orders/{orderId}/assign
 - Назначение: назначение/снятие курьера.
 - Роли: `courier`, `admin`.
 - Заголовки: `Authorization`, `Idempotency-Key`, `X-Request-Id` (опц.).
@@ -139,7 +139,7 @@
 - Ответ 200: `Order`.
 - Ошибки: 401, 403, 404 (заказ или курьер), 422.
 
-### 5.7 POST /api/v1/ww/orders/{orderId}/status
+### 4.7 POST /api/v1/ww/orders/{orderId}/status
 - Назначение: смена статуса заказа.
 - Роли: `courier`, `admin`.
 - Заголовки: `Authorization`, `Idempotency-Key`, `X-Request-Id` (опц.).
@@ -147,21 +147,21 @@
 - Ответ 200: `Order`.
 - Ошибки: 401, 403, 404, 422.
 
-### 5.8 GET /api/v1/ww/report/deliveries
+### 4.8 GET /api/v1/ww/report/deliveries
 - Роли: `courier`, `admin`.
 - Параметры: `status[]`, `courier_id`, `created_from`, `created_to`, `format` (`json`/`csv`).
 - Заголовки: опционально `X-Request-Id`.
 - Ответ 200: `DeliveryReportResponse` или поток CSV.
 - Ошибки: 401, 403, 422.
 
-### 5.9 GET /api/v1/ww/export/kmp4
+### 4.9 GET /api/v1/ww/export/kmp4
 - Роли: `courier`, `admin`.
 - Параметры: `status[]`, `courier_id`, `created_from`, `created_to`.
 - Заголовки: опционально `X-Request-Id`.
 - Ответ 200: `KMP4ExportResponse`.
 - Ошибки: 401, 403, 422, 500 (внутренняя ошибка сериализации).
 
-### 5.10 Матрица переходов статусов Walking Warehouse
+### 4.10 Матрица переходов статусов Walking Warehouse
 Матрица используется эндпоинтом `POST /api/v1/ww/orders/{orderId}/status` и справочником `status_dict`. Нарушение правил приводит
 к ответу `422 Error` с указанием некорректного перехода.
 
