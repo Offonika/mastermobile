@@ -72,8 +72,39 @@
 
 ## Валидация и синтетические проверки
 1. **Инжект алерта в Alertmanager Sandbox:**
-   - Выполнить `make alerts-inject rule=call_export_run_failed` для проверки пайплайна уведомлений.
-   - Для STT-специфических правил используйте `rule=call_export_5xx_growth`, `rule=call_export_dlq_spike`, `rule=call_export_job_long_running`.
+   - В репозитории нет автоматизированных целей `make alerts-inject`/`make alerts-reset`. Для проверки используйте API Alertmanager Sandbox.
+   - Подготовьте полезную нагрузку для теста `CallExportRunFailed`:
+     ```bash
+     export ALERTMANAGER_URL="https://alertmanager-sandbox.example.com"
+     export ALERT_START="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+     export ALERT_END="$(date -u -d '+15 minutes' +"%Y-%m-%dT%H:%M:%SZ")"
+     cat <<JSON >/tmp/call_export_run_failed.json
+     [
+       {
+         "labels": {
+           "alertname": "CallExportRunFailed",
+           "service": "call_export",
+           "severity": "critical",
+           "environment": "sandbox",
+           "source": "synthetic"
+         },
+         "annotations": {
+           "summary": "Synthetic alert for call_export validation",
+           "description": "Triggered manually from runbook validation"
+         },
+         "startsAt": "${ALERT_START}",
+         "endsAt": "${ALERT_END}"
+       }
+     ]
+     JSON
+     ```
+   - Отправьте алерт в Alertmanager Sandbox:
+     ```bash
+     curl -X POST "${ALERTMANAGER_URL}/api/v2/alerts" \
+       -H 'Content-Type: application/json' \
+       --data-binary @/tmp/call_export_run_failed.json
+     ```
+   - Для проверки других правил скорректируйте `alertname` и лейблы (`CallExport5xxGrowth`, `CallExportDLQSpike`, `CallExportJobLongRunning`).
 2. **Проверить визуализацию:**
    - На дашборде [Call Export Monitoring](https://grafana.example.com/d/mastermobile-call-export/call-export-overview?orgId=1)
      убедиться, что панель «Active Alerts» отображает новое событие.
@@ -81,8 +112,34 @@
      подсвечены в красном при тестовом нарушении.
 3. **Прометей:** вручную выполнить запросы `call_export_transcribe_failures_total` и `events_dlq_total` через
    [Prometheus Expression Browser](https://prometheus.example.com/graph) для подтверждения инжекции.
-4. **Post-check:** после завершения теста удалить synthetic alerts командой `make alerts-reset` и удостовериться, что
-   Alertmanager вернулся в `normal` состояние.
+4. **Post-check:** завершите синтетический алерт, отправив событие с истёкшим `endsAt`:
+   ```bash
+   export ALERT_RESOLVE_START="$(date -u -d '-10 minutes' +"%Y-%m-%dT%H:%M:%SZ")"
+   export ALERT_RESOLVE_END="$(date -u -d '-1 minute' +"%Y-%m-%dT%H:%M:%SZ")"
+   cat <<JSON >/tmp/call_export_run_failed_resolve.json
+   [
+     {
+       "labels": {
+         "alertname": "CallExportRunFailed",
+         "service": "call_export",
+         "severity": "critical",
+         "environment": "sandbox",
+         "source": "synthetic"
+       },
+       "annotations": {
+         "summary": "Synthetic alert resolved",
+         "description": "Manual resolution after validation"
+       },
+       "startsAt": "${ALERT_RESOLVE_START}",
+       "endsAt": "${ALERT_RESOLVE_END}"
+     }
+   ]
+   JSON
+   curl -X POST "${ALERTMANAGER_URL}/api/v2/alerts" \
+     -H 'Content-Type: application/json' \
+     --data-binary @/tmp/call_export_run_failed_resolve.json
+   ```
+   Убедитесь, что алерт исчез из `Call Export Monitoring` и `STT SLO & Alerts`, и статус Alertmanager вернулся в `normal`.
 
 ## Инструкции по инцидентам
 1. Зафиксировать инцидент в ротации (`INC-YYYYMMDD-XX`), классифицировать по `docs/runbooks/incidents.md`.
