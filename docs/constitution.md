@@ -48,4 +48,4 @@
 - [README](../README.md) — быстрый старт и обзор.
 - [00‑Core — Синхронизация документации](./00%E2%80%91Core%20%E2%80%94%20%D0%A1%D0%B8%D0%BD%D1%85%D1%80%D0%BE%D0%BD%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D0%B8.md) — карта статусов и зависимостей.
 - [Architecture overview](./architecture/overview.md) — контекст и компоненты системы.
-- [Runbook-и и NFR](./runbooks/README.md) — эксплуатационные инструкции.
+- [Индекс runbook-ов и NFR](./runbooks/README.md) — эксплуатационные инструкции.
