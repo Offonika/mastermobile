@@ -354,4 +354,4 @@ UAT‑RET‑02: при return_rejected создаётся подзадача B24
 
 16. Приложения и ссылки
 - A1. Карта синхронизации и SoT: [docs/00‑Core — Синхронизация документации.md](00‑Core%20—%20Синхронизация%20документации.md).
-- A2. Формат CSV (реестр звонков Bitrix24, включить в соответствующий SRS при разработке): [docs/specs/call_registry_schema.yaml](specs/call_registry_schema.yaml).
+- A2. Формат CSV (реестр звонков Bitrix24, включить в соответствующий SRS при разработке) перенесён во внутренний Confluence (раздел «Integrations › Call texts»).

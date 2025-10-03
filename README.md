@@ -55,10 +55,10 @@ python scripts/stt_smoke.py \
 Скрипт сохраняет транскрипции в каталоге `LOCAL_STORAGE_DIR/transcripts` (по умолчанию `/app/storage/transcripts`) и формирует два отчёта: `reports/stt_smoke/smoke_demo.json` и `reports/stt_smoke/smoke_demo.md`.
 
 ### Отчёт и интерпретация
-- Блок `summary` повторяет агрегаты production-отчёта `summary_<period>.md`: количество записей, покрытие, длительность и стоимость (см. [SRS — Тексты звонков Bitrix24](docs/SRS%20—%20Тексты%20звонков%20Bitrix24%20(выгрузка%20за%2060%20дней).md#73-%D0%BE%D1%82%D1%87%D1%91%D1%82-summary_periodmd)).
+- Блок `summary` повторяет агрегаты production-отчёта `summary_<period>.md`: количество записей, покрытие, длительность и стоимость (описание формата закреплено в [docs/testing/stt_smoke.md](docs/testing/stt_smoke.md)).
 - Записи со `status="success"` содержат путь до транскрипта и расчётную стоимость; `status="failure"` включают `error_code`/`error_message` и сверяются с [docs/testing/error_catalog.json](docs/testing/error_catalog.json).
 - Результат CI архивирует как артефакт `stt-smoke-report` (JSON и Markdown из каталога `reports/`) внутри workflow **CI › quality**; загрузить можно со страницы запуска в GitHub Actions.
-- Для расширенного runbook и UAT-чеклиста переходите по ссылкам: [docs/runbooks/call_export.md](docs/runbooks/call_export.md), [docs/b24-transcribe/ONE-PAGER.md#uat-чеклист](docs/b24-transcribe/ONE-PAGER.md#uat-%D1%87%D0%B5%D0%BA%D0%BB%D0%B8%D1%81%D1%82), [docs/testing/strategy.md](docs/testing/strategy.md).
+- Исторические инструкции по Batch-Transcribe перенесены во внутренний Confluence (раздел «Integrations › Call texts»). Актуальные процедуры QA и тестирования описаны в [docs/testing/strategy.md](docs/testing/strategy.md).
 
 ## Переменные окружения Compose
 
@@ -183,13 +183,9 @@ calls = await list_calls(
 - [ONE-PAGER — Рюкзак курьера](docs/ONE-PAGER-%D0%A5%D0%BE%D0%B4%D1%8F%D1%87%D0%B8%D0%B9%D0%A0%D1%8E%D0%BA%D0%B7%D0%B0%D0%BA.md)
 - [Runbook: операционные логи](docs/runbooks/ww.md)
 
-### B24 Transcribe
+### Batch-Transcribe (архив)
 
-- [PRD — Тексты звонков Bitrix24](docs/PRD%20—%20Тексты%20звонков%20Bitrix24.md)
-- [SRS — Тексты звонков Bitrix24 (выгрузка за 60 дней)](docs/SRS%20—%20Тексты%20звонков%20Bitrix24%20(выгрузка%20за%2060%20дней).md)
-- [ONE-PAGER — Тексты всех звонков за 60 дней](docs/b24-transcribe/ONE-PAGER.md)
-- [Runbook: экспорт звонков](docs/runbooks/call_export.md)
-- [Calls CSV schema](docs/specs/call_registry_schema.yaml)
+- Рабочие документы Batch-Transcribe по звонкам Bitrix24 перенесены во внутренний Confluence. В репозитории остались только исходный код, тесты и утилиты, связанные с интеграцией. Обновлённые инструкции и версии артефактов хранятся в разделе «Integrations › Call texts».
 
 ## API v1 — быстрые вызовы
 

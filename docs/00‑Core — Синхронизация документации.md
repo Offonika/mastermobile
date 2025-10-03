@@ -283,7 +283,7 @@ Cutover‑gate: чек‑лист отката, readiness review, контакт
 Ключевые метрики: p50/p95 latency по методам, error‑rate (5xx/4xx), success‑rate вебхуков, задержка интеграций (1С/B24), очередь task_events, доля ретраев.
  SLO: p95 чтение ≤ 400 ms, модификации ≤ 700 ms; error‑rate ≤ 1%; webhook delivery ≥ 99% за 15 мин.
  Алерты: превышение SLO 3× за 10 мин; рост 429 > 5% трафика; circuit‑breaker открыт > 60 сек; лаг интеграции > 5 мин.
- Специализированные пайплайны: runbook выгрузки звонков Bitrix24 — см. [docs/runbooks/call_export.md](runbooks/call_export.md).
+Специализированные пайплайны: документация по Batch-Transcribe хранится во внутреннем Confluence (раздел «Integrations › Call texts»).
 
 9. Data Retention & ПДн
 ПДн в логах маскируются; integration_log хранится 90 дней (агрегаты — 365).
