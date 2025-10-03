@@ -13,7 +13,7 @@
 | Core Sync (УТ 10.3↔11) | v1.1.2 (18.09.2025) | v1.0.3 (27.09.2025) | 00‑Core v1.3.4, API‑Contracts v1.1.0, ER Freeze v0.6.5 |
 | B24 Batch-Transcribe | v1.0.0 (19.09.2025) | v1.0.0 (21.09.2025) | 00‑Core v1.3.1, API‑Contracts v1.1.0, ER Freeze v0.6.4 |
 | Ассистент мастера | [PRD — «Ассистент мастера» v0.1.1 (Final)](PRD%20—%20«Ассистент%20мастера».md) | — | 00‑Core v1.3.4, [API‑Contracts v1.0.0](API%E2%80%91Contracts.md), [Status‑Dictionary v1](00%E2%80%91Core%20%E2%80%94%20%D0%A1%D0%B8%D0%BD%D1%85%D1%80%D0%BE%D0%BD%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D1%8F%20%D0%B4%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B0%D1%86%D0%B8%D0%B8.md#3-status-dictionary-v1), [SoT = сайт (Bitrix)](00%E2%80%91Core%20%E2%80%94%20%D0%A1%D0%B8%D0%BD%D1%85%D1%80%D0%BE%D0%BD%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D1%8F%20%D0%B4%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B0%D1%86%D0%B8%D0%B8.md#5-sot-matrix-v1-source-of-truth) |
-| КМП4 | — | [SRS — КМП4 (в подготовке)](SRS%20—%20КМП4.md) | Исходные материалы: `1c/core_subset`, `1c/src/КМП4`; привязка к 00‑Core v1.3.4 |
+| КМП4 | — | [SRS — КМП4 (в подготовке)](SRS%20—%20КМП4.md) | Исходные материалы: `1c/config_dump_txt/`, `1c/external/kmp4_delivery_report/` (исходники в `src/`); привязка к 00‑Core v1.3.4 |
 
 > Примечание: поток Batch-Transcribe наследует нормы 00‑Core v1.3.1; изменения 1.3.2+, влияющие на B24, фиксируются отдельным changelog перед раскаткой.
 
