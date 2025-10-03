@@ -71,7 +71,7 @@
 - Телефоны выводим шаблоном `+7***-***-XX-XX`; email — `f***@domain`; суммы клиентов — `****.**`.
 - Скрипт `scripts/check_pii_mask.py` (при появлении) должен запускаться в CI перед релизом.
 - При нарушении маскировки:
-  1. Немедленно отключить экспорт логов в внешние системы (`make logs-stop-forward`).
+  1. Немедленно отключить экспорт логов во внешние системы: масштабируйте агент, который шлёт логи в Loki (`kubectl scale daemonset loki-promtail -n observability --replicas=0`) и убедитесь, что поды остановлены (`kubectl get pods -n observability -l app.kubernetes.io/name=promtail`).
   2. Заэскалировать в `#security` и владельцам Walking Warehouse.
   3. Вырезать инцидентные записи (через `loki-adm tail --delete --ids ...`), задокументировать в postmortem.
 
