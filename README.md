@@ -42,21 +42,22 @@
 ### Предварительные условия
 - Подготовьте `.env` с ключами `OPENAI_API_KEY`, выставленным лимитом `STT_MAX_FILE_MINUTES` и при необходимости прокси `CHATGPT_PROXY_URL` — см. таблицу переменных ниже.
 - Выполните `make init` и `make up`, чтобы скрипт имел доступ к зависимостям (Postgres, Redis) и установленным Python-пакетам.
-- Подложите тестовый плейлист в `playlists/`: каждая папка содержит `playlist.yaml`, подпапку `audio/` с исходными файлами и `expected/` с эталонными транскриптами/отчётами. Подробности и чеклист см. в [docs/testing/stt_smoke.md](docs/testing/stt_smoke.md).
+- Подложите тестовый плейлист в `playlists/`: каждая папка содержит аудиофайлы (`audio/`), при необходимости `expected/` с эталонными результатами и (опционально) `playlist.yaml` с метаданными. Подробности и чеклист см. в [docs/testing/stt_smoke.md](docs/testing/stt_smoke.md).
 
 ### Команда запуска
 ```bash
 python scripts/stt_smoke.py \
-  --playlist playlists/smoke_demo/playlist.yaml \
-  --report build/stt_smoke_report.json
+  --playlist playlists/smoke_demo \
+  --report-dir reports/stt_smoke \
+  --report-name smoke_demo
 ```
 
-Скрипт складывает транскрипции в `build/stt_smoke/<timestamp>/` и формирует отчёт `build/stt_smoke_report.json`.
+Скрипт сохраняет транскрипции в каталоге `LOCAL_STORAGE_DIR/transcripts` (по умолчанию `/app/storage/transcripts`) и формирует два отчёта: `reports/stt_smoke/smoke_demo.json` и `reports/stt_smoke/smoke_demo.md`.
 
 ### Отчёт и интерпретация
 - Блок `summary` повторяет агрегаты production-отчёта `summary_<period>.md`: количество записей, покрытие, длительность и стоимость (см. [SRS — Тексты звонков Bitrix24](docs/SRS%20—%20Тексты%20звонков%20Bitrix24%20(выгрузка%20за%2060%20дней).md#73-%D0%BE%D1%82%D1%87%D1%91%D1%82-summary_periodmd)).
 - Записи со `status="success"` содержат путь до транскрипта и расчётную стоимость; `status="failure"` включают `error_code`/`error_message` и сверяются с [docs/testing/error_catalog.json](docs/testing/error_catalog.json).
-- Результат CI архивирует как артефакт `stt-smoke-report` (файл `build/stt_smoke_report.json`) внутри workflow **CI › quality**; загрузить можно со страницы запуска в GitHub Actions.
+- Результат CI архивирует как артефакт `stt-smoke-report` (JSON и Markdown из каталога `reports/`) внутри workflow **CI › quality**; загрузить можно со страницы запуска в GitHub Actions.
 - Для расширенного runbook и UAT-чеклиста переходите по ссылкам: [docs/runbooks/call_export.md](docs/runbooks/call_export.md), [docs/b24-transcribe/ONE-PAGER.md#uat-чеклист](docs/b24-transcribe/ONE-PAGER.md#uat-%D1%87%D0%B5%D0%BA%D0%BB%D0%B8%D1%81%D1%82), [docs/testing/strategy.md](docs/testing/strategy.md).
 
 ## Переменные окружения Compose
@@ -112,9 +113,9 @@ python scripts/stt_smoke.py \
 
 ## CI
 
-- Основной workflow `.github/workflows/ci.yml` после `make test` запускает `python scripts/stt_smoke.py` с плейлистом из репозитория (`docs/testing/stt_smoke_playlist.json` по умолчанию).
-- Для запуска STT-smoke проверок необходимо добавить секрет `OPENAI_API_KEY` в настройках репозитория.
-- Если плейлист хранится в другом месте, задайте относительный путь в переменной репозитория `STT_SMOKE_PLAYLIST_PATH`.
+- Основной workflow `.github/workflows/ci.yml` после `make test` (при наличии ключа `OPENAI_API_KEY`) запускает `python scripts/stt_smoke.py --playlist <каталог_плейлиста>`.
+- Путь до плейлиста задаётся переменной репозитория `STT_SMOKE_PLAYLIST_PATH`; если она не определена, используется значение по умолчанию `playlists/smoke_demo`.
+- Для запуска STT-smoke проверок необходимо добавить секрет `OPENAI_API_KEY` и загрузить плейлист в указанную директорию (см. [docs/testing/stt_smoke.md](docs/testing/stt_smoke.md)).
 
 ## Bitrix24 клиент
 
