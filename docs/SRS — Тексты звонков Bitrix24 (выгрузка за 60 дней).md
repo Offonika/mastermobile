@@ -1,6 +1,6 @@
 
 SRS — Тексты звонков Bitrix24 (выгрузка за 60 дней)
-Версия: v1.0.0 (синхронизировано с 00‑Core v1.3.1, API‑Contracts v1.1.3, ER Freeze v0.6.4)
+Версия: v1.0.0 (синхронизировано с 00‑Core v1.3.1, API‑Contracts v1.1.0, ER Freeze v0.6.4)
 Дата: 21.09.2025
 Владелец: Интеграции / DataOps
 
@@ -193,7 +193,7 @@ LANGUAGE: <iso639-1>
 - Ошибки, превысившие окно ретраев, попадают в DLQ (`call_export_dlq`) с payload run_id + call_id + stage + error.
 
 9. Интеграции и внешние зависимости
-9.1. Bitrix24 телефония (API‑Contracts v1.1.3)
+9.1. Bitrix24 телефония (API‑Contracts v1.1.0)
 - Методы: `telephony.callList` (постранично), `telephony.recording.get` для получения ссылки.
 - Авторизация: webhook token (stored in Secret Manager).
 - Ограничения: batch ≤ 50, 2 rps; при `429` включается режим `low_rate` (0.5 rps) в течение 15 минут.
@@ -271,7 +271,7 @@ LANGUAGE: <iso639-1>
 - PRD — Тексты звонков Bitrix24 v1.0.0.
 - ONE-PAGER — «Тексты всех звонков за 60 дней из Bitrix24» v1.1.0 (Draft).
 - 00‑Core — Синхронизация документации v1.3.1.
-- API‑Contracts v1.1.3 (Bitrix24 телефония).
+- API‑Contracts v1.1.0 (Bitrix24 телефония).
 - ER Freeze v0.6.4.
 - Runbook: [docs/runbooks/call_export.md](docs/runbooks/call_export.md).
 - Call Registry Schema: [docs/specs/call_registry_schema.yaml](docs/specs/call_registry_schema.yaml) (см. каталог `docs/specs/`)

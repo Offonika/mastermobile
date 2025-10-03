@@ -1,9 +1,9 @@
 ER‑диаграмма и DDL (PostgreSQL) — v0.6.5 Unified
 Проекты: «Ходячий склад» и Core Sync (единая БД Middleware)
- Основано на: v0.6.4; выровнено с 00‑Core v1.3.3 и API‑Contracts v1.1.3
+ Основано на: v0.6.4; выровнено с 00‑Core v1.3.3 и API‑Contracts v1.1.0
  Дата: 22.09.2025
 Что изменилось в v0.6.5 против v0.6.4
-- Добавлены сущности `call_exports` и `call_records` для пайплайна Batch-Transcribe B24: фиксируют параметры периода, статус запуска, связь с инициатором (`core.users`) и детализированное состояние каждой записи звонка.
+- Добавлены сущности `call_exports` и `call_records` для пайплайна Batch-Transcribe B24: фиксируют параметры периода, статус запуска, связь с инициатором (`core.users`) и детализированное состояние каждой записи звонка. (Синхронизация с API‑Contracts v1.1.0 подтверждена 26.09.2025.)
 - Введён ссылочный контроль: `call_records.run_id` с каскадным удалением указывает на `call_exports.run_id`, `call_exports.actor_user_id` ссылается на `core.users.user_id` (nullable для системных запусков).
 - Для наблюдаемости добавлены частичные индексы по статусам (`call_exports.status`, `call_records(status, run_id)`) и ограничения идемпотентности (`UNIQUE (run_id, call_id, coalesce(record_id,''))`).
 
