@@ -10,7 +10,7 @@
 ### Version Map (на 21.09.2025)
 | Поток | PRD | SRS | Привязки |
 | --- | --- | --- | --- |
-| Core Sync (УТ 10.3↔11) | v1.1.2 (18.09.2025) | v1.0.2 (20.09.2025) | 00‑Core v1.3.2, API‑Contracts v1.0.0, ER Freeze v0.6.4 |
+| Core Sync (УТ 10.3↔11) | v1.1.2 (18.09.2025) | v1.0.2 (20.09.2025) | 00‑Core v1.3.2, API‑Contracts v1.1.0, ER Freeze v0.6.5 |
 | B24 Batch-Transcribe | v1.0.0 (19.09.2025) | v1.0.0 (21.09.2025) | 00‑Core v1.3.1, API‑Contracts v1.1.0, ER Freeze v0.6.4 |
 | Ассистент мастера | [PRD — «Ассистент мастера» v0.1.1 (Final)](PRD%20—%20«Ассистент%20мастера».md) | — | 00‑Core v1.3.3, [API‑Contracts v1.0.0](API%E2%80%91Contracts.md), [Status‑Dictionary v1](00%E2%80%91Core%20%E2%80%94%20%D0%A1%D0%B8%D0%BD%D1%85%D1%80%D0%BE%D0%BD%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D1%8F%20%D0%B4%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B0%D1%86%D0%B8%D0%B8.md#3-status-dictionary-v1), [SoT = сайт (Bitrix)](00%E2%80%91Core%20%E2%80%94%20%D0%A1%D0%B8%D0%BD%D1%85%D1%80%D0%BE%D0%BD%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D1%8F%20%D0%B4%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B0%D1%86%D0%B8%D0%B8.md#5-sot-matrix-v1-source-of-truth) |
 | КМП4 | — | [SRS — КМП4 (в подготовке)](SRS%20—%20КМП4.md) | Исходные материалы: `1c/core_subset`, `1c/src/КМП4`; привязка к 00‑Core v1.3.3 |
@@ -19,6 +19,9 @@
 
 1. Ссылочные документы
 Core‑API‑Style v1 (раздел 2 ниже)
+
+
+API‑Contracts v1.1.0 (docs/API‑Contracts.md)
 
 
 Status‑Dictionary v1 (раздел 3)
@@ -170,7 +173,7 @@ Status‑Dictionary v1
  - CANCELLED — заменён на REFUSED; в status_dict помечается deprecated=true, новые интеграции его не используют.
  - NON_CASH_CONFIRMED — сверка безналичных оплат закрывается статусом DONE; значение выводится из справочника.
  - CLOSED — финальный статус объединён с DONE, исторические записи мигрируют на новый код.
-Статусы и переходы согласованы с владельцами API‑Contracts v1.0.0 (docs/API‑Contracts.md).
+Статусы и переходы согласованы с владельцами API‑Contracts v1.1.0 (docs/API‑Contracts.md).
 3.2. Instant Orders (быстрые продажи курьера)
  DRAFT → PENDING_APPROVAL → APPROVED → (DELIVERED|CANCELLED)
  Отказы: REJECTED, эскалация тайм‑аута: TIMEOUT_ESCALATED.
@@ -562,6 +565,7 @@ nsi_counterparty
 
 ## Changelog
 
+- 27.09.2025 — Version Map обновлён: Core Sync переведён на API‑Contracts v1.1.0 и ER Freeze v0.6.5; ссылки раздела 1 приведены к актуальному baseline.
 - 26.09.2025 — Актуализирована карта версий и ссылки на API‑Contracts: подтверждено использование v1.1.0 вместо упоминаний v1.1.3.
 - 22.09.2025 — ER Freeze обновлён до v0.6.5: добавлены `call_exports`/`call_records` (Batch-Transcribe B24) с FK на `core.users` и каскадом на run_id; отражено в ER-диаграмме и DDL.
 
