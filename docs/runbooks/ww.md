@@ -71,9 +71,18 @@
 - Телефоны выводим шаблоном `+7***-***-XX-XX`; email — `f***@domain`; суммы клиентов — `****.**`.
 - Скрипт `scripts/check_pii_mask.py` (при появлении) должен запускаться в CI перед релизом.
 - При нарушении маскировки:
-  1. Немедленно отключить экспорт логов в внешние системы (`make logs-stop-forward`).
-  2. Заэскалировать в `#security` и владельцам Walking Warehouse.
-  3. Вырезать инцидентные записи (через `loki-adm tail --delete --ids ...`), задокументировать в postmortem.
+  1. Зафиксировать окружение (`prod`/`stage` работают в Kubernetes, локальное окружение — `docker compose`).
+  2. Для `prod`/`stage` остановить форвардинг в Loki:
+     ```bash
+     make logs-stop-forward \
+       LOGS_FORWARD_CONTEXT=ww-prod \
+       LOGS_FORWARD_NAMESPACE=observability \
+       LOGS_FORWARD_DEPLOYMENT=ww-grafana-agent-logs
+     ```
+     > **Эффект:** Deployment `ww-grafana-agent-logs` масштабируется до `0` реплик; через 30–60 секунд новые записи перестают появляться в Loki (подтвердите `kubectl get deployment/ww-grafana-agent-logs -n observability`).
+  3. Для локальной отладки (`docker compose`) — остановить сервисы `app`/`stt-worker`, чтобы прекратить генерацию логов: `docker compose stop app stt-worker`.
+  4. Заэскалировать в `#security` и владельцам Walking Warehouse.
+  5. Вырезать инцидентные записи (через `loki-adm tail --delete --ids ...`), задокументировать в postmortem.
 
 ## Доступ и диагностика
 - **Prod:** Grafana Explore → `loki` → запрос `service="walking-warehouse-api"`.

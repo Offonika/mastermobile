@@ -1,4 +1,4 @@
-.PHONY: init up down logs lint typecheck test fmt openapi db-upgrade db-downgrade run seed worker \
+.PHONY: init up down logs logs-stop-forward lint typecheck test fmt openapi db-upgrade db-downgrade run seed worker \
         docs-markdownlint docs-links docs-spellcheck docs-ci docs-ci-smoke \
         1c-verify 1c-pack-kmp4 1c-dump-txt
 
@@ -25,6 +25,9 @@ ONEC_PACK_SOURCE := 1c/external/kmp4_delivery_report/src
 ONEC_PACK_ARTIFACT := build/1c/kmp4_delivery_report.epf
 ONEC_DUMP_SCRIPT := scripts/1c/dump_config_to_txt.ps1
 ONEC_DUMP_LOG := $(ONEC_LOG_DIR)/dump_config_to_txt.log
+LOGS_FORWARD_CONTEXT ?=
+LOGS_FORWARD_NAMESPACE ?= observability
+LOGS_FORWARD_DEPLOYMENT ?= ww-grafana-agent-logs
 
 init: $(VENV_SENTINEL)
 
@@ -42,6 +45,18 @@ down:
 
 logs:
 	docker compose logs -f app
+
+logs-stop-forward:
+	@{ test -n "$(LOGS_FORWARD_CONTEXT)" || { \
+		echo "LOGS_FORWARD_CONTEXT is required (kubectl context for the target cluster)." >&2; \
+		exit 2; \
+	}; }
+	kubectl --context "$(LOGS_FORWARD_CONTEXT)" \
+	  scale deployment/"$(LOGS_FORWARD_DEPLOYMENT)" \
+	  -n "$(LOGS_FORWARD_NAMESPACE)" --replicas=0
+	kubectl --context "$(LOGS_FORWARD_CONTEXT)" \
+	  get deployment/"$(LOGS_FORWARD_DEPLOYMENT)" \
+	  -n "$(LOGS_FORWARD_NAMESPACE)"
 
 lint: $(VENV_SENTINEL)
 	$(RUFF) check .
@@ -119,19 +134,19 @@ worker:
 	fi
 
 1c-pack-kmp4:
-        @mkdir -p "$(ONEC_LOG_DIR)"
-        @LOG="$(ONEC_PACK_LOG)"; \
-        ARTIFACT="$(ONEC_PACK_ARTIFACT)"; \
-        if "$(POWERSHELL)" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$(ONEC_PACK_SCRIPT)" -SourceDirectory "$(ONEC_PACK_SOURCE)" -OutputFile "$(ONEC_PACK_ARTIFACT)" > "$$LOG" 2>&1; then \
-                cat "$$LOG"; \
-                if [ ! -f "$$ARTIFACT" ]; then \
-                        echo "Expected artifact $$ARTIFACT to be created." >&2; \
-                        exit 1; \
-                fi; \
-        else \
-                cat "$$LOG"; \
-                exit 1; \
-        fi
+	@mkdir -p "$(ONEC_LOG_DIR)"
+	@LOG="$(ONEC_PACK_LOG)"; \
+	ARTIFACT="$(ONEC_PACK_ARTIFACT)"; \
+	if "$(POWERSHELL)" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$(ONEC_PACK_SCRIPT)" -SourceDirectory "$(ONEC_PACK_SOURCE)" -OutputFile "$(ONEC_PACK_ARTIFACT)" > "$$LOG" 2>&1; then \
+		cat "$$LOG"; \
+		if [ ! -f "$$ARTIFACT" ]; then \
+			echo "Expected artifact $$ARTIFACT to be created." >&2; \
+			exit 1; \
+		fi; \
+	else \
+		cat "$$LOG"; \
+		exit 1; \
+	fi
 
 1c-dump-txt:
 	@mkdir -p "$(ONEC_LOG_DIR)"
