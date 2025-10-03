@@ -1,6 +1,6 @@
 .PHONY: init up down logs lint typecheck test fmt openapi db-upgrade db-downgrade run seed worker \
         docs-markdownlint docs-links docs-spellcheck docs-ci docs-ci-smoke \
-        1c-verify 1c-pack-kmp4 1c-dump-txt
+        1c-verify 1c-pack-kmp4 1c-dump-txt alerts-inject alerts-reset
 
 VENV_DIR := .venv
 VENV_BIN := $(VENV_DIR)/bin
@@ -25,6 +25,15 @@ ONEC_PACK_SOURCE := 1c/external/kmp4_delivery_report/src
 ONEC_PACK_ARTIFACT := build/1c/kmp4_delivery_report.epf
 ONEC_DUMP_SCRIPT := scripts/1c/dump_config_to_txt.ps1
 ONEC_DUMP_LOG := $(ONEC_LOG_DIR)/dump_config_to_txt.log
+ALERTS_SCRIPT := scripts/alerts.py
+ALERTMANAGER_URL ?= http://localhost:9093
+# placeholders for computed CLI parameters (populated per-target)
+ALERTS_DURATION_ARG :=
+ALERTS_LABEL_ARGS :=
+ALERTS_ANNOTATION_ARGS :=
+ALERTS_EXTRA_ARGS :=
+ALERTMANAGER_TARGET_URL :=
+ALERTS_GLOBAL_ARGS :=
 
 init: $(VENV_SENTINEL)
 
@@ -107,6 +116,34 @@ seed:
 
 worker:
 	docker compose up stt-worker
+
+# Usage:
+#   make alerts-inject rule=<slug> [duration=<minutes>] [alertmanager_url=<url>]
+#        [labels="k=v …"] [annotations="k=v …"] [dry_run=1]
+alerts-inject: ALERTMANAGER_TARGET_URL := $(if $(alertmanager_url),$(alertmanager_url),$(ALERTMANAGER_URL))
+alerts-inject: ALERTS_DURATION_ARG := $(if $(duration),--duration $(duration))
+alerts-inject: ALERTS_LABEL_ARGS := $(strip $(foreach label,$(labels),--label $(label)))
+alerts-inject: ALERTS_ANNOTATION_ARGS := $(strip $(foreach annotation,$(annotations),--annotation $(annotation)))
+alerts-inject: ALERTS_EXTRA_ARGS := $(strip $(ALERTS_DURATION_ARG) $(ALERTS_LABEL_ARGS) $(ALERTS_ANNOTATION_ARGS))
+alerts-inject: ALERTS_GLOBAL_ARGS := $(strip --alertmanager-url $(ALERTMANAGER_TARGET_URL) $(if $(dry_run),--dry-run))
+alerts-inject: $(VENV_SENTINEL)
+	@if [ -z "$(rule)" ]; then \
+	echo "Usage: make alerts-inject rule=<slug> [duration=<minutes>] [alertmanager_url=<url>]" >&2; \
+	echo "       [labels=\"k=v …\"] [annotations=\"k=v …\"] [dry_run=1]" >&2; \
+	exit 2; \
+	fi
+	$(PYTHON) $(ALERTS_SCRIPT) $(ALERTS_GLOBAL_ARGS) inject --rule $(rule) $(ALERTS_EXTRA_ARGS)
+
+# Usage:
+#   make alerts-reset [rule=<slug|all>] [alertmanager_url=<url>]
+#        [labels="k=v …"] [annotations="k=v …"] [dry_run=1]
+alerts-reset: ALERTMANAGER_TARGET_URL := $(if $(alertmanager_url),$(alertmanager_url),$(ALERTMANAGER_URL))
+alerts-reset: ALERTS_LABEL_ARGS := $(strip $(foreach label,$(labels),--label $(label)))
+alerts-reset: ALERTS_ANNOTATION_ARGS := $(strip $(foreach annotation,$(annotations),--annotation $(annotation)))
+alerts-reset: ALERTS_EXTRA_ARGS := $(strip $(if $(rule),--rule $(rule)) $(ALERTS_LABEL_ARGS) $(ALERTS_ANNOTATION_ARGS))
+alerts-reset: ALERTS_GLOBAL_ARGS := $(strip --alertmanager-url $(ALERTMANAGER_TARGET_URL) $(if $(dry_run),--dry-run))
+alerts-reset: $(VENV_SENTINEL)
+	$(PYTHON) $(ALERTS_SCRIPT) $(ALERTS_GLOBAL_ARGS) reset $(ALERTS_EXTRA_ARGS)
 
 1c-verify: $(VENV_SENTINEL)
 	@mkdir -p "$(ONEC_LOG_DIR)"

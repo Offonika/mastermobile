@@ -72,8 +72,13 @@
 
 ## Валидация и синтетические проверки
 1. **Инжект алерта в Alertmanager Sandbox:**
-   - Выполнить `make alerts-inject rule=call_export_run_failed` для проверки пайплайна уведомлений.
-   - Для STT-специфических правил используйте `rule=call_export_5xx_growth`, `rule=call_export_dlq_spike`, `rule=call_export_job_long_running`.
+   - Выполнить `make alerts-inject rule=call_export_run_failed alertmanager_url=https://alertmanager-sandbox.example.com labels="environment=sandbox team=integrations" annotations="source=runbook" duration=10`.
+   - Команда отправляет POST на `/api/v2/alerts`; успешный запуск выводит:
+     ```text
+     Sent 1 alert event(s) to /api/v2/alerts.
+     Injected alert 'CallExportRunFailed' for 10 minute(s) into https://alertmanager-sandbox.example.com.
+     ```
+   - Для проверки payload без сетевого запроса укажите `dry_run=1` (JSON выводится в stdout). Доступные slug: `call_export_run_failed`, `call_export_cost_budget`, `call_export_retry_storm`, `call_export_5xx_growth`, `call_export_dlq_spike`, `call_export_job_long_running`.
 2. **Проверить визуализацию:**
    - На дашборде [Call Export Monitoring](https://grafana.example.com/d/mastermobile-call-export/call-export-overview?orgId=1)
      убедиться, что панель «Active Alerts» отображает новое событие.
@@ -81,8 +86,13 @@
      подсвечены в красном при тестовом нарушении.
 3. **Прометей:** вручную выполнить запросы `call_export_transcribe_failures_total` и `events_dlq_total` через
    [Prometheus Expression Browser](https://prometheus.example.com/graph) для подтверждения инжекции.
-4. **Post-check:** после завершения теста удалить synthetic alerts командой `make alerts-reset` и удостовериться, что
-   Alertmanager вернулся в `normal` состояние.
+4. **Post-check:** после завершения теста удалить synthetic alerts командой `make alerts-reset alertmanager_url=https://alertmanager-sandbox.example.com rule=call_export_run_failed labels="environment=sandbox"` (для сброса всех правил задайте `rule=all`).
+   - Ожидаемый вывод:
+     ```text
+     Sent 1 alert event(s) to /api/v2/alerts.
+     Resolved alert 'CallExportRunFailed' via https://alertmanager-sandbox.example.com.
+     ```
+   - При добавлении `dry_run=1` можно удостовериться, что payload соответствует параметрам сброса.
 
 ## Инструкции по инцидентам
 1. Зафиксировать инцидент в ротации (`INC-YYYYMMDD-XX`), классифицировать по `docs/runbooks/incidents.md`.
