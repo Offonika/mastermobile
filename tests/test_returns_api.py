@@ -7,7 +7,7 @@ from uuid import uuid4
 import httpx
 import pytest
 import pytest_asyncio
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
@@ -119,6 +119,31 @@ async def test_idempotency_conflict_on_different_payload(api_client: httpx.Async
     problem = conflict_response.json()
     assert problem["title"] == "Idempotency conflict"
     assert problem["status"] == 409
+
+
+@pytest.mark.asyncio
+async def test_idempotent_replay_returns_cached_response(
+    api_client: httpx.AsyncClient, sqlite_engine: Engine
+) -> None:
+    payload = _sample_payload()
+    headers = {"Idempotency-Key": "key-replay-1", "X-Request-Id": "req-replay-1"}
+
+    first_response = await api_client.post("/api/v1/returns", json=payload, headers=headers)
+    assert first_response.status_code == 201
+    first_body = first_response.json()
+    first_location = first_response.headers["Location"]
+
+    replay_headers = {"Idempotency-Key": "key-replay-1", "X-Request-Id": "req-replay-2"}
+    replay_response = await api_client.post("/api/v1/returns", json=payload, headers=replay_headers)
+
+    assert replay_response.status_code == 200
+    assert replay_response.json() == first_body
+    assert replay_response.headers["Location"] == first_location
+    assert replay_response.headers["Idempotency-Key"] == headers["Idempotency-Key"]
+
+    with Session(bind=sqlite_engine) as session:
+        total_returns = session.scalar(select(func.count(Return.return_id)))
+        assert total_returns == 1
 
 
 @pytest.mark.asyncio

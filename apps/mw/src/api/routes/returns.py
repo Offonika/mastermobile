@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from apps.mw.src.api.dependencies import (
+    IdempotencyContext,
     ProblemDetailException,
     build_error,
     enforce_idempotency_key,
@@ -121,9 +122,26 @@ async def create_return(
     payload: ReturnCreate,
     response: Response,
     session: Session = Depends(get_session),
-    _idempotency_key: str = Depends(enforce_idempotency_key),
+    idempotency: IdempotencyContext = Depends(enforce_idempotency_key),
 ) -> Return:
     """Persist a new return document together with its line items."""
+
+    if idempotency.is_replay:
+        cached_headers = idempotency.get_replay_headers()
+        for name, value in cached_headers.items():
+            response.headers[name] = value
+        response.status_code = status.HTTP_200_OK
+        cached_payload = idempotency.get_replay_payload()
+        if cached_payload is None:
+            raise ProblemDetailException(
+                build_error(
+                    status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    title="Idempotency replay failed",
+                    detail="Cached response payload is missing.",
+                    request_id=response.headers.get("X-Request-Id"),
+                )
+            )
+        return cached_payload  # type: ignore[return-value]
 
     return_model = ReturnModel(
         return_id=uuid4(),
@@ -155,7 +173,13 @@ async def create_return(
     session.refresh(return_model)
 
     response.headers["Location"] = f"/api/v1/returns/{return_model.return_id}"
-    return _serialize_return(return_model)
+    serialized = _serialize_return(return_model)
+    idempotency.store_response(
+        status_code=status.HTTP_201_CREATED,
+        payload=serialized,
+        headers={"Location": response.headers["Location"]},
+    )
+    return serialized
 
 
 @router.get(
