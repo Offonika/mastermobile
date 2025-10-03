@@ -18,7 +18,6 @@
 - Docker ≥ 24 c установленным плагином Compose (`docker compose version`).
 - Python ≥ 3.11 и `make` на локальной машине для утилит из `Makefile`.
 - Доступ к портам `8000`, `5432`, `6379` (по умолчанию). При конфликте измените значения в `.env`.
-- Корпоративный прокси для ChatGPT/Whisper: сохраните URL `http://user150107:dx4a5m@102.129.178.65:6517` в `.env` (переменная `CHATGPT_PROXY_URL`).
 
 ## Структура сервисов
 | Сервис | Назначение | Порт контейнера | Порт хоста по умолчанию |
@@ -26,14 +25,12 @@
 | `app`  | FastAPI MW (`apps/mw/src/app.py`) | `8000` | `${APP_PORT:-8000}` |
 | `db`   | PostgreSQL 16 (данные MW)         | `5432` | `${DB_PORT:-5432}`  |
 | `redis`| Кэш/очереди                       | `6379` | `${REDIS_PORT:-6379}` |
-| `stt-worker (metrics)` | Экспортер метрик фонового STT-воркера | `${WORKER_METRICS_PORT:-9100}` | `${WORKER_METRICS_PORT:-9100}` |
 
 ## Подробный сценарий
 ### 1. Подготовка окружения
 - Создайте `.env` из примера и дополните секреты при необходимости.
-- Перед работой с ChatGPT API пропишите `CHATGPT_PROXY_URL=http://user150107:dx4a5m@102.129.178.65:6517` (корпоративный прокси, обязательный для исходящих запросов).
 - Проверьте новые переменные конфигурации: `JWT_SECRET`, `JWT_ISSUER`, `CORS_ORIGINS`,
-  `MAX_PAGE_SIZE`, `REQUEST_TIMEOUT_S`, `ENABLE_TRACING`, `CHATGPT_PROXY_URL`, а также флаги
+  `MAX_PAGE_SIZE`, `REQUEST_TIMEOUT_S`, `ENABLE_TRACING`, а также флаги
   `PII_MASKING_ENABLED` и `DISK_ENCRYPTION_FLAG` для сценариев безопасности.
 - Выполните `make init` — создаст `.venv`, установит `ruff`, `mypy`, `pytest`, Alembic и runtime-зависимости.
 - Для чистого старта удалите контейнеры/volumes: `make down`.

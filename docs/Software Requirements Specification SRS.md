@@ -105,7 +105,7 @@ UAT‑SEC‑02
 Роль: API‑шлюз 1С↔B24↔Виджет; хранилище рюкзака; instant‑orders; идемпотентность; очереди/ретраи; аудит.
 
 
-Сущности (ER Freeze v0.6.5): couriers, courier_stock, orders, instant_orders, task_events, integration_log, idempotency_key, status_dict, returns, return_lines, return_reason, call_exports, call_records; денежные поля с currency_code (RUB).
+Сущности (ER Freeze v0.6.4): couriers, courier_stock, orders, instant_orders, task_events, integration_log, idempotency_key, status_dict, returns, return_lines, return_reason; денежные поля с currency_code (RUB).
 
 
 Бизнес‑правила:
@@ -306,7 +306,7 @@ Retention (см. 00‑Core §9): сырые фото (≤15 МБ) ≤90 дн; г
 
 
 11. Модель данных (reference)
-Сущности и поля — см. ER Freeze v0.6.5 (orders, order_lines, instant_orders, instant_order_lines, returns, return_lines, return_reason, couriers, courier_stock, task_events, integration_log, idempotency_key, status_dict, call_exports, call_records).
+Сущности и поля — см. ER Freeze v0.6.4 (orders, order_lines, instant_orders, instant_order_lines, returns, return_lines, return_reason, couriers, courier_stock, task_events, integration_log, idempotency_key, status_dict).
 
 
 Домены: телефон +7XXXXXXXXXX; деньги numeric(12,2) + currency_code (RUB).
@@ -354,4 +354,3 @@ UAT‑RET‑02: при return_rejected создаётся подзадача B24
 
 16. Приложения и ссылки
 - A1. Карта синхронизации и SoT: [docs/00‑Core — Синхронизация документации.md](00‑Core%20—%20Синхронизация%20документации.md).
-- A2. Формат CSV (реестр звонков Bitrix24, включить в соответствующий SRS при разработке) перенесён во внутренний Confluence (раздел «Integrations › Call texts»).

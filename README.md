@@ -14,19 +14,17 @@
 ## Быстрый старт (локально)
 1. `make init`
 2. `make up`
-3. `make worker` — запускает отдельный STT-воркер (в отдельном терминале)
-4. `make seed` — по мере появления данных
-5. `make test`
+3. `make seed` — по мере появления данных
+4. `make test`
 
 > Для запуска только зависимостей можно выполнить `docker compose up -d db redis`.
 > Метрики Prometheus для FastAPI-приложения доступны по адресу `http://localhost:8000/metrics`.
-> Экспортер фонового STT-воркера публикует метрики на `http://localhost:${WORKER_METRICS_PORT:-9100}/metrics`.
 
 ## CI и Docs-CI
 
 Основной workflow [`ci.yml`](.github/workflows/ci.yml) запускает два набора проверок:
 
-- **Quality** — Python-инструменты (`make lint`, `make typecheck`, `make test` и STT smoke-плейлист при наличии ключей).
+- **Quality** — Python-инструменты (`make lint`, `make typecheck`, `make test`).
 - **Docs quality** — проверки документации и ссылок: `make docs-markdownlint`, `make docs-links`, `make docs-spellcheck` и смоук-тест `make docs-ci-smoke`, который подтверждает, что link-checker корректно ловит ошибочные URL.
 
 Для локального запуска docs-проверок доступны команды Makefile:
@@ -36,31 +34,6 @@
 - `make docs-spellcheck` — орфография через `codespell` c параметрами из `.codespellrc`.
 - `make docs-ci` — последовательный запуск всех проверок.
 - `make docs-ci-smoke` — временно создаёт тестовый markdown с «битой» ссылкой и убеждается, что `lychee` падает с ошибкой.
-
-## Smoke-тест распознавания речи
-
-`scripts/stt_smoke.py` запускает короткий прогон распознавания речи на подготовленном плейлисте и подтверждает, что пайплайн экспорта звонков Bitrix24 → транскрипции проходит end-to-end перед релизом или инцидентной раскаткой. Скрипт повторяет ключевые шаги очереди `call_export` и формирует отчёты с длительностью/статусами для каждого файла.
-
-### Предварительные условия
-- Подготовьте `.env` с ключами `OPENAI_API_KEY`, выставленным лимитом `STT_MAX_FILE_MINUTES` и при необходимости прокси `CHATGPT_PROXY_URL` — см. таблицу переменных ниже.
-- Выполните `make init` и `make up`, чтобы скрипт имел доступ к зависимостям (Postgres, Redis) и установленным Python-пакетам.
-- Подложите тестовый плейлист в `playlists/`: каждая папка содержит аудиофайлы (`audio/`), при необходимости `expected/` с эталонными результатами и (опционально) `playlist.yaml` с метаданными. Подробности и чеклист см. в [docs/testing/stt_smoke.md](docs/testing/stt_smoke.md).
-
-### Команда запуска
-```bash
-python scripts/stt_smoke.py \
-  --playlist playlists/smoke_demo \
-  --report-dir reports/stt_smoke \
-  --report-name smoke_demo
-```
-
-Скрипт сохраняет транскрипции в каталоге `LOCAL_STORAGE_DIR/transcripts` (по умолчанию `/app/storage/transcripts`) и формирует два отчёта: `reports/stt_smoke/smoke_demo.json` и `reports/stt_smoke/smoke_demo.md`.
-
-### Отчёт и интерпретация
-- Блок `summary` повторяет агрегаты production-отчёта `summary_<period>.md`: количество записей, покрытие, длительность и стоимость (описание формата закреплено в [docs/testing/stt_smoke.md](docs/testing/stt_smoke.md)).
-- Записи со `status="success"` содержат путь до транскрипта и расчётную стоимость; `status="failure"` включают `error_code`/`error_message` и сверяются с [docs/testing/error_catalog.json](docs/testing/error_catalog.json).
-- Результат CI архивирует как артефакт `stt-smoke-report` (JSON и Markdown из каталога `reports/`) внутри workflow **CI › quality**; загрузить можно со страницы запуска в GitHub Actions.
-- Подробные процедуры QA и тестирования описаны в [docs/testing/strategy.md](docs/testing/strategy.md).
 
 ## Переменные окружения Compose
 
@@ -82,11 +55,6 @@ python scripts/stt_smoke.py \
 | `B24_WEBHOOK_TOKEN` | `changeme`        | Токен webhook Bitrix24 (замените в `.env`) |
 | `B24_RATE_LIMIT_RPS` | `2.0`            | Лимит запросов к Bitrix24 в секунду |
 | `B24_BACKOFF_SECONDS` | `5`             | Стартовый шаг экспоненциального бэкоффа |
-| `OPENAI_API_KEY` | —                    | Ключ OpenAI; оставьте пустым, если STT недоступно |
-| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Базовый URL OpenAI/совместимого API |
-| `WHISPER_RATE_PER_MIN_USD` | `0.006`    | Ставка Whisper за минуту аудио (для расчёта стоимости) |
-| `STT_MAX_FILE_MINUTES` | `0`            | Максимальная длительность файла для STT; `0` отключает обработку |
-| `CHATGPT_PROXY_URL` | `http://proxy.example.com:8080` | HTTP-прокси для исходящих запросов к ChatGPT/Whisper |
 | `STORAGE_BACKEND` | `local`             | Тип хранилища (`local` или `s3`) |
 | `S3_ENDPOINT_URL` | —                   | Кастомный endpoint S3 (для minio/совместимых сервисов) |
 | `S3_REGION`     | —                     | Регион S3 |
@@ -95,8 +63,6 @@ python scripts/stt_smoke.py \
 | `S3_SECRET_ACCESS_KEY` | —             | Secret key для S3 |
 | `LOCAL_STORAGE_DIR` | `/app/storage`    | Путь локального хранилища (монтируется в контейнер `app`) |
 | `LOG_LEVEL`     | `INFO`                 | Уровень логирования приложения      |
-| `WORKER_METRICS_HOST` | `0.0.0.0`        | Адрес, на котором слушает экспортер метрик STT-воркера |
-| `WORKER_METRICS_PORT` | `9100`           | Порт экспортера метрик STT-воркера  |
 | `JWT_SECRET`    | `changeme`             | Секрет для подписи JWT-токенов      |
 | `JWT_ISSUER`    | `mastermobile`         | Значение `iss` в выданных JWT       |
 | `CORS_ORIGINS`  | `http://localhost:3000` | Разрешённые источники CORS (через запятую) |
@@ -105,37 +71,15 @@ python scripts/stt_smoke.py \
 | `ENABLE_TRACING` | `false`                | Включение экспорта трассировок OpenTelemetry |
 | `PII_MASKING_ENABLED` | `false`           | Маскирование персональных данных в логах |
 | `DISK_ENCRYPTION_FLAG` | `false`          | Флаг шифрования томов/дисков (prod → `true`) |
-| `CALL_SUMMARY_ENABLED` | `false`          | Автогенерация Markdown-саммари для расшифровок звонков |
 
 > Все значения можно переопределить в `.env` перед запуском `docker compose` / `make up`.
 > `docker-compose.yml` подключает `.env.example` **до** `.env`, поэтому локальные
 > переопределения и дополнительные переменные из `.env` всегда имеют приоритет.
 
-> При пустом `OPENAI_API_KEY` или значении `STT_MAX_FILE_MINUTES=0` сервис стартует без обработки STT: запросы на транскрибацию пропускаются, очередь заданий не создаётся.
 
 ## CI
 
-- Основной workflow `.github/workflows/ci.yml` после `make test` (при наличии ключа `OPENAI_API_KEY`) запускает `python scripts/stt_smoke.py --playlist <каталог_плейлиста>`.
-- Путь до плейлиста задаётся переменной репозитория `STT_SMOKE_PLAYLIST_PATH`; если она не определена, используется значение по умолчанию `playlists/smoke_demo`.
-- Для запуска STT-smoke проверок необходимо добавить секрет `OPENAI_API_KEY` и загрузить плейлист в указанную директорию (см. [docs/testing/stt_smoke.md](docs/testing/stt_smoke.md)).
-
-## Bitrix24 клиент
-
-Асинхронный помощник для получения статистики звонков теперь доступен из пакета `apps.mw.src.integrations.b24`:
-
-```python
-from datetime import datetime, UTC
-
-from apps.mw.src.integrations.b24 import list_calls
-
-
-calls = await list_calls(
-    date_from=datetime(2024, 8, 1, tzinfo=UTC),
-    date_to=datetime(2024, 8, 31, 23, 59, 59, tzinfo=UTC),
-)
-```
-
-Клиент автоматически использует переменные окружения `B24_BASE_URL`, `B24_WEBHOOK_USER_ID`, `B24_WEBHOOK_TOKEN`, `B24_RATE_LIMIT_RPS` и `B24_BACKOFF_SECONDS`, применяя пагинацию и экспоненциальный бэкофф (`429`/`5xx`).
+ - Основной workflow `.github/workflows/ci.yml` после `make test` проверяет сборку и качество кода.
 
 ## Архитектура (вкратце)
 - FastAPI (apps/mw/src)
@@ -184,12 +128,6 @@ calls = await list_calls(
 - [PRD — Ходячий склад](docs/PRD%20Ходячий%20склад.md)
 - [ONE-PAGER — Рюкзак курьера](docs/ONE-PAGER-%D0%A5%D0%BE%D0%B4%D1%8F%D1%87%D0%B8%D0%B9%D0%A0%D1%8E%D0%BA%D0%B7%D0%B0%D0%BA.md)
 - [Runbook: операционные логи](docs/runbooks/ww.md)
-
-### Экспорт звонков Bitrix24
-
-- [Маппинг сущностей и вебхуков Bitrix24](docs/integrations/bitrix24_mapping.md) — соответствие полей CRM внутренним моделям и правила ретраев.
-- [Обзор архитектуры](docs/architecture/overview.md) — место очереди `call_export` и взаимодействие с воркерами.
-- [Наблюдаемость](docs/observability.md) — метрики, алерты и действия при отклонениях пайплайна.
 
 ## API v1 — быстрые вызовы
 

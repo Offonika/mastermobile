@@ -1,11 +1,7 @@
-ER‑диаграмма и DDL (PostgreSQL) — v0.6.5 Unified
+ER‑диаграмма и DDL (PostgreSQL) — v0.6.4 Unified
 Проекты: «Ходячий склад» и Core Sync (единая БД Middleware)
- Основано на: v0.6.4; выровнено с 00‑Core v1.3.3 и API‑Contracts v1.1.0
- Дата: 22.09.2025
-Что изменилось в v0.6.5 против v0.6.4
-- Добавлены сущности `call_exports` и `call_records` для пайплайна Batch-Transcribe B24: фиксируют параметры периода, статус запуска, связь с инициатором (`core.users`) и детализированное состояние каждой записи звонка. (Синхронизация с API‑Contracts v1.1.0 подтверждена 26.09.2025.)
-- Введён ссылочный контроль: `call_records.run_id` с каскадным удалением указывает на `call_exports.run_id`, `call_exports.actor_user_id` ссылается на `core.users.user_id` (nullable для системных запусков).
-- Для наблюдаемости добавлены частичные индексы по статусам (`call_exports.status`, `call_records(status, run_id)`) и ограничения идемпотентности (`UNIQUE (run_id, call_id, coalesce(record_id,''))`).
+ Основано на: v0.6.3; выровнено с 00‑Core v1.3.3 и API‑Contracts v1.1.0
+ Дата: 21.09.2025
 
 Что изменилось в v0.6.4 против v0.6.3
 - Добавлены поля валюты: orders.currency_code, instant_orders.currency_code (currency_code, по умолчанию RUB).
@@ -22,9 +18,6 @@ schema core: orders, task_events, returns, return_lines, return_reason, integrat
 
 
 schema ww (Walking Warehouse): couriers, courier_stock, instant_orders, instant_order_lines, price_type, product (опц.).
-
-
-schema b24 (Batch-Transcribe B24): call_exports, call_records.
 
 
 Примечание: физически можно оставить в public, но разделение схем упрощает миграции и ответственность команд.
@@ -159,76 +152,12 @@ create index if not exists idx_returns_pending on returns(return_id) where statu
 -- Обязательные телефоны (уже были), оставляем как есть
 -- orders.phone ru_phone not null; instant_orders.client_phone ru_phone not null
 
-2.4 v0.6.4 → v0.6.5 (новое)
--- Пакетная выгрузка звонков Bitrix24
-create table if not exists call_exports (
-  run_id          uuid primary key,
-  period_from     timestamptz not null,
-  period_to       timestamptz not null,
-  status          text not null check (status in ('pending','in_progress','completed','error','cancelled')),
-  started_at      timestamptz not null default now(),
-  finished_at     timestamptz,
-  actor_user_id   uuid references core.users(user_id) on delete set null,
-  options         jsonb,
-  created_at      timestamptz not null default now(),
-  updated_at      timestamptz not null default now(),
-  constraint chk_call_exports_period check (period_to >= period_from)
-);
-
-create index if not exists idx_call_exports_status_active
-  on call_exports(status)
-  where status in ('pending','in_progress','error');
-
-create table if not exists call_records (
-  id                bigserial primary key,
-  run_id            uuid not null references call_exports(run_id) on delete cascade,
-  call_id           text not null,
-  record_id         text,
-  call_started_at   timestamptz,
-  duration_sec      integer not null check (duration_sec >= 0),
-  recording_url     text,
-  storage_path      text,
-  transcript_path   text,
-  summary_path      text,
-  text_preview      text,
-  language          text,
-  employee_id       text,
-  checksum          text,
-  transcription_cost numeric(12,2),
-  currency_code     currency_code default 'RUB',
-  status            text not null check (status in ('pending','downloading','downloaded','transcribing','completed','skipped','error')),
-  error_code        text,
-  error_message     text,
-  attempts          integer not null default 0 check (attempts >= 0),
-  last_attempt_at   timestamptz,
-  created_at        timestamptz not null default now(),
-  updated_at        timestamptz not null default now()
-);
-
-create index if not exists idx_call_records_status_run
-  on call_records(status, run_id)
-  where status in ('pending','downloading','transcribing','error');
-
-create index if not exists idx_call_records_checksum
-  on call_records((checksum))
-  where checksum is not null;
-
-create unique index if not exists uq_call_records_run_call_record
-  on call_records(run_id, call_id, coalesce(record_id, ''));
-
-Основные положения:
-- `call_exports` фиксирует один запуск выгрузки: период (`period_from`/`period_to`), статус (pending/in_progress/completed/error/cancelled), ссылку на инициатора (`actor_user_id` → `core.users.user_id`, nullable для системных джобов), тайминги (`started_at`, `finished_at`) и JSON‑опции запуска (флаги `generate_summary`, `language_override` и др.).
-- `call_records` хранит каждую запись звонка в рамках запуска: бизнес-ключ `(run_id, call_id, coalesce(record_id,''))`, длительность (`duration_sec`), локации хранения (`recording_url`, `storage_path`, `transcript_path`, `summary_path`), текстовый предпросмотр (`text_preview`), язык (`language`), идентификатор оператора (`employee_id`), контрольные суммы (`checksum`), стоимость (`transcription_cost`, `currency_code`), текущий статус (pending/downloading/downloaded/transcribing/completed/skipped/error) и информацию об ошибках/повторах (`attempts`, `last_attempt_at`, `error_code`, `error_message`).
-- `delivery_logs` фиксирует каждое событие по заказу или назначению: ссылка на заказ (`order_id`) и назначение (`assignment_id`), идентификатор курьера (`courier_id`), статус сообщения (info/success/warning/error), тип события (`event_type`), текст (`message`) и JSON‑payload. В payload всегда есть флаг `kmp4_exported:boolean`, по умолчанию `false`, который переворачивается при фактическом экспорте отчёта КМП4.
-- Внешние ключи: `call_records.run_id` с каскадным удалением → `call_exports.run_id`; `call_exports.actor_user_id` → `core.users.user_id` (`ON DELETE SET NULL`).
-- Индексация рассчитана на мониторинг прогрессии и дедупликацию: частичный индекс по активным статусам, GIN/GiST не требуется; хэш по `checksum` обеспечивает быстрый поиск дублей при ретраях.
-
--- 2.5 Комментарии‑подсказки по статусам (привязка к Status‑Dictionary v1)
+-- 2.4 Комментарии‑подсказки по статусам (привязка к Status‑Dictionary v1)
 comment on column orders.status is 'Status‑Dictionary v1 (полный список см. 00‑Core §3.1: READY|PICKED_UP|...); изменения — через приложение, не DDL';
 comment on column instant_orders.status is 'Status‑Dictionary v1 (полный список: DRAFT|PENDING_APPROVAL|APPROVED|DELIVERED|CANCELLED|REJECTED|TIMEOUT_ESCALATED; см. 00‑Core §3.2)';
 comment on column returns.status is 'Status‑Dictionary v1 (полный список: pending|accepted|rejected|cancelled); фиксация статусов возвратов';
 
--- 2.6 Ретенции (операторские заметки)
+-- 2.5 Ретенции (операторские заметки)
 comment on table integration_log is 'Retention: 90d';
 comment on table task_events is 'Retention: 180d (geo внутри), см. Core §9';
 comment on table idempotency_key is 'TTL: 72h';
@@ -249,9 +178,6 @@ comment on table idempotency_key is 'TTL: 72h';
 
 5) Ретенции и ПДн
 integration_log: ≥90 дн; task_events: ≥180 дн; idempotency_key: 72 ч.
-
-
-call_exports / call_records: ≥365 дн (для аудита выгрузок и повторного запуска пайплайна; см. PRD B24 §8).
 
 
 Телефоны — домен ru_phone; фото/файлы не храним, только ID (B24 Disk).
