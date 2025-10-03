@@ -39,6 +39,8 @@
 
 ## Smoke-тест распознавания речи
 
+`scripts/stt_smoke.py` запускает короткий прогон распознавания речи на подготовленном плейлисте и подтверждает, что пайплайн экспорта звонков Bitrix24 → транскрипции проходит end-to-end перед релизом или инцидентной раскаткой. Скрипт повторяет ключевые шаги очереди `call_export` и формирует отчёты с длительностью/статусами для каждого файла.
+
 ### Предварительные условия
 - Подготовьте `.env` с ключами `OPENAI_API_KEY`, выставленным лимитом `STT_MAX_FILE_MINUTES` и при необходимости прокси `CHATGPT_PROXY_URL` — см. таблицу переменных ниже.
 - Выполните `make init` и `make up`, чтобы скрипт имел доступ к зависимостям (Postgres, Redis) и установленным Python-пакетам.
@@ -58,7 +60,7 @@ python scripts/stt_smoke.py \
 - Блок `summary` повторяет агрегаты production-отчёта `summary_<period>.md`: количество записей, покрытие, длительность и стоимость (описание формата закреплено в [docs/testing/stt_smoke.md](docs/testing/stt_smoke.md)).
 - Записи со `status="success"` содержат путь до транскрипта и расчётную стоимость; `status="failure"` включают `error_code`/`error_message` и сверяются с [docs/testing/error_catalog.json](docs/testing/error_catalog.json).
 - Результат CI архивирует как артефакт `stt-smoke-report` (JSON и Markdown из каталога `reports/`) внутри workflow **CI › quality**; загрузить можно со страницы запуска в GitHub Actions.
-- Исторические инструкции по Batch-Transcribe перенесены во внутренний Confluence (раздел «Integrations › Call texts»). Актуальные процедуры QA и тестирования описаны в [docs/testing/strategy.md](docs/testing/strategy.md).
+- Подробные процедуры QA и тестирования описаны в [docs/testing/strategy.md](docs/testing/strategy.md).
 
 ## Переменные окружения Compose
 
@@ -183,9 +185,11 @@ calls = await list_calls(
 - [ONE-PAGER — Рюкзак курьера](docs/ONE-PAGER-%D0%A5%D0%BE%D0%B4%D1%8F%D1%87%D0%B8%D0%B9%D0%A0%D1%8E%D0%BA%D0%B7%D0%B0%D0%BA.md)
 - [Runbook: операционные логи](docs/runbooks/ww.md)
 
-### Batch-Transcribe (архив)
+### Экспорт звонков Bitrix24
 
-- Рабочие документы Batch-Transcribe по звонкам Bitrix24 перенесены во внутренний Confluence. В репозитории остались только исходный код, тесты и утилиты, связанные с интеграцией. Обновлённые инструкции и версии артефактов хранятся в разделе «Integrations › Call texts».
+- [Маппинг сущностей и вебхуков Bitrix24](docs/integrations/bitrix24_mapping.md) — соответствие полей CRM внутренним моделям и правила ретраев.
+- [Обзор архитектуры](docs/architecture/overview.md) — место очереди `call_export` и взаимодействие с воркерами.
+- [Наблюдаемость](docs/observability.md) — метрики, алерты и действия при отклонениях пайплайна.
 
 ## API v1 — быстрые вызовы
 

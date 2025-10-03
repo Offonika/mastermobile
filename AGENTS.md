@@ -99,7 +99,6 @@ PRD / SRS  →  ER / DDL  →  API Contracts  →  ONE-PAGER / UX
 - Walking Warehouse: `PRD Ходячий склад.md`, `ONE-PAGER-ХодячийРюкзак.md`,
   `UX-скетчи-Рюкзак:Продажа.md`.
 
-- Batch-Transcribe B24: артефакты заархивированы во внутреннем Confluence; в репозитории остаются только код и тесты.
 
 - Шаблон: `Software Requirements Specification SRS.md` — заготовка для новых SRS.
 
@@ -255,7 +254,6 @@ PRD / SRS  →  ER / DDL  →  API Contracts  →  ONE-PAGER / UX
   `docs/ONE-PAGER — Переход 1С: УТ 10.md`
 - Walking Warehouse: `docs/PRD Ходячий склад.md`, `docs/ONE-PAGER-ХодячийРюкзак.md`,
   `docs/UX-скетчи-Рюкзак:Продажа.md`
-- Batch-Transcribe: рабочие документы удалены из репозитория и доступны во внутреннем Confluence
 - Шаблон SRS: `docs/Software Requirements Specification SRS.md`
 
 ## 🛠️ Команды быстрого доступа
