@@ -1,5 +1,6 @@
 ONE-PAGER — Ассистент мастера v0.1 («две головы»)
 Версия: 0.1 • Дата: 30.09.2025
+Синхронизировано с 00‑Core v1.3.4 (Core‑API‑Style, Status‑Dictionary, SoT‑Matrix).
 
 🎯 Цель
 
