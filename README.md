@@ -4,7 +4,7 @@
 [![Docs CI](https://github.com/Offonika/mastermobile/actions/workflows/docs-ci.yml/badge.svg)](https://github.com/Offonika/mastermobile/actions/workflows/docs-ci.yml)
 
 ## Что это
-Единый middleware-сервис: интеграция 1С (УТ 10.3/11), Bitrix24 и «Walking Warehouse».
+Единый middleware-сервис: интеграция 1С (УТ 10.3/11) и «Walking Warehouse», управление потоками распознавания речи.
 
 ## Предварительные требования
 
@@ -55,10 +55,10 @@ python scripts/stt_smoke.py \
 Скрипт сохраняет транскрипции в каталоге `LOCAL_STORAGE_DIR/transcripts` (по умолчанию `/app/storage/transcripts`) и формирует два отчёта: `reports/stt_smoke/smoke_demo.json` и `reports/stt_smoke/smoke_demo.md`.
 
 ### Отчёт и интерпретация
-- Блок `summary` повторяет агрегаты production-отчёта `summary_<period>.md`: количество записей, покрытие, длительность и стоимость (см. [SRS — Тексты звонков Bitrix24](docs/SRS%20—%20Тексты%20звонков%20Bitrix24%20(выгрузка%20за%2060%20дней).md#73-%D0%BE%D1%82%D1%87%D1%91%D1%82-summary_periodmd)).
+- Блок `summary` повторяет агрегаты production-отчёта `summary_<period>.md`: количество записей, покрытие, длительность и стоимость (см. [docs/testing/stt_smoke.md](docs/testing/stt_smoke.md#%D0%BE%D1%82%D1%87%D1%91%D1%82-%D0%B8-%D0%B8%D0%BD%D1%82%D0%B5%D1%80%D0%BF%D1%80%D0%B5%D1%82%D0%B0%D1%86%D0%B8%D1%8F)).
 - Записи со `status="success"` содержат путь до транскрипта и расчётную стоимость; `status="failure"` включают `error_code`/`error_message` и сверяются с [docs/testing/error_catalog.json](docs/testing/error_catalog.json).
 - Результат CI архивирует как артефакт `stt-smoke-report` (JSON и Markdown из каталога `reports/`) внутри workflow **CI › quality**; загрузить можно со страницы запуска в GitHub Actions.
-- Для расширенного runbook и UAT-чеклиста переходите по ссылкам: [docs/runbooks/call_export.md](docs/runbooks/call_export.md), [docs/b24-transcribe/ONE-PAGER.md#uat-чеклист](docs/b24-transcribe/ONE-PAGER.md#uat-%D1%87%D0%B5%D0%BA%D0%BB%D0%B8%D1%81%D1%82), [docs/testing/strategy.md](docs/testing/strategy.md).
+- Для расширенного чеклиста ориентируйтесь на [docs/testing/stt_smoke.md](docs/testing/stt_smoke.md) и [docs/testing/strategy.md](docs/testing/strategy.md).
 
 ## Переменные окружения Compose
 
@@ -75,11 +75,6 @@ python scripts/stt_smoke.py \
 | `DB_NAME`       | `mastermobile`         | Имя базы данных                     |
 | `REDIS_HOST`    | `redis`                | Хост Redis                          |
 | `REDIS_PORT`    | `6379`                 | Порт Redis                          |
-| `B24_BASE_URL`  | `https://example.bitrix24.ru/rest` | Базовый URL REST Bitrix24 (можно указывать с или без завершающего `/rest`) |
-| `B24_WEBHOOK_USER_ID` | `1`            | Идентификатор пользователя webhook Bitrix24 |
-| `B24_WEBHOOK_TOKEN` | `changeme`        | Токен webhook Bitrix24 (замените в `.env`) |
-| `B24_RATE_LIMIT_RPS` | `2.0`            | Лимит запросов к Bitrix24 в секунду |
-| `B24_BACKOFF_SECONDS` | `5`             | Стартовый шаг экспоненциального бэкоффа |
 | `OPENAI_API_KEY` | —                    | Ключ OpenAI; оставьте пустым, если STT недоступно |
 | `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Базовый URL OpenAI/совместимого API |
 | `WHISPER_RATE_PER_MIN_USD` | `0.006`    | Ставка Whisper за минуту аудио (для расчёта стоимости) |
@@ -117,24 +112,6 @@ python scripts/stt_smoke.py \
 - Путь до плейлиста задаётся переменной репозитория `STT_SMOKE_PLAYLIST_PATH`; если она не определена, используется значение по умолчанию `playlists/smoke_demo`.
 - Для запуска STT-smoke проверок необходимо добавить секрет `OPENAI_API_KEY` и загрузить плейлист в указанную директорию (см. [docs/testing/stt_smoke.md](docs/testing/stt_smoke.md)).
 
-## Bitrix24 клиент
-
-Асинхронный помощник для получения статистики звонков теперь доступен из пакета `apps.mw.src.integrations.b24`:
-
-```python
-from datetime import datetime, UTC
-
-from apps.mw.src.integrations.b24 import list_calls
-
-
-calls = await list_calls(
-    date_from=datetime(2024, 8, 1, tzinfo=UTC),
-    date_to=datetime(2024, 8, 31, 23, 59, 59, tzinfo=UTC),
-)
-```
-
-Клиент автоматически использует переменные окружения `B24_BASE_URL`, `B24_WEBHOOK_USER_ID`, `B24_WEBHOOK_TOKEN`, `B24_RATE_LIMIT_RPS` и `B24_BACKOFF_SECONDS`, применяя пагинацию и экспоненциальный бэкофф (`429`/`5xx`).
-
 ## Архитектура (вкратце)
 - FastAPI (apps/mw/src)
 - Postgres (данные)
@@ -162,7 +139,7 @@ calls = await list_calls(
 
 ### Setup & verification
 
-1. Скопируйте `.env.example` в `.env`, задайте доступы 1С/Bitrix24 и флаги Walking Warehouse (например, включение кнопки «Положить в рюкзак» и уведомлений).
+1. Скопируйте `.env.example` в `.env`, задайте доступы 1С и флаги Walking Warehouse (например, включение кнопки «Положить в рюкзак» и уведомлений).
 2. Поднимите окружение: `make init && make up`. Метрики FastAPI проверяются на `http://localhost:8000/metrics`; health-пинг — `http://localhost:8000/health`.
 3. Проверьте REST-контракт возвратов: `curl -H "X-Request-Id: doc-readme" http://localhost:8000/api/v1/returns` должен возвращать пагинированный список. Для CRUD сценариев используйте `tests/test_returns_api.py`.
 4. Запустите профильные тесты Walking Warehouse: `pytest tests/test_returns_api.py tests/test_db_models_returns.py` (или общий `make test`). Они подтверждают идемпотентность `/api/v1/returns`, ORM-схему и ограничения по причинам возврата.
@@ -182,14 +159,6 @@ calls = await list_calls(
 - [PRD — Ходячий склад](docs/PRD%20Ходячий%20склад.md)
 - [ONE-PAGER — Рюкзак курьера](docs/ONE-PAGER-%D0%A5%D0%BE%D0%B4%D1%8F%D1%87%D0%B8%D0%B9%D0%A0%D1%8E%D0%BA%D0%B7%D0%B0%D0%BA.md)
 - [Runbook: операционные логи](docs/runbooks/ww.md)
-
-### B24 Transcribe
-
-- [PRD — Тексты звонков Bitrix24](docs/PRD%20—%20Тексты%20звонков%20Bitrix24.md)
-- [SRS — Тексты звонков Bitrix24 (выгрузка за 60 дней)](docs/SRS%20—%20Тексты%20звонков%20Bitrix24%20(выгрузка%20за%2060%20дней).md)
-- [ONE-PAGER — Тексты всех звонков за 60 дней](docs/b24-transcribe/ONE-PAGER.md)
-- [Runbook: экспорт звонков](docs/runbooks/call_export.md)
-- [Calls CSV schema](docs/specs/call_registry_schema.yaml)
 
 ## API v1 — быстрые вызовы
 

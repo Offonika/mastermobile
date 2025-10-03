@@ -10,7 +10,7 @@
 ## Testing Strategy
 - Follow the **testing pyramid**: unit ≫ integration ≫ end-to-end.
 - Use `pytest` with `httpx.AsyncClient` for API layers; isolate FastAPI dependencies via fixtures.
-- Provide stubs/mocks for Telegram Bot API and Bitrix24 integrations to keep tests deterministic.
+- Provide stubs/mocks for Telegram Bot API and external integrations (1С, storage) to keep tests deterministic.
 - Maintain golden-file tests for conversational prompts and message templates.
 - Require regression suites to run in CI before every release tag.
 
@@ -22,7 +22,7 @@
 - Minimize collection of PII; document retention windows and anonymization rules.
 
 ## UX Consistency
-- Prioritize **Telegram-first flows**; ensure equivalent capabilities in Bitrix admin panels.
+- Prioritize **Telegram-first flows**; ensure equivalent capabilities в курьерском веб-интерфейсе Walking Warehouse.
 - Default user-facing copy to **Russian locale**, with fallbacks documented.
 - Keep error messages concise, actionable, and consistent with the error catalog.
 - Sync UX updates with docs/one-pagers before code merges.
