@@ -26,13 +26,13 @@
   | `--generate-summary` | нет | `false` | Создавать ли саммари/теги (увеличивает стоимость). |
   | `--dry-run` | нет | `false` | Только проверка доступа/квот, без скачивания аудио. |
 
-После запуска убедитесь, что создана запись в таблице `call_exports` со статусом `running`. При ручном
+После запуска убедитесь, что создана запись в таблице `call_exports` со статусом `in_progress`. При ручном
 старте указывайте `Idempotency-Key = hash(period + actor)` для избежания дублей.
 
 ## Мониторинг
 - **Grafana:**
   - [Call Export Monitoring](https://grafana.example.com/d/mastermobile-call-export/call-export-overview?orgId=1) —
-    панель в папке `MasterMobile / Integrations` с прогрессом, длительностью и статусами.
+    панель в папке `MasterMobile / Integrations` с прогрессом, длительностью и статусами. Проверьте, что все виджеты с фильтрами по статусу используют `status="in_progress"` вместо устаревшего значения `running`.
   - [STT SLO & Alerts](https://grafana.example.com/d/mastermobile-stt/stt-alerts?orgId=1) —
     витрина `Speech-to-Text` для отслеживания SLO, burn rate и алертов `Alertmanager`.
 - **Прометей:** ключевые запросы
@@ -46,7 +46,7 @@
   - CSV cхема актуализирована до версии v0.2.0: добавлены столбцы `employee` и `text_preview`, а поля стоимости/языка переименованы в `transcription_cost`, `currency_code`, `language`. Детали — в [docs/specs/call_registry_schema.yaml](../specs/call_registry_schema.yaml).
 
 ### STT — SLO
-- **Цель:** ≥ 95 % успешных завершений транскрипций за последние 24 часа (`success = status in {completed, skipped_by_design}`).
+- **Цель:** ≥ 95 % успешных завершений транскрипций за последние 24 часа (`success = status in {completed, skipped}`).
 - **PromQL:**
   ```promql
   sum_over_time(call_export_success_total{environment="prod"}[24h])
@@ -65,7 +65,7 @@
 | `CallExportRetryStorm` | `call_export_retry_total` > 50 за 15 мин | Проверить ошибки Bitrix24/Whisper, включить throttling. |
 | `CallExport5xxGrowth` | `rate(call_export_transcribe_failures_total{code=~"5.."}[10m]) > 0.2` и рост на 50 % против `1h` среднего | Верифицировать статус Whisper/STT, переключить регион, включить деградационный режим. |
 | `CallExportDLQSpike` | `increase(events_dlq_total{queue="call_export"}[15m]) > 10` | Проверить DLQ в Grafana, очистить/перепроиграть сообщения после анализа. |
-| `CallExportJobLongRunning` | `max_over_time(call_export_duration_seconds{status="running"}[30m]) > 1800` | Уточнить зависание в оркестраторе, оценить необходимость ручного завершения job. |
+| `CallExportJobLongRunning` | `max_over_time(call_export_duration_seconds{status="in_progress"}[30m]) > 1800` | Уточнить зависание в оркестраторе, оценить необходимость ручного завершения job. Обновите правило в Alertmanager/Grafana, если фильтр ещё использует `status="running"`. |
 | `Bitrix24RateLimitWarn` | `integration.b24.rate_limited` события > 10/15 мин | Следовать playbook по лимитам Bitrix24. |
 
 Алерты транслируются в `#ops-alerts` и PagerDuty (SEV-2 по умолчанию).
@@ -113,3 +113,7 @@
 - Observability: [Метрики и дашборды](../observability.md)
 - Инциденты: [Общий runbook](incidents.md)
 - Playbook: [Лимиты Bitrix24](../integrations/bitrix24_mapping.md#ограничения-и-квоты)
+
+## Changelog
+
+- 03.10.2025 — Синхронизированы статусы `call_exports`/`call_records` с ER-диаграммой: обновлены мониторинг, алерт `CallExportJobLongRunning` и инструкции по дашбордам (переход с `running` на `in_progress`, уточнены успешные статусы SLO).
