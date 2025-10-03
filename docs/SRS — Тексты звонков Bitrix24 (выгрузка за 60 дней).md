@@ -84,11 +84,11 @@ SRS фиксирует технические требования к батче
 1. Инициация run — пользователь/cron вызывает `/tasks/call_export` (или CLI), передавая `period_from`, `period_to`, `generate_summary`.
 2. MW создаёт запись в `call_exports` со статусом `pending`, генерирует `run_id`, публикует задания загрузки.
 3. Bitrix24 Client постранично получает звонки, фильтрует только с записями; каждую запись помещает в очередь скачивания.
-4. Downloader загружает аудио в `raw/<YYYY/MM/DD>/call_<call_id>_<record_id>.mp3`, вычисляет `checksum_sha256`, обновляет `call_records`.
+4. Downloader загружает аудио в `raw/<YYYY/MM/DD>/call_<call_id>_<record_id>.mp3`, вычисляет `checksum`, обновляет `call_records`.
 5. Speech-to-Text Adapter сегментирует аудио > 15 мин, отправляет в Whisper, собирает финальный текст, определяет `language`, рассчитывает стоимость (`minutes_rounded_up * price_per_minute`).
 6. Готовые транскрипты пишутся в `transcripts/call_<call_id>.txt` (UTF-8, BOM отсутствует) с заголовком метаданных (call_id, direction, participants, duration, language).
 7. При включённом `generate_summary` создаётся `summary/call_<call_id>.md` и теги, путь сохраняется в CSV.
-8. Reporter ведёт потоковую запись CSV: каждая завершённая запись добавляет строку; при ошибках фиксируется `status`, `error_code`, `retry_count`.
+8. Reporter ведёт потоковую запись CSV: каждая завершённая запись добавляет строку; при ошибках фиксируется `status`, `error_code`, `attempts`.
 9. По завершении очереди создаётся отчёт `summary_<period>.md`: агрегаты длительности/стоимости, список пропусков, прогноз расходов, время выполнения, QA-сводка.
 10. Run закрывается: статус `completed` либо `error`; повторный запуск с тем же периодом обновляет только отсутствующие записи (идемпотентность по хэшу `period + call_id + record_id`).
 
@@ -115,9 +115,9 @@ SRS фиксирует технические требования к батче
 | transcript_path | string | yes | Относительный путь к тексту |
 | transcription_cost | decimal(10,2) + currency_code | yes | Стоимость, currency по тарифу |
 | language | string (ISO 639-1) | yes | Определённый язык |
-| status | enum (`completed`, `error`, `missing_audio`) | yes | Статус обработки |
-| error_code | string | no | Код ошибки (для `error`) |
-| retry_count | integer | yes | Количество повторов |
+| status | enum (`completed`, `error`, `skipped`) | yes | Итоговый статус обработки |
+| error_code | string | no | Код ошибки (для `error`/`skipped`) |
+| attempts | integer | yes | Количество попыток обработки |
 | summary_path | string | no | Путь к саммари (если включено) |
 | tags | string[] (serialized) | no | Теги, разделитель `|` |
 
@@ -146,47 +146,45 @@ LANGUAGE: <iso639-1>
 8.1. Таблица `call_exports`
 | Поле | Тип | Ограничения | Описание |
 | --- | --- | --- | --- |
-| id | uuid | PK | Уникальный идентификатор запуска |
+| run_id | uuid | PK | Уникальный идентификатор запуска |
 | period_from | timestamptz | not null | Начало периода (UTC) |
 | period_to | timestamptz | not null | Конец периода (UTC) |
-| status | enum (`pending`, `running`, `completed`, `error`, `cancelled`) | not null, индекс | Текущее состояние run |
-| started_at | timestamptz | not null | Время старта |
+| status | enum (`pending`, `in_progress`, `completed`, `error`, `cancelled`) | not null, partial index | Текущее состояние run |
+| started_at | timestamptz | not null default now() | Время старта |
 | finished_at | timestamptz | null | Время завершения |
-| actor | text | not null | Инициатор (user/service) |
-| total_calls | integer | not null default 0 | Количество звонков в run |
-| processed_calls | integer | not null default 0 | Завершённых записей |
-| error_calls | integer | not null default 0 | Записей в ошибке |
-| total_duration_sec | bigint | not null default 0 | Суммарная длительность |
-| total_cost | numeric(12,2) | not null default 0 | Стоимость в основной валюте |
-| currency_code | char(3) | not null default 'USD' | Валюта стоимости |
-| metadata | jsonb | not null default '{}' | Доп. параметры (флаги, concurrency) |
-Индексы: `(status)`, `(period_from, period_to)`, `btree(period_from)` для выборок по периоду. Уникальный индекс `unique(period_from, period_to, actor)` предотвращает параллельный запуск идентичных задач.
+| actor_user_id | uuid | FK → core.users(user_id) on delete set null | Инициатор (user/service) |
+| options | jsonb | null | Параметры запуска (флаги, overrides) |
+| created_at | timestamptz | not null default now() | Время создания записи |
+| updated_at | timestamptz | not null default now() | Время последнего обновления |
+Индексы: частичный `(status)` для статусов `pending`/`in_progress`/`error`, выборки по периоду идут через PK + фильтры; действует проверка `period_to >= period_from`.
 
 8.2. Таблица `call_records`
 | Поле | Тип | Ограничения | Описание |
 | --- | --- | --- | --- |
-| id | uuid | PK | Уникальный идентификатор записи |
-| call_export_id | uuid | FK → call_exports(id) on delete cascade | Связанный run |
+| id | bigserial | PK | Уникальный идентификатор записи |
+| run_id | uuid | FK → call_exports(run_id) on delete cascade | Связанный run |
 | call_id | text | not null | ID звонка Bitrix24 |
-| record_id | text | not null | ID аудиозаписи |
-| status | enum (`pending`, `downloading`, `transcribing`, `completed`, `error`, `missing_audio`) | not null | Статус обработки |
-| direction | text | not null | Направление звонка |
-| datetime_start | timestamptz | not null | Время начала |
-| duration_sec | integer | not null | Длительность |
-| recording_url | text | not null | Исходная ссылка (masked в выгрузке) |
-| storage_path | text | not null | Путь к аудио в storage |
-| checksum_sha256 | text | not null | Контрольная сумма |
+| record_id | text | null | ID аудиозаписи (может отсутствовать) |
+| call_started_at | timestamptz | null | Время начала звонка (UTC) |
+| duration_sec | integer | not null, check >= 0 | Длительность |
+| recording_url | text | null | Исходная ссылка (masked в выгрузке) |
+| storage_path | text | null | Путь к аудио в storage |
 | transcript_path | text | null | Путь к тексту |
 | summary_path | text | null | Путь к саммари |
-| tags | text | null | Сериализованные теги |
-| language | char(2) | null | ISO 639-1 |
-| transcription_cost | numeric(10,2) | null | Стоимость |
-| currency_code | char(3) | null default 'USD' | Валюта |
-| retry_count | integer | not null default 0 | Повторные попытки |
-| last_error_code | text | null | Код последней ошибки |
-| last_error_message | text | null | Текст ошибки (PII-маскирование) |
+| text_preview | text | null | Первые символы транскрипта для быстрого просмотра |
+| language | text | null | Определённый язык |
+| employee_id | text | null | Табельный/ID оператора (если доступен) |
+| checksum | text | null | Контрольная сумма файла |
+| transcription_cost | numeric(12,2) | null | Стоимость распознавания |
+| currency_code | currency_code | default 'RUB' | Валюта |
+| status | enum (`pending`, `downloading`, `downloaded`, `transcribing`, `completed`, `skipped`, `error`) | not null | Статус обработки |
+| error_code | text | null | Код последней ошибки |
+| error_message | text | null | Текст ошибки (PII-маскирование) |
+| attempts | integer | not null default 0, check >= 0 | Количество попыток |
+| last_attempt_at | timestamptz | null | Время последней попытки |
+| created_at | timestamptz | not null default now() | Создание записи |
 | updated_at | timestamptz | not null default now() | Обновление статуса |
-Уникальные ограничения: `unique(call_export_id, call_id, record_id)`. Индексы: `(status, updated_at)` для мониторинга, `(call_id, record_id)` для идемпотентности, `GIN(tags)` при включённых тегах.
+Уникальные ограничения: `unique(run_id, call_id, coalesce(record_id, ''))`. Индексы: частичный `(status, run_id)` для активных статусов, `(checksum)` для дедупликации.
 
 8.3. Логи и DLQ
 - `integration_log` используется для журналирования исходящих запросов (Bitrix24, Whisper) с `correlation_id = run_id`.
@@ -211,12 +209,12 @@ LANGUAGE: <iso639-1>
 10. Функциональные требования (FR)
 - FR-INGEST-001. MW должен создавать run в `call_exports` с уникальным `run_id` и статусом `pending` при запуске задачи.
 - FR-INGEST-010. Клиент Bitrix24 обязан выгружать все звонки за период, учитывая пагинацию и фильтры по `start_time`.
-- FR-DOWNLOAD-001. Скачивание аудио сохраняет файл в storage, вычисляет `checksum_sha256`, обновляет `call_records.status = 'downloading' → 'transcribing'`.
-- FR-DOWNLOAD-010. При 5 неудачных попытках загрузки запись переводится в `missing_audio`, фиксируется `last_error_code` и попадает в отчёт.
+- FR-DOWNLOAD-001. Скачивание аудио сохраняет файл в storage, вычисляет `checksum`, обновляет `call_records.status = 'downloading' → 'downloaded'`.
+- FR-DOWNLOAD-010. При 5 неудачных попытках загрузки запись переводится в `skipped`, фиксируется `error_code`/`attempts` и попадает в отчёт.
 - FR-TRANSCRIBE-001. Транскрипция должна обеспечивать ≥ 98% успешных попыток; язык определяется автоматически и записывается в `call_records.language`.
 - FR-TRANSCRIBE-010. Стоимость рассчитывается по тарифу сервиса с округлением минут вверх и сохраняется в `transcription_cost`, `currency_code`.
 - FR-CSV-001. Каждая завершённая запись добавляется в CSV; файл валиден (UTF-8, `;` разделитель) и открывается в Excel/Google Sheets без ошибок.
-- FR-CSV-010. CSV содержит все обязательные поля (§7.1); отсутствующие транскрипты заполняются `status = error|missing_audio`.
+- FR-CSV-010. CSV содержит все обязательные поля (§7.1); отсутствующие транскрипты заполняются `status = error|skipped`.
 - FR-REPORT-001. Отчёт `summary_<period>.md` формируется автоматически и включает агрегаты (§7.3), список пропусков, QA-выборку.
 - FR-SUMMARY-001. При `generate_summary = true` создаются файлы саммари, пути записываются в `summary_path`; для ошибок саммари не создаются.
 - FR-IDEMP-001. Повторный запуск с тем же периодом не создаёт дублей: существующие записи обновляются только если `status != completed` или отсутствует файл.
@@ -227,7 +225,7 @@ LANGUAGE: <iso639-1>
 11. Конфигурация и управление
 - ENV переменные: `B24_TOKEN`, `WHISPER_API_KEY`, `EXPORT_SUMMARY_ENABLED`, `TRANSCRIBE_CONCURRENCY`, `CALL_EXPORT_CRON`.
 - Feature flags: `EXPORT_SUMMARY_ENABLED` (вкл./выкл. саммари), `EXPORT_LOW_RATE_MODE` (принудительное ограничение rps).
-- Scheduler хранится в `call_exports.metadata` с полем `trigger` (`cron`, `manual`).
+- Scheduler хранится в `call_exports.options` с полем `trigger` (`cron`, `manual`).
 - Идемпотентность — через таблицу `idempotency_key` (00‑Core §2.5), TTL 72 часа.
 
 12. Нефункциональные требования (NFR)
