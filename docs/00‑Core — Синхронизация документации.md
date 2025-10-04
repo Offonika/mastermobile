@@ -471,7 +471,7 @@ RB‑INT‑02
 /v1/returns — заявки на возврат, решения accepted/rejected/cancelled.
 
 
-/v1/tasks — задачи курьера, события task_events.
+/v1/ww/orders — заказы Walking Warehouse, статусы и события task_events.
 
 
 /v1/nsi/* — НСИ: товары, цены, совместимость, контрагенты.

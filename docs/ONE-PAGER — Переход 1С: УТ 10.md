@@ -116,13 +116,13 @@ XML_ID/SKU
 регламентно
 
 Мини-контракты API (v1)
-POST /api/v1/orders/{id}/ready → создать задачу в B24; 201 + task_id_b24 (идемпотентно).
+POST /api/v1/ww/orders → создать заказ Walking Warehouse; 201 + order_id (идемпотентно по Idempotency-Key).
 
 
-POST /api/v1/instant-orders → черновик в 1С, total; повтор по тому же ключу — без дубля.
+PATCH /api/v1/ww/orders/{orderId} → частичные правки (адрес, сумма, payload) без дублей.
 
 
-PATCH /api/v1/tasks/{id} / POST /tasks/{id}/{photo|geo} → статусы, фото-ID (B24 Disk), гео-чек-ины.
+POST /api/v1/ww/orders/{orderId}/status → смена статуса заказа; фото/гео остаются в Bitrix24 (передаём ссылки, без отдельного API).
 
 
 План по волнам и ворота
