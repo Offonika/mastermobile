@@ -1,6 +1,6 @@
 
 00‑Core — Синхронизация документации (v1.3.4)
-Дата обновления: 27.09.2025
+Дата обновления: 28.09.2025
 Связанные артефакты: API‑Contracts v1.1.0, SRS Core Sync v1.0.3
 
 > Обновление 27.09.2025. Обновлены целевые показатели доступности/RTO/RPO по согласованию с SRE и продактом; карта синхронизирована с API‑Contracts v1.1.0.
@@ -10,7 +10,7 @@
 ### Version Map (на 21.09.2025)
 | Поток | PRD | SRS | Привязки |
 | --- | --- | --- | --- |
-| Core Sync (УТ 10.3↔11) | v1.1.2 (18.09.2025) | v1.0.3 (27.09.2025) | 00‑Core v1.3.4, API‑Contracts v1.1.0, ER Freeze v0.6.5 |
+| Core Sync (УТ 10.3↔11) | v1.1.2 (18.09.2025) | v1.0.3 (27.09.2025) | 00‑Core v1.3.4, API‑Contracts v1.1.0, ER Freeze v0.6.4 |
 | Ассистент мастера | [PRD — «Ассистент мастера» v0.1.1 (Final)](PRD%20—%20«Ассистент%20мастера».md) | — | 00‑Core v1.3.4, [API‑Contracts v1.0.0](API%E2%80%91Contracts.md), [Status‑Dictionary v1](00-Core_glossary-status.md#status-dictionary-v1), [SoT = сайт (Bitrix)](00%E2%80%91Core%20%E2%80%94%20%D0%A1%D0%B8%D0%BD%D1%85%D1%80%D0%BE%D0%BD%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D1%8F%20%D0%B4%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B0%D1%86%D0%B8%D0%B8.md#5-sot-matrix-v1-source-of-truth) |
 | КМП4 | — | [SRS — КМП4 (в подготовке)](SRS%20—%20КМП4.md) | Исходные материалы: `1c/config_dump_txt/`, `1c/external/kmp4_delivery_report/` (исходники в `src/`); привязка к 00‑Core v1.3.4 |
 
@@ -25,7 +25,7 @@ API‑Contracts v1.1.0 (docs/API‑Contracts.md)
 Status‑Dictionary v1 — см. [глоссарий статусов](00-Core_glossary-status.md#status-dictionary-v1)
 
 
-ER Freeze v0.6.5 (раздел 4)
+ER Freeze v0.6.4 (раздел 4)
 
 
 SoT‑Matrix v1 (раздел 5)
@@ -524,6 +524,7 @@ nsi_counterparty
 
 ## Changelog
 
+- 28.09.2025 — Подтверждено отсутствие ER Freeze v0.6.5; Version Map и ссылочный пакет возвращены к ER Freeze v0.6.4. [#PR TBD](https://github.com/mastermobile/mastermobile/pull/TBD)
 - 27.09.2025 — Version Map обновлён: Core Sync переведён на API‑Contracts v1.1.0 и ER Freeze v0.6.4; ссылки раздела 1 приведены к актуальному baseline.
 - 26.09.2025 — Актуализирована карта версий и ссылки на API‑Contracts: подтверждено использование v1.1.0 вместо упоминаний v1.1.3.
 
