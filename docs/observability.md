@@ -16,7 +16,7 @@
 ## Метрики
 | Метрика | Тип | Labels | Цель |
 | --- | --- | --- | --- |
-| `http_request_duration_seconds` | Histogram | `method`, `status_code`, `path` | p95 ≤ 250 мс (чтение), p95 ≤ 400 мс (запись) |
+| `http_request_duration_seconds` | Histogram | `method`, `status_code`, `path` | p95 ≤ 250 мс (чтение), p95 ≤ 400 мс (запись) — см. [ADR-0002](adr/0002-latency-slo.md) |
 | `http_requests_total` | Counter | `method`, `status_code`, `path` | Контроль объёма вызовов, rate limit |
 | `background_tasks_duration_seconds` | Histogram | `task_name`, `status` | SLA фоновых процессов |
 | `integration_failures_total` | Counter | `system`, `reason`, `retry_stage` | Алерты при росте ошибок внешних систем |
@@ -30,6 +30,8 @@
 
 - Экспортер: Prometheus `/metrics`, scrape interval 15с.
 - Alertmanager правила: p95 > SLO 5 мин подряд, `integration_failures_total` +50% за 10 мин, `queue_lag_seconds` > 60с, `ww_kmp4_exports_total{status="error"}` > 0 за 5 мин.
+
+Сводные SLO и уведомления команд Core Sync/Walking Warehouse фиксируются в [ADR-0002](adr/0002-latency-slo.md); алерты и дашборды используют те же пороги p95.
 
 WW-метрики используют метку `operation` (`order_create`, `order_update`, `order_assign`, `order_status_update`) и позволяют собрать полный путь: попытка → успех/ошибка → длительность. Для поиска проблемных переходов статусов фильтруйте `ww_order_status_transitions_total{result="failure"}` и уточняйте пары `from_status`, `to_status` (например, `NEW→DONE`). KMP4-экспорт дополнительно агрегируется метрикой `ww_kmp4_exports_total{status}`: алерт `WWKMP4ExportErrors` срабатывает, когда ``sum(increase(ww_kmp4_exports_total{status="error"}[5m])) > 0`` — это сигнал к разбору сериализации выгрузки и состояния источника данных.
 
@@ -54,3 +56,7 @@ WW-метрики используют метку `operation` (`order_create`, `
 - PagerDuty/Telegram уведомления при `critical` алертах.
 - Runbook содержит шаги проверки (`make logs`, запросы к `/health`, `/metrics`, анализ DLQ`).
 - По завершении инцидента: постмортем, обновление NFR/ADR при необходимости, добавление тестов и метрик.
+
+## Changelog
+
+- 30.09.2025 — Обновлены SLO p95 (чтение 250 мс, запись 400 мс) по итогам синка с владельцами NFR и Observability, добавлена ссылка на [ADR-0002](adr/0002-latency-slo.md); уведомлены команды Core Sync и Walking Warehouse в `#mm-observability`.
