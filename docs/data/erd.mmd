@@ -1,5 +1,6 @@
 erDiagram
-    %% Возвраты и связанные артефакты наблюдаемости
+    %% ER Freeze v0.6.4 — фактические сущности из docs/ER‑диаграмма и DDL.md
+    %% Схема core
     RETURNS {
         uuid return_id PK "Первичный ключ (генерируется MW)"
         text order_id_1c "Ссылка на исходный документ 1С (nullable)"
@@ -54,18 +55,80 @@ erDiagram
         text correlation_id "CorrelationId (уникальный, nullable)"
     }
 
-    DELIVERY_LOGS {
-        bigserial id PK "Запись журнала доставки"
-        uuid order_id FK "FK → delivery_orders.order_id"
-        uuid assignment_id FK "FK → delivery_assignments.assignment_id (nullable)"
-        uuid courier_id FK "FK → couriers.courier_id (nullable)"
-        text status "Статус сообщения: info|success|warning|error"
-        text event_type "Тип события (machine-readable)"
-        text message "Человеко-читаемое описание (nullable)"
-        jsonb payload "Детали события (всегда содержит kmp4_exported:boolean)"
+    IDEMPOTENCY_KEY {
+        uuid key PK "Ключ идемпотентности"
+        text endpoint "Нормализованный endpoint"
+        text actor_id "Отправитель (курьер/1С/system)"
+        text scope "Логическая область операции"
+        text resource_ref "Связанная сущность (nullable)"
+        jsonb response_snapshot "Кешированный ответ (nullable)"
         timestamptz created_at "Создано (UTC)"
+        timestamptz expires_at "Истекает (UTC, TTL 72h)"
+    }
+
+    ORDERS {
+        uuid order_id PK "Заказ доставки (MW UUID)"
+        text task_id_b24 "Связь с задачей Bitrix24 (nullable)"
+        text status "Status-Dictionary v1"
+        numeric delivery_price "Стоимость доставки"
+        numeric cod_amount "Сумма COD (nullable)"
+        char(3) currency_code "Валюта (ISO-4217, по умолчанию RUB)"
+        timestamptz created_at "Создано (UTC)"
+        timestamptz updated_at "Обновлено (UTC)"
+        text phone "Телефон клиента (маскируется в логах)"
+    }
+
+    ORDER_LINES {
+        bigserial id PK "Строка заказа"
+        uuid order_id FK "FK → orders.order_id"
+        text sku "SKU товара"
+        integer qty "Количество"
+        numeric price "Цена"
+        numeric vat_rate "Ставка НДС"
+    }
+
+    %% Схема walking warehouse (ww)
+    COURIERS {
+        uuid courier_id PK "UUID курьера"
+        text external_id "Идентификатор 1С/Bitrix"
+        text status "Статус в системе"
+        text phone "Телефон (маскируется)"
+        timestamptz updated_at "Обновлено (UTC)"
+    }
+
+    COURIER_STOCK {
+        bigserial id PK "Строка остатка"
+        uuid courier_id FK "FK → couriers.courier_id"
+        text sku "SKU товара"
+        integer qty "Количество на руках"
+        timestamptz updated_at "Обновлено (UTC)"
+    }
+
+    INSTANT_ORDERS {
+        uuid instant_order_id PK "UUID мгновенного заказа"
+        uuid courier_id FK "FK → couriers.courier_id"
+        text task_id_b24 "Связанная задача Bitrix24"
+        text status "Status-Dictionary v1"
+        numeric total_amount "Сумма по заказу"
+        char(3) currency_code "Валюта (ISO-4217)"
+        timestamptz created_at "Создано (UTC)"
+        timestamptz updated_at "Обновлено (UTC)"
+    }
+
+    INSTANT_ORDER_LINES {
+        bigserial id PK "Строка мгновенного заказа"
+        uuid instant_order_id FK "FK → instant_orders.instant_order_id"
+        text sku "SKU товара"
+        integer qty "Количество"
+        numeric price "Цена"
+        numeric discount "Скидка (nullable)"
     }
 
     RETURNS ||--o{ RETURN_LINES : "содержит"
-    RETURNS ||--o{ INTEGRATION_LOG : "логирует через resource_ref"
-    RETURNS ||--o{ TASK_EVENTS : "формирует события"
+    RETURNS ||--o{ INTEGRATION_LOG : "логируется через resource_ref"
+    RETURNS ||--o{ TASK_EVENTS : "создаёт события"
+    IDEMPOTENCY_KEY ||--o{ INTEGRATION_LOG : "дедупликация вызовов"
+    ORDERS ||--o{ ORDER_LINES : "содержит"
+    COURIERS ||--o{ INSTANT_ORDERS : "оформляет"
+    INSTANT_ORDERS ||--o{ INSTANT_ORDER_LINES : "содержит"
+    COURIERS ||--o{ COURIER_STOCK : "держит остатки"

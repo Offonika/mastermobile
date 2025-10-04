@@ -162,7 +162,9 @@ Circuit breaker для интеграций: порог отказов 50% за 
 
 4. ER Freeze v0.6.4 (единая БД MW)
 Ключевые сущности:
- orders, order_lines, instant_orders, instant_order_lines, returns, return_lines, couriers, courier_stock, tasks, task_events, nsi_* (справочники), integration_log, idempotency_key, status_dict.
+ schema core: orders, order_lines, returns, return_lines, return_reason, task_events, integration_log, idempotency_key, status_dict.
+ schema ww: couriers, courier_stock, instant_orders, instant_order_lines, price_type, product (заготовка).
+ Отсутствуют в Freeze: таблицы `catalog.*`, `logistics.*`, `sales.*`, `finance.*` — они запланированы к вводу в ER v0.7 (описаны в SRS Core Sync) и на момент обновления остаются в стороне 1С.
  Технические нормы:
 Домены/валидации: телефон +7XXXXXXXXXX; email RFC; денежные суммы numeric(12,2) + currency_code ISO‑4217.
 
@@ -524,6 +526,7 @@ nsi_counterparty
 
 ## Changelog
 
+- 01.10.2025 — Уточнена ER Freeze v0.6.4: перечислены фактические схемы (`core.*`, `ww.*`), удалены ссылки на `catalog.*`/`finance.*`, добавлено примечание о планируемых таблицах v0.7 для синхронизации с интеграционным маппингом.
 - 27.09.2025 — Version Map обновлён: Core Sync переведён на API‑Contracts v1.1.0 и ER Freeze v0.6.4; ссылки раздела 1 приведены к актуальному baseline.
 - 26.09.2025 — Актуализирована карта версий и ссылки на API‑Contracts: подтверждено использование v1.1.0 вместо упоминаний v1.1.3.
 
