@@ -92,6 +92,7 @@
 - Архитектура: [docs/architecture/overview.md](docs/architecture/overview.md)
 - Конституция: [docs/constitution.md](docs/constitution.md)
 - Документация: ./docs
+- Golden set NLU: [docs/NLU/golden_set.csv](docs/NLU/golden_set.csv) — 100 запросов (текст/голос) с разметкой по слотам, структура описана в [PRD «Ассистент мастера»](docs/PRD%20%E2%80%94%20%C2%AB%D0%90%D1%81%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BD%D1%82%20%D0%BC%D0%B0%D1%81%D1%82%D0%B5%D1%80%D0%B0%C2%BB.md#e-golden-set-%D0%B4%D0%BB%D1%8F-nlu%D0%BF%D0%BE%D0%B8%D1%81%D0%BA%D0%B0).
 - Контрибьютинг: ./CONTRIBUTING.md
 - Лицензия: ./LICENSE
 - Артефакты 1С для SRS КМП4: `1c/config_dump_txt/` хранит выборку ключевых объектов УТ 10.3 (модули возвратов, перемещений, регистров), а внешняя обработка лежит в `1c/external/kmp4_delivery_report/` (распакованный код в `src/`, рядом — собранный XML). Выгрузка фиксирует текущее поведение обмена/форм и служит источником требований при подготовке нового SRS по потоку КМП4.
