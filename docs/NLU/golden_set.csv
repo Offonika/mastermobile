@@ -1,0 +1,101 @@
+id,modality,raw_query,intent,brand,model,model_code,part_type,quality,color,qty,city,notes
+A11-001,text,Найди оригинальный дисплей на iPhone 11 черный 1 шт для клиента в г. Москва.,find,Apple,iPhone 11,A2221,display,Original,черный,1,Москва,
+A11-002,text,"Нужен дисплей oem для iPhone 11 белый, 2 шт, город Санкт-Петербург.",find,Apple,iPhone 11,A2221,display,OEM,белый,2,Санкт-Петербург,
+A11-003,text,"Подбери ориг дисплей на iPhone 11, 1 шт, отправка в г. Новосибирск.",find,Apple,iPhone 11,A2221,display,Original,зеленый,1,Новосибирск,
+A11-004,text,"Ищи дисплей для Apple iPhone 11 oem черный, 3 шт, г. Казань.",find,Apple,iPhone 11,A2221,display,OEM,черный,3,Казань,
+A11-005,text,Закажи 2 шт дисплей ориг на iPhone 11 белый в г. Екатеринбург.,find,Apple,iPhone 11,A2221,display,Original,белый,2,Екатеринбург,
+A11-006,text,"Подготовь подборку: дисплей на iPhone 11 oem зеленый, 4 шт, город Нижний Новгород.",find,Apple,iPhone 11,A2221,display,OEM,зеленый,4,Нижний Новгород,
+A11-007,text,Скинь варианты дисплей оригинал для iPhone 11 черный по 1 шт в г. Москва.,find,Apple,iPhone 11,A2221,display,Original,черный,1,Москва,
+A11-008,voice,"Привет, привези 1 шт дисплей на iPhone 11, оригинальный черный, в г. Москва.",bring,Apple,iPhone 11,A2221,display,Original,черный,1,Москва,транскрипт голосового запроса
+A11-009,voice,"Мне бы 2 шт дисплей для iPhone 11, oem белый, город Санкт-Петербург.",find,Apple,iPhone 11,A2221,display,OEM,белый,2,Санкт-Петербург,
+A11-010,voice,"Нужно срочно 1 шт дисплей ориг на iPhone 11 зеленый, доставь в г. Новосибирск.",bring,Apple,iPhone 11,A2221,display,Original,зеленый,1,Новосибирск,транскрипт голосового запроса
+A13P-011,text,Найди оригинальный аккумулятор на iPhone 13 Pro 5 шт для клиента в г. Санкт-Петербург.,find,Apple,iPhone 13 Pro,A2636,battery,Original,none,5,Санкт-Петербург,
+A13P-012,text,"Нужен аккумулятор копия для iPhone 13 Pro, 2 шт, город Новосибирск.",find,Apple,iPhone 13 Pro,A2636,battery,Copy,none,2,Новосибирск,
+A13P-013,text,"Подбери ориг аккумулятор на iPhone 13 Pro, 3 шт, отправка в г. Казань.",find,Apple,iPhone 13 Pro,A2636,battery,Original,none,3,Казань,
+A13P-014,text,"Ищи аккумулятор для Apple iPhone 13 Pro копия, 1 шт, г. Екатеринбург.",find,Apple,iPhone 13 Pro,A2636,battery,Copy,none,1,Екатеринбург,
+A13P-015,text,Закажи 2 шт аккумулятор ориг на iPhone 13 Pro в г. Нижний Новгород.,find,Apple,iPhone 13 Pro,A2636,battery,Original,none,2,Нижний Новгород,
+A13P-016,text,"Подготовь подборку: аккумулятор на iPhone 13 Pro копию, 1 шт, город Москва.",find,Apple,iPhone 13 Pro,A2636,battery,Copy,none,1,Москва,
+A13P-017,text,Скинь варианты аккумулятор оригинал для iPhone 13 Pro по 3 шт в г. Санкт-Петербург.,find,Apple,iPhone 13 Pro,A2636,battery,Original,none,3,Санкт-Петербург,
+A13P-018,voice,"Привет, привези 3 шт аккумулятор на iPhone 13 Pro, оригинальный, в г. Санкт-Петербург.",bring,Apple,iPhone 13 Pro,A2636,battery,Original,none,3,Санкт-Петербург,транскрипт голосового запроса
+A13P-019,voice,"Мне бы 2 шт аккумулятор для iPhone 13 Pro, копия, город Новосибирск.",find,Apple,iPhone 13 Pro,A2636,battery,Copy,none,2,Новосибирск,
+A13P-020,voice,"Нужно срочно 4 шт аккумулятор ориг на iPhone 13 Pro, доставь в г. Казань.",bring,Apple,iPhone 13 Pro,A2636,battery,Original,none,4,Казань,транскрипт голосового запроса
+SA52-021,text,Найди оригинальный шлейф зарядки на Galaxy A52 черный 2 шт для клиента в г. Новосибирск.,find,Samsung,Galaxy A52,SM-A525F,charging_port_flex,Original,черный,2,Новосибирск,
+SA52-022,text,"Нужен шлейф зарядки grade a для Galaxy A52 фиолетовый, 4 шт, город Казань.",find,Samsung,Galaxy A52,SM-A525F,charging_port_flex,Grade A,фиолетовый,4,Казань,
+SA52-023,text,"Подбери ориг шлейф зарядки на Galaxy A52, 1 шт, отправка в г. Екатеринбург.",find,Samsung,Galaxy A52,SM-A525F,charging_port_flex,Original,черный,1,Екатеринбург,
+SA52-024,text,"Ищи шлейф зарядки для Samsung Galaxy A52 grade a фиолетовый, 5 шт, г. Нижний Новгород.",find,Samsung,Galaxy A52,SM-A525F,charging_port_flex,Grade A,фиолетовый,5,Нижний Новгород,
+SA52-025,text,Закажи 2 шт шлейф зарядки ориг на Galaxy A52 черный в г. Москва.,find,Samsung,Galaxy A52,SM-A525F,charging_port_flex,Original,черный,2,Москва,
+SA52-026,text,"Подготовь подборку: шлейф зарядки на Galaxy A52 grade a фиолетовый, 3 шт, город Санкт-Петербург.",find,Samsung,Galaxy A52,SM-A525F,charging_port_flex,Grade A,фиолетовый,3,Санкт-Петербург,
+SA52-027,text,Скинь варианты шлейф зарядки оригинал для Galaxy A52 черный по 1 шт в г. Новосибирск.,find,Samsung,Galaxy A52,SM-A525F,charging_port_flex,Original,черный,1,Новосибирск,
+SA52-028,voice,"Привет, привези 1 шт шлейф зарядки на Galaxy A52, оригинальный черный, в г. Новосибирск.",bring,Samsung,Galaxy A52,SM-A525F,charging_port_flex,Original,черный,1,Новосибирск,транскрипт голосового запроса
+SA52-029,voice,"Мне бы 5 шт шлейф зарядки для Galaxy A52, grade a фиолетовый, город Казань.",find,Samsung,Galaxy A52,SM-A525F,charging_port_flex,Grade A,фиолетовый,5,Казань,
+SA52-030,voice,"Нужно срочно 2 шт шлейф зарядки ориг на Galaxy A52 черный, доставь в г. Екатеринбург.",bring,Samsung,Galaxy A52,SM-A525F,charging_port_flex,Original,черный,2,Екатеринбург,транскрипт голосового запроса
+SS21-031,text,Найди оригинальный задняя крышка на Galaxy S21 FE серый 2 шт для клиента в г. Казань.,find,Samsung,Galaxy S21 FE,SM-G990B,back_cover,Original,серый,2,Казань,
+SS21-032,text,"Нужен задняя крышка копия для Galaxy S21 FE зеленый, 1 шт, город Екатеринбург.",find,Samsung,Galaxy S21 FE,SM-G990B,back_cover,Copy,зеленый,1,Екатеринбург,
+SS21-033,text,"Подбери ориг задняя крышка на Galaxy S21 FE, 3 шт, отправка в г. Нижний Новгород.",find,Samsung,Galaxy S21 FE,SM-G990B,back_cover,Original,белый,3,Нижний Новгород,
+SS21-034,text,"Ищи задняя крышка для Samsung Galaxy S21 FE копия серый, 2 шт, г. Москва.",find,Samsung,Galaxy S21 FE,SM-G990B,back_cover,Copy,серый,2,Москва,
+SS21-035,text,Закажи 4 шт задняя крышка ориг на Galaxy S21 FE зеленый в г. Санкт-Петербург.,find,Samsung,Galaxy S21 FE,SM-G990B,back_cover,Original,зеленый,4,Санкт-Петербург,
+SS21-036,text,"Подготовь подборку: задняя крышка на Galaxy S21 FE копию белый, 1 шт, город Новосибирск.",find,Samsung,Galaxy S21 FE,SM-G990B,back_cover,Copy,белый,1,Новосибирск,
+SS21-037,text,Скинь варианты задняя крышка оригинал для Galaxy S21 FE серый по 5 шт в г. Казань.,find,Samsung,Galaxy S21 FE,SM-G990B,back_cover,Original,серый,5,Казань,
+SS21-038,voice,"Привет, привези 3 шт задняя крышка на Galaxy S21 FE, оригинальный серый, в г. Казань.",bring,Samsung,Galaxy S21 FE,SM-G990B,back_cover,Original,серый,3,Казань,транскрипт голосового запроса
+SS21-039,voice,"Мне бы 1 шт задняя крышка для Galaxy S21 FE, копия зеленый, город Екатеринбург.",find,Samsung,Galaxy S21 FE,SM-G990B,back_cover,Copy,зеленый,1,Екатеринбург,
+SS21-040,voice,"Нужно срочно 2 шт задняя крышка ориг на Galaxy S21 FE белый, доставь в г. Нижний Новгород.",bring,Samsung,Galaxy S21 FE,SM-G990B,back_cover,Original,белый,2,Нижний Новгород,транскрипт голосового запроса
+XRN10-041,text,Найди оригинальный дисплей на Redmi Note 10 Pro черный 2 шт для клиента в г. Екатеринбург.,find,Xiaomi,Redmi Note 10 Pro,M2101K6G,display,Original,черный,2,Екатеринбург,
+XRN10-042,text,"Нужен дисплей копия для Redmi Note 10 Pro бронзовый, 3 шт, город Нижний Новгород.",find,Xiaomi,Redmi Note 10 Pro,M2101K6G,display,Copy,бронзовый,3,Нижний Новгород,
+XRN10-043,text,"Подбери ориг дисплей на Redmi Note 10 Pro, 1 шт, отправка в г. Москва.",find,Xiaomi,Redmi Note 10 Pro,M2101K6G,display,Original,черный,1,Москва,
+XRN10-044,text,"Ищи дисплей для Xiaomi Redmi Note 10 Pro копия бронзовый, 2 шт, г. Санкт-Петербург.",find,Xiaomi,Redmi Note 10 Pro,M2101K6G,display,Copy,бронзовый,2,Санкт-Петербург,
+XRN10-045,text,Закажи 1 шт дисплей ориг на Redmi Note 10 Pro черный в г. Новосибирск.,find,Xiaomi,Redmi Note 10 Pro,M2101K6G,display,Original,черный,1,Новосибирск,
+XRN10-046,text,"Подготовь подборку: дисплей на Redmi Note 10 Pro копию бронзовый, 3 шт, город Казань.",find,Xiaomi,Redmi Note 10 Pro,M2101K6G,display,Copy,бронзовый,3,Казань,
+XRN10-047,text,Скинь варианты дисплей оригинал для Redmi Note 10 Pro черный по 2 шт в г. Екатеринбург.,find,Xiaomi,Redmi Note 10 Pro,M2101K6G,display,Original,черный,2,Екатеринбург,
+XRN10-048,voice,"Привет, привези 1 шт дисплей на Redmi Note 10 Pro, оригинальный черный, в г. Екатеринбург.",bring,Xiaomi,Redmi Note 10 Pro,M2101K6G,display,Original,черный,1,Екатеринбург,транскрипт голосового запроса
+XRN10-049,voice,"Мне бы 3 шт дисплей для Redmi Note 10 Pro, копия бронзовый, город Нижний Новгород.",find,Xiaomi,Redmi Note 10 Pro,M2101K6G,display,Copy,бронзовый,3,Нижний Новгород,
+XRN10-050,voice,"Нужно срочно 2 шт дисплей ориг на Redmi Note 10 Pro черный, доставь в г. Москва.",bring,Xiaomi,Redmi Note 10 Pro,M2101K6G,display,Original,черный,2,Москва,транскрипт голосового запроса
+XRN12-051,text,Найди оригинальный аккумулятор на Redmi Note 12 Pro 4 шт для клиента в г. Нижний Новгород.,find,Xiaomi,Redmi Note 12 Pro,22101316G,battery,Original,none,4,Нижний Новгород,
+XRN12-052,text,"Нужен аккумулятор grade a для Redmi Note 12 Pro, 1 шт, город Москва.",find,Xiaomi,Redmi Note 12 Pro,22101316G,battery,Grade A,none,1,Москва,
+XRN12-053,text,"Подбери ориг аккумулятор на Redmi Note 12 Pro, 5 шт, отправка в г. Санкт-Петербург.",find,Xiaomi,Redmi Note 12 Pro,22101316G,battery,Original,none,5,Санкт-Петербург,
+XRN12-054,text,"Ищи аккумулятор для Xiaomi Redmi Note 12 Pro grade a, 2 шт, г. Новосибирск.",find,Xiaomi,Redmi Note 12 Pro,22101316G,battery,Grade A,none,2,Новосибирск,
+XRN12-055,text,Закажи 3 шт аккумулятор ориг на Redmi Note 12 Pro в г. Казань.,find,Xiaomi,Redmi Note 12 Pro,22101316G,battery,Original,none,3,Казань,
+XRN12-056,text,"Подготовь подборку: аккумулятор на Redmi Note 12 Pro grade a, 1 шт, город Екатеринбург.",find,Xiaomi,Redmi Note 12 Pro,22101316G,battery,Grade A,none,1,Екатеринбург,
+XRN12-057,text,Скинь варианты аккумулятор оригинал для Redmi Note 12 Pro по 2 шт в г. Нижний Новгород.,find,Xiaomi,Redmi Note 12 Pro,22101316G,battery,Original,none,2,Нижний Новгород,
+XRN12-058,voice,"Привет, привези 4 шт аккумулятор на Redmi Note 12 Pro, оригинальный, в г. Нижний Новгород.",bring,Xiaomi,Redmi Note 12 Pro,22101316G,battery,Original,none,4,Нижний Новгород,транскрипт голосового запроса
+XRN12-059,voice,"Мне бы 1 шт аккумулятор для Redmi Note 12 Pro, grade a, город Москва.",find,Xiaomi,Redmi Note 12 Pro,22101316G,battery,Grade A,none,1,Москва,
+XRN12-060,voice,"Нужно срочно 5 шт аккумулятор ориг на Redmi Note 12 Pro, доставь в г. Санкт-Петербург.",bring,Xiaomi,Redmi Note 12 Pro,22101316G,battery,Original,none,5,Санкт-Петербург,транскрипт голосового запроса
+HP30-061,text,Найди оригинальный стекло камеры на P30 черный 1 шт для клиента в г. Москва.,find,Huawei,P30,ELE-L29,camera_glass,Original,черный,1,Москва,
+HP30-062,text,"Нужен стекло камеры копия для P30 голубой, 3 шт, город Санкт-Петербург.",find,Huawei,P30,ELE-L29,camera_glass,Copy,голубой,3,Санкт-Петербург,
+HP30-063,text,"Подбери ориг стекло камеры на P30, 2 шт, отправка в г. Новосибирск.",find,Huawei,P30,ELE-L29,camera_glass,Original,черный,2,Новосибирск,
+HP30-064,text,"Ищи стекло камеры для Huawei P30 копия голубой, 4 шт, г. Казань.",find,Huawei,P30,ELE-L29,camera_glass,Copy,голубой,4,Казань,
+HP30-065,text,Закажи 1 шт стекло камеры ориг на P30 черный в г. Екатеринбург.,find,Huawei,P30,ELE-L29,camera_glass,Original,черный,1,Екатеринбург,
+HP30-066,text,"Подготовь подборку: стекло камеры на P30 копию голубой, 5 шт, город Нижний Новгород.",find,Huawei,P30,ELE-L29,camera_glass,Copy,голубой,5,Нижний Новгород,
+HP30-067,text,Скинь варианты стекло камеры оригинал для P30 черный по 2 шт в г. Москва.,find,Huawei,P30,ELE-L29,camera_glass,Original,черный,2,Москва,
+HP30-068,voice,"Привет, привези 2 шт стекло камеры на P30, оригинальный черный, в г. Москва.",bring,Huawei,P30,ELE-L29,camera_glass,Original,черный,2,Москва,транскрипт голосового запроса
+HP30-069,voice,"Мне бы 3 шт стекло камеры для P30, копия голубой, город Санкт-Петербург.",find,Huawei,P30,ELE-L29,camera_glass,Copy,голубой,3,Санкт-Петербург,
+HP30-070,voice,"Нужно срочно 1 шт стекло камеры ориг на P30 черный, доставь в г. Новосибирск.",bring,Huawei,P30,ELE-L29,camera_glass,Original,черный,1,Новосибирск,транскрипт голосового запроса
+GP6-071,text,Найди оригинальный экран на Pixel 6 черный 3 шт для клиента в г. Санкт-Петербург.,find,Google,Pixel 6,G9S9B,display,Original,черный,3,Санкт-Петербург,
+GP6-072,text,"Нужен экран refurb для Pixel 6 коралловый, 1 шт, город Новосибирск.",find,Google,Pixel 6,G9S9B,display,Refurb,коралловый,1,Новосибирск,
+GP6-073,text,"Подбери ориг экран на Pixel 6, 2 шт, отправка в г. Казань.",find,Google,Pixel 6,G9S9B,display,Original,черный,2,Казань,
+GP6-074,text,"Ищи экран для Google Pixel 6 refurb коралловый, 1 шт, г. Екатеринбург.",find,Google,Pixel 6,G9S9B,display,Refurb,коралловый,1,Екатеринбург,
+GP6-075,text,Закажи 3 шт экран ориг на Pixel 6 черный в г. Нижний Новгород.,find,Google,Pixel 6,G9S9B,display,Original,черный,3,Нижний Новгород,
+GP6-076,text,"Подготовь подборку: экран на Pixel 6 refurb коралловый, 2 шт, город Москва.",find,Google,Pixel 6,G9S9B,display,Refurb,коралловый,2,Москва,
+GP6-077,text,Скинь варианты экран оригинал для Pixel 6 черный по 4 шт в г. Санкт-Петербург.,find,Google,Pixel 6,G9S9B,display,Original,черный,4,Санкт-Петербург,
+GP6-078,voice,"Привет, привези 2 шт экран на Pixel 6, оригинальный черный, в г. Санкт-Петербург.",bring,Google,Pixel 6,G9S9B,display,Original,черный,2,Санкт-Петербург,транскрипт голосового запроса
+GP6-079,voice,"Мне бы 1 шт экран для Pixel 6, refurb коралловый, город Новосибирск.",find,Google,Pixel 6,G9S9B,display,Refurb,коралловый,1,Новосибирск,
+GP6-080,voice,"Нужно срочно 3 шт экран ориг на Pixel 6 черный, доставь в г. Казань.",bring,Google,Pixel 6,G9S9B,display,Original,черный,3,Казань,транскрипт голосового запроса
+OP9-081,text,Найди оригинальный плата зарядки на 9 черный 1 шт для клиента в г. Новосибирск.,find,OnePlus,9,LE2113,charging_board,Original,черный,1,Новосибирск,
+OP9-082,text,"Нужен плата зарядки grade a для 9 черный, 5 шт, город Казань.",find,OnePlus,9,LE2113,charging_board,Grade A,черный,5,Казань,
+OP9-083,text,"Подбери ориг плата зарядки на 9, 2 шт, отправка в г. Екатеринбург.",find,OnePlus,9,LE2113,charging_board,Original,черный,2,Екатеринбург,
+OP9-084,text,"Ищи плата зарядки для OnePlus 9 grade a черный, 3 шт, г. Нижний Новгород.",find,OnePlus,9,LE2113,charging_board,Grade A,черный,3,Нижний Новгород,
+OP9-085,text,Закажи 1 шт плата зарядки ориг на 9 черный в г. Москва.,find,OnePlus,9,LE2113,charging_board,Original,черный,1,Москва,
+OP9-086,text,"Подготовь подборку: плата зарядки на 9 grade a черный, 2 шт, город Санкт-Петербург.",find,OnePlus,9,LE2113,charging_board,Grade A,черный,2,Санкт-Петербург,
+OP9-087,text,Скинь варианты плата зарядки оригинал для 9 черный по 1 шт в г. Новосибирск.,find,OnePlus,9,LE2113,charging_board,Original,черный,1,Новосибирск,
+OP9-088,voice,"Привет, привези 2 шт плата зарядки на 9, оригинальный черный, в г. Новосибирск.",bring,OnePlus,9,LE2113,charging_board,Original,черный,2,Новосибирск,транскрипт голосового запроса
+OP9-089,voice,"Мне бы 4 шт плата зарядки для 9, grade a черный, город Казань.",find,OnePlus,9,LE2113,charging_board,Grade A,черный,4,Казань,
+OP9-090,voice,"Нужно срочно 1 шт плата зарядки ориг на 9 черный, доставь в г. Екатеринбург.",bring,OnePlus,9,LE2113,charging_board,Original,черный,1,Екатеринбург,транскрипт голосового запроса
+IPAD11-091,text,Найди оригинальный матрица на iPad Pro 11 2021 черный 3 шт для клиента в г. Казань.,find,Apple,iPad Pro 11 2021,A2377,display,Original,черный,3,Казань,
+IPAD11-092,text,"Нужен матрица oem для iPad Pro 11 2021 черный, 2 шт, город Екатеринбург.",find,Apple,iPad Pro 11 2021,A2377,display,OEM,черный,2,Екатеринбург,
+IPAD11-093,text,"Подбери ориг матрица на iPad Pro 11 2021, 4 шт, отправка в г. Нижний Новгород.",find,Apple,iPad Pro 11 2021,A2377,display,Original,черный,4,Нижний Новгород,
+IPAD11-094,text,"Ищи матрица для Apple iPad Pro 11 2021 oem черный, 1 шт, г. Москва.",find,Apple,iPad Pro 11 2021,A2377,display,OEM,черный,1,Москва,
+IPAD11-095,text,Закажи 5 шт матрица ориг на iPad Pro 11 2021 черный в г. Санкт-Петербург.,find,Apple,iPad Pro 11 2021,A2377,display,Original,черный,5,Санкт-Петербург,
+IPAD11-096,text,"Подготовь подборку: матрица на iPad Pro 11 2021 oem черный, 2 шт, город Новосибирск.",find,Apple,iPad Pro 11 2021,A2377,display,OEM,черный,2,Новосибирск,
+IPAD11-097,text,Скинь варианты матрица оригинал для iPad Pro 11 2021 черный по 3 шт в г. Казань.,find,Apple,iPad Pro 11 2021,A2377,display,Original,черный,3,Казань,
+IPAD11-098,voice,"Привет, привези 5 шт матрица на iPad Pro 11 2021, оригинальный черный, в г. Казань.",bring,Apple,iPad Pro 11 2021,A2377,display,Original,черный,5,Казань,транскрипт голосового запроса
+IPAD11-099,voice,"Мне бы 2 шт матрица для iPad Pro 11 2021, oem черный, город Екатеринбург.",find,Apple,iPad Pro 11 2021,A2377,display,OEM,черный,2,Екатеринбург,
+IPAD11-100,voice,"Нужно срочно 3 шт матрица ориг на iPad Pro 11 2021 черный, доставь в г. Нижний Новгород.",bring,Apple,iPad Pro 11 2021,A2377,display,Original,черный,3,Нижний Новгород,транскрипт голосового запроса
