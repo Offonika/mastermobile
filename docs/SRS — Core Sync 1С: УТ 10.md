@@ -1,6 +1,6 @@
 SRS — Core Sync 1С: УТ 10.3 ↔ УТ 11 (без простоя)
-Версия: 1.0.3 (синхронизировано с 00‑Core v1.3.4)
- Дата: 28.09.2025
+ Версия: 1.0.3 (синхронизировано с 00‑Core v1.3.4)
+ Дата: 30.09.2025
  Владелец: Операции / IT
 Связанные документы: PRD Core Sync v1.1.2 (18.09.2025), ONE‑PAGER (финал), API‑Contracts v1.1.0, ER Freeze v0.6.4
 
@@ -151,19 +151,27 @@ FR‑IDEMP‑010. Очереди/ретраи. Экспоненциальный 
 
 
 8. Внешние интерфейсы (API MW)
-Контракт v1.1.0 опубликован в `openapi.yaml` и покрывает два домена: `returns`, `walking-warehouse`, а также системные проверки. Контракт синхронизирован с FastAPI-службой; любые изменения требуют обновления OpenAPI и SRS.
+Контракт v1.1.0 опубликован в `openapi.yaml` и охватывает четыре домена: `system`, `returns`, `b24-calls`, `walking-warehouse`. Спецификация синхронизирована с FastAPI-службой; любые изменения требуют обновления OpenAPI и SRS.
 
 Общие требования:
-- Аутентификация — `Authorization: Bearer <JWT>` (роли `1c`, `courier`, `admin`); диагностика `/api/v1/system/ping` доступна без токена.
-- Идемпотентность — заголовок `Idempotency-Key` обязателен для всех небезопасных операций; повтор с иным телом → `409 Conflict`.
-- Наблюдаемость — заголовок `X-Request-Id` передаётся опционально, echo возвращается сервером; ответы используют `application/json` или `application/problem+json`, если не указано иное.
+- Аутентификация — `Authorization: Bearer <JWT>` (роли `1c`, `courier`, `admin`) для операций доменов `returns` и `walking-warehouse`; `/health` и `/api/v1/system/ping` публичны, выгрузки `b24-calls` на текущей итерации не требуют авторизации в контракте и вызываются сервисными интеграциями.
+- Идемпотентность — заголовок `Idempotency-Key` обязателен для всех небезопасных операций (`POST`, `PUT`, `PATCH`, `DELETE`) доменов `returns` (включая административные запросы на `/api/v1/b24-calls/export.json`) и `walking-warehouse`; повтор с иным телом → `409 Conflict`.
+- Наблюдаемость — заголовок `X-Request-Id` передаётся опционально, echo возвращается сервером; ответы используют `application/json`, `application/problem+json` или `text/csv` для экспортов.
+
+`system` (диагностика MW):
+- GET `/health` — проверка доступности, возвращает статус и версию.
+- GET `/api/v1/system/ping` — быстрая проверка, дополнительно отдаёт UTC timestamp и диагностические флаги.
 
 `returns` (обмен возвратами между 1С и MW):
 - GET `/api/v1/returns` — пагинированная выдача `PaginatedReturns` c фильтрами страницы/размера.
 - POST `/api/v1/returns` — регистрация возврата (`ReturnCreate` → `Return`, `Location` в заголовке).
 - GET `/api/v1/returns/{return_id}` — получение карточки возврата.
-- PUT `/api/v1/returns/{return_id}` — полное обновление возврата; контролирует идемпотентность.
-- DELETE `/api/v1/returns/{return_id}` — удаление (204 при успехе).
+- PUT `/api/v1/b24-calls/export.json` — административное обновление возврата, использует `ReturnCreate` и `Idempotency-Key` (временный путь до миграции `/returns/{id}`).
+- DELETE `/api/v1/b24-calls/export.json` — административное удаление возврата (204 при успехе, `Idempotency-Key`).
+
+`b24-calls` (реестр звонков Bitrix24):
+- GET `/api/v1/b24-calls/export.csv` — потоковый CSV экспорт с фильтрами `employee_id`, `date_from`, `date_to`, `has_text`.
+- GET `/api/v1/b24-calls/export.json` — JSON-выгрузка с теми же фильтрами для аналитики и проверки качества транскриптов.
 
 `walking-warehouse` (курьеры и мгновенные заказы):
 - Курьеры: GET `/api/v1/ww/couriers` (поиск по q), POST `/api/v1/ww/couriers` (создание, `Idempotency-Key`).
@@ -171,7 +179,7 @@ FR‑IDEMP‑010. Очереди/ретраи. Экспоненциальный 
 - Отчётность и интеграции: GET `/api/v1/ww/report/deliveries` (JSON или CSV с итоговой строкой `TOTALS`), GET `/api/v1/ww/export/kmp4` (структура `KMP4ExportResponse` для расширения 1С).
 Все операции Walking Warehouse требуют JWT с ролью `courier` или `admin`, кроме создания курьера (`admin`).
 
-Системные проверки остаются неизменными: `/health` (status/uptime) и `/api/v1/system/ping` (статус + UTC timestamp, 503 при деградации).
+Системные проверки: `/health` (status/uptime) и `/api/v1/system/ping` (статус + UTC timestamp, 503 при деградации).
 
 9. Данные и маппинг (см. ER Freeze v0.6.4)
 Поле‑в‑поле (таблица в приложении): единицы, НДС, валюты, статусы, округления (цены/суммы — numeric(12,2)), часовые пояса (все метки — UTC).
@@ -234,6 +242,7 @@ SoT (Source of Truth) — «где правда» по объекту данны
  SLA/SLO — целевые уровни сервиса / конкретные нормы скорости/надёжности.
 
 ## Changelog
+- 30.09.2025 — Расширён перечень доменов (`system`, `returns`, `b24-calls`, `walking-warehouse`) и эндпоинтов согласно `openapi.yaml` v1.0.0; обновлены общие требования и ссылки на выгрузки Bitrix24.
 - 28.09.2025 — Синхронизирована привязка к ER Freeze v0.6.4 (факт) в шапке и ссылках. [#PR TBD](https://github.com/mastermobile/mastermobile/pull/TBD)
 - 25.09.2025 — Перешли на API-Contracts v1.1.0: зафиксированы домены `returns` и `walking-warehouse`, расширены требования к API.
 - 20.09.2025 — Обновлено выравнивание с API-Contracts v1.0.0: актуализированы обязательные заголовки, перечень эндпоинтов (только returns) и политика версионирования.

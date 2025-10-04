@@ -1,7 +1,7 @@
 # API‑Contracts — MasterMobile API v1.0.0
 
 Версия документа: v1.1.0
-Дата обновления: 25.09.2025
+Дата обновления: 30.09.2025
 Статус: draft
 Владелец: Арх / API
 Связанные артефакты: `openapi.yaml` (info.version = 1.0.0)
@@ -11,9 +11,13 @@
 > Примечание (28.09.2025). Уточнён владелец документа в шапке и перепроверен список связанных артефактов.
 
 ## 0. Обзор
-- `openapi.yaml` публикует два прикладных домена: `returns` и `walking-warehouse`, а также служебные проверки `system` (`/health`, `/api/v1/system/ping`).
-- `returns` и `walking-warehouse` используют `Authorization: Bearer <JWT>` с ролевой моделью из `x-roles`; допускаются только перечисленные роли (`1c`, `courier`, `admin` в зависимости от операции).
-- Заголовок `X-Request-Id` опционален для всех операций; `Idempotency-Key` обязателен для всех небезопасных методов (`POST`, `PUT`, `PATCH`, `DELETE`) в доменах `returns` и `walking-warehouse`.
+- `openapi.yaml` публикует четыре доменных пространства и связанные эндпоинты:
+  - `system` — служебные проверки `/health` и `/api/v1/system/ping`.
+  - `returns` — список и создание (`GET|POST /api/v1/returns`), чтение карточки (`GET /api/v1/returns/{return_id}`), а также административные операции обновления и удаления, размещённые на `/api/v1/b24-calls/export.json` (`PUT|DELETE`, tag `returns`).
+  - `b24-calls` — реестры звонков Bitrix24 с фильтрами `employee_id`, `date_from`, `date_to`, `has_text`: потоковый CSV экспорт (`GET /api/v1/b24-calls/export.csv`) и JSON-выгрузка (`GET /api/v1/b24-calls/export.json`).
+  - `walking-warehouse` — курьеры (`GET|POST /api/v1/ww/couriers`), заказы (`GET|POST|PATCH /api/v1/ww/orders`), назначение и статусы (`POST /api/v1/ww/orders/{order_id}/assign`, `POST /api/v1/ww/orders/{order_id}/status`), отчётность и интеграции (`GET /api/v1/ww/report/deliveries`, `GET /api/v1/ww/export/kmp4`).
+- `returns` и `walking-warehouse` используют `Authorization: Bearer <JWT>` с ролевой моделью из `x-roles`; допускаются только перечисленные роли (`1c`, `courier`, `admin` в зависимости от операции). Экспорты `b24-calls` опубликованы без явного требования авторизации в спецификации и предназначены для сервисных интеграций выгрузки звонков.
+- Заголовок `X-Request-Id` опционален для всех операций; `Idempotency-Key` обязателен для всех небезопасных методов (`POST`, `PUT`, `PATCH`, `DELETE`) в доменах `returns` (включая административные операции) и `walking-warehouse`.
 - Схемы ошибок и полезных нагрузок синхронизированы с `openapi.yaml`; дальнейшие изменения должны сопровождаться обновлением этого документа и changelog.
 
 ## 1. Общие требования
@@ -188,6 +192,7 @@
 - `GET /api/v1/system/ping` — диагностический ответ `Ping` (статус + timestamp), может вернуть `503` c `Error`.
 
 ## 6. Changelog
+- 30.09.2025 — Обновлён обзор доменов (`system`, `returns`, `b24-calls`, `walking-warehouse`), зафиксированы экспорты звонков и административные операции returns; соответствие подтверждено по `openapi.yaml` (info.version = 1.0.0).
 - 26.09.2025 — Подтверждено, что действующая версия контракта — v1.1.0; сопутствующие документы выровнены на корректные ссылки.
 - 25.09.2025 — v1.1.0: Синхронизирован список доменов с `openapi.yaml`, обновлены роли и ошибки для returns и walking-warehouse.
 - 20.09.2025 — v1.0.0: Обновлено описание до фактического контракта v1.0.0, убрано требование `X-Api-Version`, зафиксированы только эндпоинты returns и системные проверки.
