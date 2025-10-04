@@ -23,7 +23,7 @@
 | Продуктовые документы | PRD, ONE-PAGER, SRS | Продакт-менеджеры потоков |
 | Архитектура и интеграции | `docs/architecture/`, `docs/integrations/` | Архитекторы и лид интеграций |
 | Обслуживание и эксплуатация | Runbook-и, NFR, Observability, Security | SRE/DevOps |
-| Контракты и схемы | `openapi.yaml`, `docs/specs/`, `docs/testing/error_catalog.json` | Архитектура / API |
+| Контракты и схемы | `openapi.yaml`, `docs/API‑Contracts.md`, `docs/ER‑диаграмма и DDL.md`, `docs/testing/error_catalog.json` | Архитектура / API |
 
 - Любой новый документ начинается с блока `Версия`/`Статус` и ссылки на связанные артефакты.
 - Изменения фиксируются в changelog секциях профильных документов или в отдельном ADR.
