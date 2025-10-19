@@ -41,8 +41,12 @@ class Settings(BaseSettings):
     b24_rate_limit_rps: float = Field(default=2.0, alias="B24_RATE_LIMIT_RPS")
     b24_backoff_seconds: int = Field(default=5, alias="B24_BACKOFF_SECONDS")
 
-    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
+    openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
     openai_base_url: str = Field(default="https://api.openai.com/v1", alias="OPENAI_BASE_URL")
+    openai_project: str | None = Field(default=None, alias="OPENAI_PROJECT")
+    openai_org: str | None = Field(default=None, alias="OPENAI_ORG")
+    openai_workflow_id: str = Field(default="", alias="OPENAI_WORKFLOW_ID")
+    openai_vector_store_id: str = Field(default="", alias="OPENAI_VECTOR_STORE_ID")
     whisper_rate_per_min_usd: float = Field(
         default=0.006,
         alias="WHISPER_RATE_PER_MIN_USD",
