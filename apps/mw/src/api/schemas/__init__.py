@@ -1,5 +1,6 @@
 """Pydantic schemas exposed by the API layer."""
 
+from .chatkit import ChatkitSession, VectorStoreMetadata, VectorStoreUploadResponse
 from .returns import (
     Error,
     Health,
@@ -44,6 +45,7 @@ from .ww_reports import (
 __all__ = [
     "Error",
     "Health",
+    "ChatkitSession",
     "PaginatedReturns",
     "Ping",
     "Return",
@@ -71,6 +73,8 @@ __all__ = [
     "OrderUpdate",
     "WWAssignmentStatus",
     "WWOrderStatus",
+    "VectorStoreMetadata",
+    "VectorStoreUploadResponse",
     "DeliveryReportResponse",
     "DeliveryReportRow",
     "DeliveryReportTotals",
