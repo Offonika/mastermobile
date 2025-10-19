@@ -1,0 +1,19 @@
+:root {
+  color-scheme: dark;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  background-color: #09090b;
+  color: #f4f4f5;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  display: flex;
+  min-height: 100vh;
+  background-color: #09090b;
+}

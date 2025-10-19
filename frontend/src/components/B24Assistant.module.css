@@ -1,0 +1,44 @@
+.wrapper {
+  position: relative;
+  display: flex;
+  height: 100%;
+  width: 100%;
+}
+
+.chat {
+  flex: 1;
+  min-height: 100%;
+}
+
+.errorOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  text-align: center;
+  background: rgba(24, 24, 27, 0.85);
+  color: #fda4af;
+  font-weight: 500;
+  backdrop-filter: blur(6px);
+}
+
+.retryButton {
+  border: none;
+  border-radius: 9999px;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #f97316, #fb7185);
+  color: #09090b;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.retryButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(248, 113, 113, 0.35);
+}
