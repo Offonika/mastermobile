@@ -155,7 +155,7 @@ FR‑IDEMP‑010. Очереди/ретраи. Экспоненциальный 
 
 Общие требования:
 - Аутентификация — `Authorization: Bearer <JWT>` (роли `1c`, `courier`, `admin`) для операций доменов `returns` и `walking-warehouse`; `/health` и `/api/v1/system/ping` публичны, выгрузки `b24-calls` на текущей итерации не требуют авторизации в контракте и вызываются сервисными интеграциями.
-- Идемпотентность — заголовок `Idempotency-Key` обязателен для всех небезопасных операций (`POST`, `PUT`, `PATCH`, `DELETE`) доменов `returns` (включая административные запросы на `/api/v1/b24-calls/export.json`) и `walking-warehouse`; повтор с иным телом → `409 Conflict`.
+- Идемпотентность — заголовок `Idempotency-Key` обязателен для всех небезопасных операций (`POST`, `PUT`, `PATCH`, `DELETE`) доменов `returns` (включая административные операции на `/api/v1/returns/{return_id}`) и `walking-warehouse`; повтор с иным телом → `409 Conflict`.
 - Наблюдаемость — заголовок `X-Request-Id` передаётся опционально, echo возвращается сервером; ответы используют `application/json`, `application/problem+json` или `text/csv` для экспортов.
 
 `system` (диагностика MW):
@@ -166,8 +166,8 @@ FR‑IDEMP‑010. Очереди/ретраи. Экспоненциальный 
 - GET `/api/v1/returns` — пагинированная выдача `PaginatedReturns` c фильтрами страницы/размера.
 - POST `/api/v1/returns` — регистрация возврата (`ReturnCreate` → `Return`, `Location` в заголовке).
 - GET `/api/v1/returns/{return_id}` — получение карточки возврата.
-- PUT `/api/v1/b24-calls/export.json` — административное обновление возврата, использует `ReturnCreate` и `Idempotency-Key` (временный путь до миграции `/returns/{id}`).
-- DELETE `/api/v1/b24-calls/export.json` — административное удаление возврата (204 при успехе, `Idempotency-Key`).
+- PUT `/api/v1/returns/{return_id}` — административное обновление возврата, использует `ReturnCreate` и `Idempotency-Key`.
+- DELETE `/api/v1/returns/{return_id}` — административное удаление возврата (204 при успехе, `Idempotency-Key`).
 
 `b24-calls` (реестр звонков Bitrix24):
 - GET `/api/v1/b24-calls/export.csv` — потоковый CSV экспорт с фильтрами `employee_id`, `date_from`, `date_to`, `has_text`.
