@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from decimal import Decimal
 
-import httpx
 import pytest
 import pytest_asyncio
 
+import httpx
 from apps.mw.src.api.dependencies import reset_idempotency_cache
 from apps.mw.src.api.routes.ww import (
     get_courier_repository,
@@ -100,7 +99,7 @@ async def test_delivery_report_json_and_csv(
         is_active=True,
     )
 
-    start = datetime(2024, 1, 1, 9, 0, tzinfo=timezone.utc)
+    start = datetime(2024, 1, 1, 9, 0, tzinfo=datetime.UTC)
     _seed_order(
         order_repo,
         order_id="order-1",
@@ -163,7 +162,7 @@ async def test_kmp4_export_payload(
         is_active=True,
     )
 
-    base = datetime(2024, 2, 1, 10, 0, tzinfo=timezone.utc)
+    base = datetime(2024, 2, 1, 10, 0, tzinfo=datetime.UTC)
     _seed_order(
         order_repo,
         order_id="order-kmp4",
