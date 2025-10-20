@@ -7,8 +7,8 @@ import argparse
 import hashlib
 import json
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 MANIFEST_PATH = Path(__file__).with_name("manifest.json")
 OUTPUT_DIR = MANIFEST_PATH.parent
