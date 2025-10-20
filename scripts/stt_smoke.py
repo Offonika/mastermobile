@@ -13,19 +13,27 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any, Protocol
 
+from apps.mw.src.config import Settings, get_settings
+from apps.mw.src.services.stt_queue import STTJob
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from apps.mw.src.config import Settings, get_settings
-from apps.mw.src.services.stt_queue import STTJob
-
 try:  # pragma: no cover - import wiring depends on optional dependencies
     from apps.mw.src.services.stt_providers import (
         PlaceholderTranscriber as WorkerPlaceholderTranscriber,
+    )
+    from apps.mw.src.services.stt_providers import (
         ProviderRouter as WorkerProviderRouter,
+    )
+    from apps.mw.src.services.stt_providers import (
         SpeechToTextProvider as WorkerSpeechToTextProvider,
+    )
+    from apps.mw.src.services.stt_providers import (
         TranscriptionError as WorkerTranscriptionError,
+    )
+    from apps.mw.src.services.stt_providers import (
         TranscriptionResult as WorkerTranscriptionResult,
     )
 except ModuleNotFoundError as exc:  # pragma: no cover - fallback for optional deps
