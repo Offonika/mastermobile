@@ -13,6 +13,7 @@ from apps.mw.src.config import Settings, get_settings
 from apps.mw.src.integrations.openai import (
     create_chatkit_session as create_chatkit_session_integration,
 )
+from apps.mw.src.services.chatkit_state import mark_file_search_intent
 
 router = APIRouter(prefix="/api/v1/chatkit", tags=["chatkit"])
 
@@ -61,6 +62,27 @@ class WidgetActionResponse(BaseModel):
     """Acknowledgement returned to the widget."""
 
     ok: bool = True
+    awaiting_query: bool | None = None
+
+
+def resolve_tool(action: WidgetActionRequest) -> str | None:
+    """Extract the tool name from a widget action payload."""
+
+    if action.type == "tool" and action.name:
+        return action.name
+    if action.type.startswith("tool."):
+        return action.type.split(".", 1)[1]
+    return None
+
+
+def _extract_conversation_identifier(payload: dict[str, Any]) -> str | None:
+    """Locate a session or thread identifier within the action payload."""
+
+    for key in ("thread_id", "session_id", "conversation_id"):
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
 
 
 def _ensure_configuration(settings: Settings, request_id: str, *, required: tuple[str, ...]) -> None:
@@ -149,7 +171,29 @@ async def handle_widget_action(
 ) -> WidgetActionResponse:
     """Acknowledge widget actions to keep the integration responsive."""
 
-    logger.bind(request_id=request_id).info(
-        "Received ChatKit widget action", action_type=action.type, name=action.name
+    bound_logger = logger.bind(request_id=request_id)
+    tool_name = resolve_tool(action)
+
+    bound_logger.info(
+        "Received ChatKit widget action",
+        action_type=action.type,
+        name=action.name,
+        tool_name=tool_name,
     )
+
+    if tool_name == "search-docs":
+        identifier = _extract_conversation_identifier(action.payload)
+        if identifier:
+            mark_file_search_intent(identifier)
+            bound_logger.debug(
+                "Marked conversation as awaiting file search query",
+                conversation_id=identifier,
+            )
+        else:
+            bound_logger.warning(
+                "Received search-docs action without conversation identifier",
+                payload_keys=sorted(action.payload.keys()),
+            )
+        return WidgetActionResponse(awaiting_query=True)
+
     return WidgetActionResponse()
