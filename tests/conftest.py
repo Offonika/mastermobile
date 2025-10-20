@@ -1,18 +1,19 @@
 import asyncio
+import importlib
+import importlib.util
 import json
 import multiprocessing
+import os
+import site
 import socket
+import sys
 import time
 from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-import importlib
-import importlib.util
-import os
-import site
-import sys
-
 import pytest
+
+from apps.mw.src.health import HEALTH_PAYLOAD
 
 
 def _ensure_httpx() -> None:
@@ -46,8 +47,6 @@ try:
     import uvicorn
 except ImportError:  # pragma: no cover - optional dependency
     uvicorn = None  # type: ignore[assignment]
-
-from apps.mw.src.health import HEALTH_PAYLOAD
 
 _HOST = "127.0.0.1"
 _PORT = 8000
