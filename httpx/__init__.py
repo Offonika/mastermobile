@@ -14,7 +14,68 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlsplit
 
-__all__ = ["AsyncClient", "Response"]
+__all__ = [
+    "ASGITransport",
+    "AsyncBaseTransport",
+    "AsyncClient",
+    "BaseTransport",
+    "Client",
+    "Limits",
+    "Proxy",
+    "Response",
+    "Timeout",
+    "URL",
+]
+
+
+class URL(str):
+    """Lightweight replacement for :class:`httpx.URL`."""
+
+
+class Proxy:
+    """Placeholder proxy configuration used by the OpenAI SDK."""
+
+    def __init__(self, url: str, **_: Any) -> None:
+        self.url = url
+
+
+class Timeout:
+    """Simplified timeout container matching the signature used by OpenAI."""
+
+    def __init__(self, timeout: float | None = None, **kwargs: Any) -> None:
+        self.timeout = timeout
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class Limits:
+    """Placeholder connection limits container."""
+
+    def __init__(
+        self,
+        max_connections: int | None = None,
+        max_keepalive_connections: int | None = None,
+        **kwargs: Any,
+    ) -> None:
+        self.max_connections = max_connections
+        self.max_keepalive_connections = max_keepalive_connections
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class BaseTransport:
+    """Base transport placeholder to satisfy third-party imports."""
+
+
+class AsyncBaseTransport(BaseTransport):
+    """Async transport placeholder used for compatibility only."""
+
+
+class ASGITransport(AsyncBaseTransport):
+    """Stub ASGI transport; real implementation provided by optional dependency."""
+
+    def __init__(self, app: Any) -> None:  # pragma: no cover - optional behaviour
+        self.app = app
 
 
 @dataclass
@@ -62,3 +123,19 @@ class AsyncClient:
         body = response.read()
         connection.close()
         return Response(status_code=response.status, _body=body)
+
+
+class Client:
+    """Synchronous counterpart used to satisfy imports from optional deps."""
+
+    def __init__(self, base_url: str, timeout: float | None = None) -> None:
+        self._async = AsyncClient(base_url=base_url, timeout=timeout)
+
+    def get(self, path: str) -> Response:
+        loop = asyncio.new_event_loop()
+        try:
+            asyncio.set_event_loop(loop)
+            return loop.run_until_complete(self._async.get(path))
+        finally:
+            asyncio.set_event_loop(None)
+            loop.close()
