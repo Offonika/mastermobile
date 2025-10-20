@@ -111,6 +111,8 @@ class WWExportTracker:
         WW_EXPORT_FAILURE_TOTAL.labels(
             operation=self._operation, reason=reason
         ).inc()
+        if self._operation == "kmp4_export":
+            WW_KMP4_EXPORTS_TOTAL.labels(status="error").inc()
         WW_EXPORT_DURATION_SECONDS.labels(
             operation=self._operation, outcome="failure"
         ).observe(elapsed)
