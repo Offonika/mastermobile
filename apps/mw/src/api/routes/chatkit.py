@@ -6,11 +6,14 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from loguru import logger
-from openai import OpenAI, OpenAIError
+from openai import OpenAIError
 
 from apps.mw.src.api.dependencies import ProblemDetailException, build_error, provide_request_id
 from apps.mw.src.api.schemas import ChatkitSession, VectorStoreMetadata, VectorStoreUploadResponse
 from apps.mw.src.config import Settings, get_settings
+from apps.mw.src.integrations.openai import (
+    create_chatkit_session as create_chatkit_session_integration,
+)
 
 _ALLOWED_CONTENT_TYPES = {
     "application/pdf",
@@ -44,7 +47,9 @@ def _ensure_configuration(settings: Settings, request_id: str | None, *, require
         _raise_missing_configuration(request_id, missing)
 
 
-def _create_openai_client(settings: Settings) -> OpenAI:
+def _create_openai_client(settings: Settings) -> "OpenAI":
+    from openai import OpenAI
+
     client_kwargs: dict[str, Any] = {"api_key": settings.openai_api_key}
     if settings.openai_base_url:
         client_kwargs["base_url"] = settings.openai_base_url
@@ -67,9 +72,8 @@ async def create_chatkit_session(request_id: str = Depends(provide_request_id)) 
     settings = get_settings()
     _ensure_configuration(settings, request_id, require=("openai_api_key", "openai_workflow_id"))
 
-    client = _create_openai_client(settings)
     try:
-        session = client.chatkit.sessions.create({"workflow": {"id": settings.openai_workflow_id}})
+        client_secret = create_chatkit_session_integration(settings.openai_workflow_id)
     except OpenAIError as exc:
         logger.bind(request_id=request_id).exception("Failed to create OpenAI ChatKit session")
         raise ProblemDetailException(
@@ -81,12 +85,7 @@ async def create_chatkit_session(request_id: str = Depends(provide_request_id)) 
                 type_="https://api.mastermobile.app/errors/openai",
             )
         ) from exc
-
-    client_secret = getattr(session, "client_secret", None)
-    if client_secret is None and isinstance(session, dict):
-        client_secret = session.get("client_secret")
-
-    if not isinstance(client_secret, str) or not client_secret:
+    except ValueError as exc:
         logger.bind(request_id=request_id).error(
             "OpenAI ChatKit session response is missing client secret",
         )
@@ -94,7 +93,7 @@ async def create_chatkit_session(request_id: str = Depends(provide_request_id)) 
             build_error(
                 status.HTTP_502_BAD_GATEWAY,
                 title="ChatKit session creation failed",
-                detail="OpenAI ChatKit API response did not include a client secret.",
+                detail=str(exc),
                 request_id=request_id,
                 type_="https://api.mastermobile.app/errors/openai",
             )
