@@ -1,0 +1,174 @@
+"""ChatKit API endpoints exposed for widget integrations."""
+from __future__ import annotations
+
+from typing import Any
+
+from fastapi import APIRouter, Depends, status
+from loguru import logger
+from openai import OpenAI, OpenAIError
+from pydantic import BaseModel, Field, model_validator
+
+from apps.mw.src.api.dependencies import ProblemDetailException, build_error, provide_request_id
+from apps.mw.src.config import Settings, get_settings
+
+router = APIRouter(prefix="/api/v1/chatkit", tags=["chatkit"])
+
+
+class ChatkitSessionResponse(BaseModel):
+    """Response returned to the widget when creating a session."""
+
+    client_secret: str = Field(..., min_length=1)
+
+
+class WidgetActionRequest(BaseModel):
+    """Action payload coming from the widget."""
+
+    type: str
+    name: str | None = None
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def support_legacy_format(cls, data: Any) -> Any:
+        """Normalise legacy `type` values that encode the action name."""
+
+        if not isinstance(data, dict):
+            raise ValueError("Widget action payload must be an object.")
+
+        raw_type = data.get("type")
+        if isinstance(raw_type, str) and "." in raw_type and "name" not in data:
+            prefix, _, suffix = raw_type.partition(".")
+            if prefix and suffix:
+                normalised = dict(data)
+                normalised["type"] = prefix
+                normalised["name"] = suffix
+                return normalised
+        return data
+
+    @model_validator(mode="after")
+    def validate_tool_action(self) -> "WidgetActionRequest":
+        """Ensure the expected fields are present for tool actions."""
+
+        if self.type == "tool" and not self.name:
+            raise ValueError("Tool actions must include a name.")
+        return self
+
+
+class WidgetActionResponse(BaseModel):
+    """Acknowledgement returned to the widget."""
+
+    ok: bool = True
+
+
+def _ensure_configuration(settings: Settings, request_id: str, *, required: tuple[str, ...]) -> None:
+    """Verify that mandatory ChatKit settings are present."""
+
+    missing: list[str] = []
+    for attr in required:
+        value = getattr(settings, attr, "")
+        if not isinstance(value, str) or not value.strip():
+            missing.append(attr.upper())
+    if not missing:
+        return
+
+    logger.bind(request_id=request_id).error(
+        "Missing ChatKit configuration values", missing=missing
+    )
+    raise ProblemDetailException(
+        build_error(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            title="ChatKit configuration is incomplete",
+            detail=f"Missing configuration values: {', '.join(sorted(missing))}.",
+            request_id=request_id,
+            type_="https://api.mastermobile.app/errors/configuration",
+        )
+    )
+
+
+def _create_openai_client(settings: Settings) -> OpenAI:
+    """Instantiate an OpenAI client configured for ChatKit interactions."""
+
+    kwargs: dict[str, Any] = {"api_key": settings.openai_api_key}
+    if settings.openai_base_url:
+        kwargs["base_url"] = settings.openai_base_url
+    if settings.openai_org:
+        kwargs["organization"] = settings.openai_org
+    if settings.openai_project:
+        kwargs["project"] = settings.openai_project
+    return OpenAI(**kwargs)
+
+
+@router.post(
+    "/session",
+    response_model=ChatkitSessionResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Create a ChatKit session for the widget",
+)
+async def create_chatkit_session(
+    request_id: str = Depends(provide_request_id),
+) -> ChatkitSessionResponse:
+    """Create a ChatKit session and return the client secret."""
+
+    settings = get_settings()
+    _ensure_configuration(
+        settings,
+        request_id,
+        required=("openai_api_key", "openai_workflow_id"),
+    )
+
+    client = _create_openai_client(settings)
+    try:
+        session = client.chatkit.sessions.create(
+            {"workflow": {"id": settings.openai_workflow_id}}
+        )
+    except OpenAIError as exc:
+        logger.bind(request_id=request_id).exception("Failed to create ChatKit session")
+        raise ProblemDetailException(
+            build_error(
+                status.HTTP_502_BAD_GATEWAY,
+                title="ChatKit session creation failed",
+                detail="OpenAI ChatKit API request failed.",
+                request_id=request_id,
+                type_="https://api.mastermobile.app/errors/openai",
+            )
+        ) from exc
+
+    client_secret = getattr(session, "client_secret", None)
+    if client_secret is None and isinstance(session, dict):
+        client_secret = session.get("client_secret")
+
+    if not isinstance(client_secret, str) or not client_secret.strip():
+        logger.bind(request_id=request_id).error(
+            "OpenAI ChatKit response did not include a client secret",
+            session=session,
+        )
+        raise ProblemDetailException(
+            build_error(
+                status.HTTP_502_BAD_GATEWAY,
+                title="ChatKit session creation failed",
+                detail="OpenAI ChatKit API response did not include a client secret.",
+                request_id=request_id,
+                type_="https://api.mastermobile.app/errors/openai",
+            )
+        )
+
+    logger.bind(request_id=request_id).info("Created ChatKit session for widget")
+    return ChatkitSessionResponse(client_secret=client_secret)
+
+
+@router.post(
+    "/widget-action",
+    response_model=WidgetActionResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Accept actions emitted by the widget",
+)
+async def handle_widget_action(
+    action: WidgetActionRequest,
+    request_id: str = Depends(provide_request_id),
+) -> WidgetActionResponse:
+    """Acknowledge widget actions to keep the integration responsive."""
+
+    logger.bind(request_id=request_id).info(
+        "Received ChatKit widget action", action_type=action.type, name=action.name
+    )
+    return WidgetActionResponse()
