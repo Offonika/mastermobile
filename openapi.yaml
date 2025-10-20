@@ -260,6 +260,98 @@ paths:
           headers:
             X-Request-Id:
               $ref: '#/components/headers/XRequestId'
+    put:
+      tags:
+        - returns
+      summary: Update a return
+      operationId: updateReturn
+      security:
+        - bearerAuth: []
+      x-roles:
+        - 1c
+        - admin
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReturnCreate'
+      responses:
+        '200':
+          description: Updated return details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Return'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '422':
+          description: Validation error.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '404':
+          description: Return was not found.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '409':
+          description: Conflict caused by idempotency mismatch.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+    delete:
+      tags:
+        - returns
+      summary: Delete a return
+      operationId: deleteReturn
+      security:
+        - bearerAuth: []
+      x-roles:
+        - admin
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204':
+          description: Return was deleted.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '422':
+          description: Validation error.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '404':
+          description: Return was not found.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
   /api/v1/b24-calls/export.csv:
     get:
       tags:

@@ -16,7 +16,9 @@
 ## 0. Обзор
 - `openapi.yaml` публикует четыре доменных пространства и связанные эндпоинты:
   - `system` — служебные проверки `/health` и `/api/v1/system/ping`.
-  - `returns` — список и создание (`GET|POST /api/v1/returns`), чтение карточки (`GET /api/v1/returns/{returnId}`), а также административные операции обновления и удаления на `/api/v1/returns/{returnId}` (`PUT|DELETE`, tag `returns`).
+
+  - `returns` — список и создание (`GET|POST /api/v1/returns`), чтение карточки и административные операции (`GET|PUT|DELETE /api/v1/returns/{return_id}`).
+
   - `b24-calls` — реестры звонков Bitrix24 с фильтрами `employee_id`, `date_from`, `date_to`, `has_text`: потоковый CSV экспорт (`GET /api/v1/b24-calls/export.csv`) и JSON-выгрузка (`GET /api/v1/b24-calls/export.json`).
   - `walking-warehouse` — курьеры (`GET|POST /api/v1/ww/couriers`), заказы (`GET|POST|PATCH /api/v1/ww/orders`), назначение и статусы (`POST /api/v1/ww/orders/{orderId}/assign`, `POST /api/v1/ww/orders/{orderId}/status`), отчётность и интеграции (`GET /api/v1/ww/report/deliveries`, `GET /api/v1/ww/export/kmp4`).
 - `returns` и `walking-warehouse` используют `Authorization: Bearer <JWT>` с ролевой моделью из `x-roles`; допускаются только перечисленные роли (`1c`, `courier`, `admin` в зависимости от операции). Экспорты `b24-calls` опубликованы без явного требования авторизации в спецификации и предназначены для сервисных интеграций выгрузки звонков.
