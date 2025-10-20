@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import Column, Table, create_engine, event
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
@@ -15,7 +15,7 @@ from apps.mw.src.db.models import (
     CallRecord,
     CallRecordStatus,
 )
-from apps.mw.src.services.stt_queue import DLQEntry, STTJob, STTQueue, STT_PROCESSED_KEY
+from apps.mw.src.services.stt_queue import STT_PROCESSED_KEY, DLQEntry, STTJob, STTQueue
 
 
 class _FakeRedis:
@@ -126,7 +126,7 @@ def test_requeue_dlq_entry_resets_state_and_requeues_job() -> None:
     redis = _FakeRedis()
     queue = STTQueue(redis)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(datetime.UTC)
     with Session(engine) as session:
         export = CallExport(
             period_from=now,
