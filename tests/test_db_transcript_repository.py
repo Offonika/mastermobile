@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from apps.mw.src.db.repositories.transcripts import B24TranscriptRepository
-from tests.transcript_test_utils import make_call_record, transcript_session
+from .transcript_test_utils import make_call_record, transcript_session
 
 
 @pytest.fixture()
