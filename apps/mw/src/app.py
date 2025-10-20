@@ -9,6 +9,7 @@ from uuid import uuid4
 from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 from apps.mw.src.api.dependencies import (
     ProblemDetailException,
@@ -39,6 +40,16 @@ app = FastAPI(title="MasterMobile MW", lifespan=create_logging_lifespan())
 app.add_middleware(RequestContextMiddleware)
 app.add_middleware(RequestMetricsMiddleware)
 register_metrics(app)
+
+settings = get_settings()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(system_router.router)
 app.include_router(b24_calls_router.router)

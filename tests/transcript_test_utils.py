@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import Column, String, Table, create_engine, text
@@ -57,15 +57,15 @@ def make_call_record(session: Session, call_id: str = "CALL-001") -> CallRecord:
 
     export = CallExport(
         run_id=uuid4(),
-        period_from=datetime(2024, 1, 1, tzinfo=datetime.UTC),
-        period_to=datetime(2024, 1, 2, tzinfo=datetime.UTC),
+        period_from=datetime(2024, 1, 1, tzinfo=UTC),
+        period_to=datetime(2024, 1, 2, tzinfo=UTC),
         status=CallExportStatus.PENDING,
     )
     record = CallRecord(
         export=export,
         call_id=call_id,
         record_id=f"{call_id}-rec",
-        call_started_at=datetime(2024, 1, 1, 12, 0, tzinfo=datetime.UTC),
+        call_started_at=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
         direction=CallDirection.INBOUND,
         from_number="+79990000001",
         to_number="+79990000002",

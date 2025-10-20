@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from typing import Any, Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -136,6 +137,28 @@ class Settings(BaseSettings):
             f"postgresql+psycopg://{self.db_user}:{self.db_password}"
             f"@{self.db_host}:{self.db_port}/{self.db_name}"
         )
+
+    @property
+    def cors_allowed_origins(self) -> list[str]:
+        """Return a list of allowed CORS origins including required domains."""
+
+        origins: list[str] = []
+        for origin in self.cors_origins.split(","):
+            normalized = origin.strip()
+            if normalized and normalized not in origins:
+                origins.append(normalized)
+
+        extras: set[str] = {"https://master-mobile.ru"}
+
+        parsed_b24 = urlsplit(self.b24_base_url)
+        if parsed_b24.scheme and parsed_b24.netloc:
+            extras.add(f"{parsed_b24.scheme}://{parsed_b24.netloc}")
+
+        for extra in extras:
+            if extra and extra not in origins:
+                origins.append(extra)
+
+        return origins
 
 
 @lru_cache
