@@ -14,6 +14,8 @@ tags:
     description: Service monitoring and diagnostic endpoints.
   - name: returns
     description: Endpoints for managing merchandise returns.
+  - name: chatkit
+    description: ChatKit widget integration endpoints.
   - name: b24-calls
     description: Bitrix24 call exports and registry endpoints.
   - name: walking-warehouse
@@ -55,6 +57,79 @@ paths:
               $ref: '#/components/headers/XRequestId'
         '503':
           description: Service is unavailable.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/chatkit/session:
+    post:
+      tags:
+        - chatkit
+      summary: Create a ChatKit session for the widget
+      description: Issues an ephemeral client secret that allows the ChatKit widget to connect to the configured workflow.
+      operationId: createChatkitSession
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+      responses:
+        '200':
+          description: Ephemeral client secret for the ChatKit widget.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatkitSession'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '500':
+          description: ChatKit configuration is incomplete.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '502':
+          description: Failed to create a ChatKit session via OpenAI.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/chatkit/widget-action:
+    post:
+      tags:
+        - chatkit
+      summary: Accept actions emitted by the widget
+      description: Accepts ChatKit widget actions to keep the integration responsive and update middleware state.
+      operationId: handleChatkitWidgetAction
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatkitWidgetActionRequest'
+      responses:
+        '200':
+          description: Widget action acknowledgement.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatkitWidgetActionResponse'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '422':
+          description: Validation error.
           content:
             application/problem+json:
               schema:
@@ -1098,6 +1173,49 @@ components:
           type: string
           description: Identifier of the service responding to the ping.
           example: master-mobile-middleware
+    ChatkitSession:
+      type: object
+      required:
+        - client_secret
+      properties:
+        client_secret:
+          type: string
+          description: Ephemeral client secret issued for the ChatKit widget.
+          example: cs_live_a1b2c3d4e5f6
+    ChatkitWidgetActionRequest:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          description: High-level action category produced by the ChatKit widget.
+          example: tool
+        name:
+          type: string
+          nullable: true
+          description: Tool name associated with the action when the type is tool.
+          example: search-docs
+        payload:
+          type: object
+          description: Raw payload forwarded from the ChatKit widget.
+          additionalProperties: {}
+          example:
+            thread_id: thread_123
+    ChatkitWidgetActionResponse:
+      type: object
+      required:
+        - ok
+      properties:
+        ok:
+          type: boolean
+          description: Indicates whether the middleware accepted the widget action.
+          example: true
+        awaiting_query:
+          type: boolean
+          nullable: true
+          description: When true, the widget should prompt the user for a follow-up query.
+          example: true
     B24CallRecord:
       type: object
       required:
