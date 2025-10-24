@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
+from io import BytesIO
 from types import SimpleNamespace
 
-import httpx
 import pytest
+from fastapi import UploadFile
+from starlette.datastructures import Headers
 
-from apps.mw.src.app import app
+from apps.mw.src.api.routes import chatkit as chatkit_routes
+from apps.mw.src.api.routers import chatkit as chatkit_router
 from apps.mw.src.config.settings import get_settings
-
-BASE_URL = "http://testserver"
 
 
 @pytest.fixture(autouse=True)
@@ -29,19 +30,13 @@ async def test_create_chatkit_session_returns_client_secret(monkeypatch: pytest.
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("OPENAI_WORKFLOW_ID", "workflow-123")
     monkeypatch.setattr(
-        "apps.mw.src.api.routes.chatkit.create_chatkit_session",
+        "apps.mw.src.api.routes.chatkit.create_chatkit_service_session",
         lambda workflow_id: "client-secret-abc",
     )
 
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url=BASE_URL) as client:
-        response = await client.post(
-            "/api/chatkit/session",
-            headers={"X-Request-Id": "req-chatkit-session"},
-        )
+    response = await chatkit_routes.create_chatkit_session(request_id="req-chatkit-session")
 
-    assert response.status_code == 200
-    assert response.json() == {"client_secret": "client-secret-abc"}
+    assert response.client_secret == "client-secret-abc"
 
 
 @pytest.mark.asyncio
@@ -70,29 +65,25 @@ async def test_vector_store_upload_happy_path(monkeypatch: pytest.MonkeyPatch) -
         lambda settings: fake_client,
     )
 
-    files = {"file": ("handbook.pdf", b"%PDF-1.4", "application/pdf")}
-    data = {
-        "title": "Handbook",
-        "dept": "Support",
-        "version": "1.0",
-        "updated_at": "2024-01-01",
-        "source": "manual",
-    }
+    upload_file = UploadFile(
+        file=BytesIO(b"%PDF-1.4"),
+        filename="handbook.pdf",
+        headers=Headers({"content-type": "application/pdf"}),
+    )
 
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url=BASE_URL) as client:
-        response = await client.post(
-            "/api/vector-store/upload",
-            files=files,
-            data=data,
-            headers={"X-Request-Id": "req-vector-upload"},
-        )
+    response = await chatkit_routes.upload_to_vector_store(
+        file=upload_file,
+        title="Handbook",
+        dept="Support",
+        version="1.0",
+        updated_at="2024-01-01",
+        source="manual",
+        request_id="req-vector-upload",
+    )
 
-    assert response.status_code == 200
-    body = response.json()
-    assert body["status"] == "ok"
-    assert body["filename"] == "handbook.pdf"
-    assert body["metadata"]["title"] == "Handbook"
+    assert response.status == "ok"
+    assert response.filename == "handbook.pdf"
+    assert response.metadata.title == "Handbook"
 
     assert uploads, "Expected OpenAI client upload to be invoked"
     recorded = uploads[0]
@@ -111,7 +102,7 @@ async def test_widget_action_supports_legacy_tool_format(monkeypatch: pytest.Mon
         captured["identifier"] = identifier
 
     monkeypatch.setattr(
-        "apps.mw.src.api.routers.chatkit.mark_file_search_intent",
+        "apps.mw.src.api.routers.chatkit.mark_awaiting_query",
         _mark,
     )
 
@@ -120,16 +111,12 @@ async def test_widget_action_supports_legacy_tool_format(monkeypatch: pytest.Mon
         "payload": {"session_id": "session-xyz"},
     }
 
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url=BASE_URL) as client:
-        response = await client.post(
-            "/api/v1/chatkit/widget-action",
-            json=payload,
-            headers={"X-Request-Id": "req-widget-action"},
-        )
+    response = await chatkit_router.handle_widget_action(
+        chatkit_router.WidgetActionRequest.model_validate(payload),
+        request_id="req-widget-action",
+    )
 
-    assert response.status_code == 200
-    assert response.json() == {"ok": True, "awaiting_query": True}
+    assert response.model_dump() == {"ok": True, "awaiting_query": True}
     assert captured.get("identifier") == "session-xyz"
 
 
@@ -143,7 +130,7 @@ async def test_widget_action_accepts_modern_tool_format(monkeypatch: pytest.Monk
         captured["identifier"] = identifier
 
     monkeypatch.setattr(
-        "apps.mw.src.api.routers.chatkit.mark_file_search_intent",
+        "apps.mw.src.api.routers.chatkit.mark_awaiting_query",
         _mark,
     )
 
@@ -153,14 +140,11 @@ async def test_widget_action_accepts_modern_tool_format(monkeypatch: pytest.Monk
         "payload": {"conversation_id": "conv-123"},
     }
 
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url=BASE_URL) as client:
-        response = await client.post(
-            "/api/v1/chatkit/widget-action",
-            json=payload,
-            headers={"X-Request-Id": "req-widget-action-modern"},
-        )
+    response = await chatkit_router.handle_widget_action(
+        chatkit_router.WidgetActionRequest.model_validate(payload),
+        request_id="req-widget-action-modern",
+        thread_id="header-thread",
+    )
 
-    assert response.status_code == 200
-    assert response.json() == {"ok": True, "awaiting_query": True}
-    assert captured.get("identifier") == "conv-123"
+    assert response.model_dump() == {"ok": True, "awaiting_query": True}
+    assert captured.get("identifier") == "header-thread"

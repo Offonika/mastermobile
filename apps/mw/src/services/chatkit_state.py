@@ -3,36 +3,36 @@ from __future__ import annotations
 
 import threading
 
-_FILE_SEARCH_INTENTS: dict[str, bool] = {}
+_AWAITING_QUERY_FLAGS: dict[str, bool] = {}
 _LOCK = threading.Lock()
 
 
-def mark_file_search_intent(conversation_id: str) -> None:
-    """Remember that the conversation awaits a file search query."""
+def mark_awaiting_query(thread_id: str) -> None:
+    """Remember that the thread awaits the next user query."""
 
-    if not conversation_id:
+    if not thread_id:
         return
     with _LOCK:
-        _FILE_SEARCH_INTENTS[conversation_id] = True
+        _AWAITING_QUERY_FLAGS[thread_id] = True
 
 
-def is_file_search_intent_pending(conversation_id: str) -> bool:
-    """Check whether a conversation is waiting for a file search query."""
-
-    with _LOCK:
-        return _FILE_SEARCH_INTENTS.get(conversation_id, False)
-
-
-def pop_file_search_intent(conversation_id: str) -> bool:
-    """Remove and return the pending search intent flag if present."""
+def is_awaiting_query(thread_id: str) -> bool:
+    """Check whether a thread is waiting for the next user query."""
 
     with _LOCK:
-        return bool(_FILE_SEARCH_INTENTS.pop(conversation_id, None))
+        return _AWAITING_QUERY_FLAGS.get(thread_id, False)
 
 
-def reset_file_search_intents() -> None:
-    """Clear all recorded file search intents (primarily for tests)."""
+def pop_awaiting_query(thread_id: str) -> bool:
+    """Remove and return the awaiting query flag if present."""
 
     with _LOCK:
-        _FILE_SEARCH_INTENTS.clear()
+        return bool(_AWAITING_QUERY_FLAGS.pop(thread_id, None))
+
+
+def reset_awaiting_query_state() -> None:
+    """Clear all recorded awaiting query flags (primarily for tests)."""
+
+    with _LOCK:
+        _AWAITING_QUERY_FLAGS.clear()
 

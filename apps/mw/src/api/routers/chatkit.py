@@ -1,17 +1,19 @@
 """ChatKit API endpoints exposed for widget integrations."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Header, status
 from loguru import logger
 from openai import OpenAIError
 from pydantic import BaseModel, Field, model_validator
 
 from apps.mw.src.api.dependencies import ProblemDetailException, build_error, provide_request_id
 from apps.mw.src.config import Settings, get_settings
-from apps.mw.src.services.chatkit import create_chatkit_session
-from apps.mw.src.services.chatkit_state import mark_file_search_intent
+from apps.mw.src.services.chatkit import (
+    create_chatkit_session as create_chatkit_service_session,
+)
+from apps.mw.src.services.chatkit_state import mark_awaiting_query
 
 router = APIRouter(prefix="/api/v1/chatkit", tags=["chatkit"])
 __all__ = ["router"]
@@ -134,7 +136,7 @@ async def create_chatkit_session(
     )
 
     try:
-        client_secret = create_chatkit_session(settings.openai_workflow_id)
+        client_secret = create_chatkit_service_session(settings.openai_workflow_id)
     except OpenAIError as exc:
         logger.bind(request_id=request_id).exception("Failed to create ChatKit session")
         raise ProblemDetailException(
@@ -173,6 +175,7 @@ async def create_chatkit_session(
 async def handle_widget_action(
     action: WidgetActionRequest,
     request_id: str = Depends(provide_request_id),
+    thread_id: Annotated[str | None, Header(alias="x-chatkit-thread-id")] = None,
 ) -> WidgetActionResponse:
     """Acknowledge widget actions to keep the integration responsive."""
 
@@ -187,9 +190,9 @@ async def handle_widget_action(
     )
 
     if tool_name == "search-docs":
-        identifier = _extract_conversation_identifier(action.payload)
+        identifier = thread_id or _extract_conversation_identifier(action.payload)
         if identifier:
-            mark_file_search_intent(identifier)
+            mark_awaiting_query(identifier)
             bound_logger.debug(
                 "Marked conversation as awaiting file search query",
                 conversation_id=identifier,
