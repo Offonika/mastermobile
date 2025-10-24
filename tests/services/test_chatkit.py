@@ -63,7 +63,7 @@ def _make_response(
     *,
     json: dict[str, Any] | None = None,
     text: str = "",
-    url: str = "https://api.openai.com/v1/chat/completions/sessions",
+    url: str = "https://api.openai.com/v1/realtime/sessions",
 ) -> httpx.Response:
     """Utility for building httpx responses with attached requests."""
 
@@ -78,7 +78,7 @@ def test_create_chatkit_service_session_success(monkeypatch: pytest.MonkeyPatch)
 
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-    sessions_url = "https://api.openai.com/v1/chat/completions/sessions"
+    sessions_url = "https://api.openai.com/v1/realtime/sessions"
     responses = [
         _make_response(200, json={"client_secret": {"value": "secret-123"}}, url=sessions_url),
     ]
@@ -94,7 +94,7 @@ def test_create_chatkit_service_session_success(monkeypatch: pytest.MonkeyPatch)
     assert headers == {
         "Authorization": "Bearer test-key",
         "Content-Type": "application/json",
-        "OpenAI-Beta": "chat-completions",
+        "OpenAI-Beta": "realtime=v1",
     }
     assert first_payload == {}
 
@@ -113,7 +113,7 @@ def test_create_chatkit_service_session_missing_secret(monkeypatch: pytest.Monke
     """If the response lacks the client secret we should raise an error."""
 
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    sessions_url = "https://api.openai.com/v1/chat/completions/sessions"
+    sessions_url = "https://api.openai.com/v1/realtime/sessions"
     responses = [
         _make_response(200, json={"client_secret": {}}, url=sessions_url),
     ]
@@ -127,7 +127,7 @@ def test_create_chatkit_service_session_http_error(monkeypatch: pytest.MonkeyPat
     """HTTP failures should propagate ``HTTPStatusError`` to the caller."""
 
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    sessions_url = "https://api.openai.com/v1/chat/completions/sessions"
+    sessions_url = "https://api.openai.com/v1/realtime/sessions"
     error_response = _make_response(502, json={"error": "bad gateway"}, url=sessions_url)
     responses = [
         error_response,
@@ -145,7 +145,7 @@ def test_create_chatkit_session_alias(monkeypatch: pytest.MonkeyPatch) -> None:
     """The legacy alias should simply delegate to the service helper."""
 
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    sessions_url = "https://api.openai.com/v1/chat/completions/sessions"
+    sessions_url = "https://api.openai.com/v1/realtime/sessions"
     responses = [
         _make_response(200, json={"client_secret": {"value": "secret-456"}}, url=sessions_url),
     ]
