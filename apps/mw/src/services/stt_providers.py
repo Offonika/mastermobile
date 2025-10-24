@@ -1,6 +1,7 @@
 """Speech-to-text provider implementations and helpers."""
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import subprocess
@@ -57,7 +58,11 @@ def _default_transcripts_dir(settings: Settings) -> Path:
 def _sanitise_call_id(call_id: str) -> str:
     clean = [ch if ch.isalnum() or ch in {"-", "_"} else "_" for ch in call_id]
     stem = "".join(clean).strip("._")
-    return stem or "transcript"
+    if stem:
+        return stem
+
+    digest = hashlib.sha256(call_id.encode("utf-8")).hexdigest()
+    return f"transcript-{digest[:16]}"
 
 
 def _download_recording(recording_url: str, destination_dir: Path, *, timeout: float) -> Path:

@@ -12,7 +12,12 @@ import respx
 from imageio_ffmpeg import get_ffmpeg_exe
 
 from apps.mw.src.config import Settings
-from apps.mw.src.services.stt_providers import ENGINE_OPENAI, ProviderRouter
+from apps.mw.src.services.stt_providers import (
+    ENGINE_OPENAI,
+    ENGINE_STUB,
+    PlaceholderTranscriber,
+    ProviderRouter,
+)
 from apps.mw.src.services.stt_queue import STTJob
 
 
@@ -92,3 +97,30 @@ def test_provider_router_transcribes_multiple_formats(tmp_path: Path) -> None:
         assert content.endswith(format_name)
 
     assert respx.calls.call_count == len(playlist)
+
+
+def test_placeholder_transcriber_generates_unique_fallback_names(tmp_path: Path) -> None:
+    transcriber = PlaceholderTranscriber(tmp_path / "transcripts")
+
+    job_noisy = STTJob(
+        record_id=1,
+        call_id="!!!",
+        recording_url="stub://unused",
+        engine=ENGINE_STUB,
+    )
+    job_symbols = STTJob(
+        record_id=2,
+        call_id="@@@",
+        recording_url="stub://unused",
+        engine=ENGINE_STUB,
+    )
+
+    result_noisy = transcriber.transcribe(job_noisy)
+    result_symbols = transcriber.transcribe(job_symbols)
+
+    path_noisy = Path(result_noisy.transcript_path)
+    path_symbols = Path(result_symbols.transcript_path)
+
+    assert path_noisy.name != path_symbols.name
+    assert path_noisy.name != "transcript.txt"
+    assert path_symbols.name != "transcript.txt"
