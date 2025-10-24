@@ -36,14 +36,14 @@ class _DummyClientSecrets:
 
 
 class _DummyRealtime:
+    """Container for the ``client_secrets`` helper."""
+
     def __init__(self, client_secrets: _DummyClientSecrets):
         self.client_secrets = client_secrets
 
 
-
-    def __enter__(self) -> _DummyClient:
-        return self
-
+class _DummyOpenAI:
+    """Minimal stand-in for the ``OpenAI`` SDK client."""
 
     def __init__(self, responses: list[Any], kwargs: dict[str, Any]):
         self.kwargs = kwargs
