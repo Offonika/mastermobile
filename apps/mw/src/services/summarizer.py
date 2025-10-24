@@ -78,6 +78,12 @@ class CallSummarizer:
         fallback = self._fallback_chunks(text, target=_MIN_BULLETS)
         bullets.extend(self._truncate(chunk) for chunk in fallback)
 
+        if bullets:
+            while len(bullets) < _MIN_BULLETS:
+                bullets.append(bullets[-1])
+        else:
+            raise ValueError("Unable to generate enough summary bullets from transcript")
+
         # Deduplicate while preserving order.
         seen: set[str] = set()
         unique: list[str] = []
@@ -87,10 +93,13 @@ class CallSummarizer:
             seen.add(bullet)
             unique.append(bullet)
 
-        if len(unique) < _MIN_BULLETS:
-            raise ValueError("Unable to generate enough summary bullets from transcript")
+        if len(unique) >= _MIN_BULLETS:
+            return unique[:_MAX_BULLETS]
 
-        return unique[:_MAX_BULLETS]
+        logger.debug(
+            "Summary fallback produced duplicate bullets; returning original ordering",
+        )
+        return bullets[:_MAX_BULLETS]
 
     def _extract_sentences(self, text: str) -> Iterable[str]:
         # Split by line first to preserve operator/customer turns.
