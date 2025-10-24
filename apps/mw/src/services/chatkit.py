@@ -4,8 +4,8 @@ from __future__ import annotations
 import os
 from typing import Any, Optional, cast
 
-import httpx
 from loguru import logger
+from openai import OpenAI, OpenAIError
 
 __all__ = ["create_chatkit_service_session", "create_chatkit_session"]
 
@@ -24,6 +24,7 @@ def create_chatkit_service_session() -> str:
     """Create a ChatKit session using the Chat Completions Sessions API."""
 
     api_key = _env("OPENAI_API_KEY")
+
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY is not set")
 
@@ -64,4 +65,5 @@ def create_chatkit_session() -> str:
     """Backward compatible alias for the service helper."""
 
     return create_chatkit_service_session()
+
 
