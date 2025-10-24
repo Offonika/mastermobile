@@ -65,7 +65,7 @@
 | `LOG_LEVEL`     | `INFO`                 | Уровень логирования приложения      |
 | `JWT_SECRET`    | `changeme`             | Секрет для подписи JWT-токенов      |
 | `JWT_ISSUER`    | `mastermobile`         | Значение `iss` в выданных JWT       |
-| `CORS_ORIGINS`  | `http://localhost:3000` | Разрешённые источники CORS (через запятую) |
+| `CORS_ORIGINS`  | `http://localhost:3000,https://master-mobile.ru,https://example.bitrix24.ru` | Разрешённые источники CORS (через запятую) |
 | `MAX_PAGE_SIZE` | `100`                   | Максимальный размер страницы для пагинации |
 | `REQUEST_TIMEOUT_S` | `30`                | Таймаут исходящих запросов (секунды) |
 | `ENABLE_TRACING` | `false`                | Включение экспорта трассировок OpenTelemetry |
