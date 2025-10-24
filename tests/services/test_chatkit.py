@@ -89,13 +89,13 @@ def test_create_chatkit_service_session_success(monkeypatch: pytest.MonkeyPatch)
         "Content-Type": "application/json",
         "OpenAI-Beta": "chat-completions",
     }
-    assert payload == {"default_model": "gpt-4o-mini"}
+    assert payload == {"session": {"default_model": "gpt-4o-mini"}}
 
 
 def test_create_chatkit_service_session_retries_with_model_payload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """If the API rejects default_model we retry with the legacy `model` payload."""
+    """The service should iterate through payload variants until one succeeds."""
 
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("OPENAI_CHATKIT_MODEL", "gpt-4o-mini")
@@ -109,6 +109,7 @@ def test_create_chatkit_service_session_retries_with_model_payload(
         }
     }
     responses = [
+        _make_response(400, json={"error": {"param": "session.default_model"}}),
         _make_response(400, json=error_json),
         _make_response(200, json={"client_secret": {"value": "fallback-secret"}}),
     ]
@@ -119,12 +120,14 @@ def test_create_chatkit_service_session_retries_with_model_payload(
     assert secret == "fallback-secret"
     assert instances, "Expected httpx.Client to be instantiated"
     # Two requests should have been issued with different payloads.
-    assert len(instances[0].requests) == 2
+    assert len(instances[0].requests) == 3
     first_url, _, first_payload = instances[0].requests[0]
     second_url, _, second_payload = instances[0].requests[1]
-    assert first_url == second_url == "https://api.openai.com/v1/chat/completions/sessions"
-    assert first_payload == {"default_model": "gpt-4o-mini"}
-    assert second_payload == {"model": "gpt-4o-mini"}
+    third_url, _, third_payload = instances[0].requests[2]
+    assert first_url == second_url == third_url == "https://api.openai.com/v1/chat/completions/sessions"
+    assert first_payload == {"session": {"default_model": "gpt-4o-mini"}}
+    assert second_payload == {"default_model": "gpt-4o-mini"}
+    assert third_payload == {"model": "gpt-4o-mini"}
 
 
 def test_create_chatkit_service_session_missing_api_key(monkeypatch: pytest.MonkeyPatch) -> None:

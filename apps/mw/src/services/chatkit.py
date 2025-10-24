@@ -38,6 +38,7 @@ def create_chatkit_service_session() -> str:
         "OpenAI-Beta": "chat-completions",
     }
     payload_variants: list[tuple[str, dict[str, Any]]] = [
+        ("session.default_model", {"session": {"default_model": model}}),
         ("default_model", {"default_model": model}),
         ("model", {"model": model}),
     ]
@@ -69,7 +70,6 @@ def create_chatkit_service_session() -> str:
                 body=error_body,
             )
 
-            should_retry = False
             if response.status_code == 400 and index + 1 < len(payload_variants):
                 try:
                     parsed: Any = response.json()
@@ -78,13 +78,12 @@ def create_chatkit_service_session() -> str:
                 error_param = None
                 if isinstance(parsed, dict):
                     error_param = ((parsed.get("error") or {}).get("param"))
-                if variant == "default_model" and error_param in {"model", "default_model"}:
-                    should_retry = True
-                    logger.warning(
-                        "Retrying ChatKit session creation with alternate payload", param=error_param
-                    )
-
-            if should_retry:
+                logger.warning(
+                    "Retrying ChatKit session creation with alternate payload",
+                    variant=variant,
+                    next_variant=payload_variants[index + 1][0],
+                    param=error_param,
+                )
                 continue
 
             response.raise_for_status()
