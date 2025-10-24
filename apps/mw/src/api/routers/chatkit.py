@@ -1,6 +1,7 @@
 """ChatKit API endpoints exposed for widget integrations."""
 from __future__ import annotations
 
+from time import perf_counter
 from typing import Annotated, Any
 
 import httpx
@@ -176,64 +177,66 @@ async def create_chatkit_session(
     summary="Accept actions emitted by the widget",
 )
 async def handle_widget_action(
-    request: Request,
     action: WidgetActionRequest,
+    request: Request = None,
     request_id: str = Depends(provide_request_id),
     thread_id: Annotated[str | None, Header(alias="x-chatkit-thread-id")] = None,
 ) -> WidgetActionResponse:
     """Acknowledge widget actions to keep the integration responsive."""
 
+    started = perf_counter()
     bound_logger = logger.bind(request_id=request_id)
-    client_ip = request.client.host if request.client else None
+    client_ip = request.client.host if request and request.client else None
     conversation_identifier = thread_id or _extract_conversation_identifier(action.payload)
     rate_limit_key = _rate_limit_key(conversation_identifier, client_ip)
+    origin_header = request.headers.get("origin") if request else None
 
     current_count = _RATE_LIMIT_STORE.increment(
         rate_limit_key,
         ttl=RATE_LIMIT_WINDOW_SECONDS,
     )
+    tool_name = resolve_tool(action)
+
+    def _emit(result: str, *, status_code: int, level: str = "info") -> None:
+        latency_ms = (perf_counter() - started) * 1000
+        log = bound_logger.bind(
+            route="/api/v1/chatkit/widget-action",
+            tool_name=tool_name,
+            thread_id=conversation_identifier,
+            origin=origin_header,
+            status=status_code,
+            latency_ms=latency_ms,
+            result=result,
+        )
+        getattr(log, level)("chatkit_widget_action")
+
     if current_count > RATE_LIMIT_MAX_REQUESTS:
-        bound_logger.warning(
-            "ChatKit widget action rate limited",
-            identifier=conversation_identifier,
-            client_ip=client_ip,
-            count=current_count,
+        _emit(
+            "rate_limited",
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            level="warning",
         )
         raise HTTPException(
             status.HTTP_429_TOO_MANY_REQUESTS,
             detail="rate limit",
         )
 
-    tool_name = resolve_tool(action)
-
-    bound_logger.info(
-        "Received ChatKit widget action",
-        action_type=action.type,
-        name=action.name,
-        tool_name=tool_name,
-    )
-
     if tool_name is None:
-        bound_logger.warning(
-            "Received unsupported ChatKit widget action",
-            action_type=action.type,
-            name=action.name,
-        )
+        _emit("unsupported_tool", status_code=status.HTTP_200_OK, level="warning")
         return WidgetActionResponse(ok=False)
 
     if tool_name == "search-docs":
         if conversation_identifier:
             mark_awaiting_query(conversation_identifier)
-            bound_logger.debug(
-                "Marked conversation as awaiting file search query",
-                conversation_id=conversation_identifier,
-            )
+            _emit("awaiting_query", status_code=status.HTTP_200_OK)
         else:
-            bound_logger.warning(
-                "Received search-docs action without conversation identifier",
-                payload_keys=sorted(action.payload.keys()),
+            _emit(
+                "awaiting_query_missing_identifier",
+                status_code=status.HTTP_200_OK,
+                level="warning",
             )
         return WidgetActionResponse(awaiting_query=True)
 
+    _emit("acknowledged", status_code=status.HTTP_200_OK)
     return WidgetActionResponse()
 
