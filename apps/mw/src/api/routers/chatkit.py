@@ -54,15 +54,6 @@ class WidgetActionRequest(BaseModel):
                 normalised["name"] = suffix
         return normalised
 
-    @model_validator(mode="after")
-    def validate_tool_action(self) -> WidgetActionRequest:
-        """Ensure the expected fields are present for tool actions."""
-
-        if self.type == "tool" and not self.name:
-            raise ValueError("Tool actions must include a name.")
-        return self
-
-
 class WidgetActionResponse(BaseModel):
     """Acknowledgement returned to the widget."""
 
@@ -186,6 +177,14 @@ async def handle_widget_action(
         name=action.name,
         tool_name=tool_name,
     )
+
+    if tool_name is None:
+        bound_logger.warning(
+            "Received unsupported ChatKit widget action",
+            action_type=action.type,
+            name=action.name,
+        )
+        return WidgetActionResponse(ok=False)
 
     if tool_name == "search-docs":
         identifier = thread_id or _extract_conversation_identifier(action.payload)
