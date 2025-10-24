@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import os
-from typing import Any, cast
+from collections.abc import Mapping
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -69,32 +70,42 @@ def create_chatkit_service_session() -> str:
                 body=error_body,
             )
 
-            should_retry = False
-            if response.status_code == 400 and index + 1 < len(payload_variants):
-                try:
-                    parsed: Any = response.json()
-                except ValueError:
-                    parsed = None
-                error_param = None
-                if isinstance(parsed, dict):
-                    error_param = ((parsed.get("error") or {}).get("param"))
-                if variant == "default_model" and error_param in {"model", "default_model"}:
-                    should_retry = True
-                    logger.warning(
-                        "Retrying ChatKit session creation with alternate payload", param=error_param
-                    )
 
-            if should_retry:
-                continue
+        data: Any = response.json()
+        client_secret = _extract_client_secret(data)
+        if not client_secret:
+            logger.error("No client_secret in response: {data}", data=data)
+            raise RuntimeError("No client_secret in ChatKit session response")
 
-            response.raise_for_status()
+        return client_secret
 
-    raise RuntimeError("Failed to create ChatKit session")
 
 
 def create_chatkit_session() -> str:
     """Backward compatible alias for the service helper."""
 
     return create_chatkit_service_session()
+
+
+def _extract_client_secret(payload: Any) -> str | None:
+    """Return the client secret from the API payload if present."""
+
+    if not isinstance(payload, Mapping):
+        return None
+
+    secret_payload = payload.get("client_secret")
+
+    if isinstance(secret_payload, Mapping):
+        value = secret_payload.get("value")
+        if isinstance(value, str):
+            stripped = value.strip()
+            return stripped or None
+        return None
+
+    if isinstance(secret_payload, str):
+        stripped = secret_payload.strip()
+        return stripped or None
+
+    return None
 
 

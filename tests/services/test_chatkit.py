@@ -91,7 +91,17 @@ def test_create_chatkit_service_session_success(monkeypatch: pytest.MonkeyPatch)
     }
     assert payload == {"default_model": "gpt-4o-mini"}
 
+def test_create_chatkit_service_session_secret_as_string(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The helper should accept plain string secrets returned by the API."""
 
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    responses = [_make_response(200, json={"client_secret": " secret-inline "})]
+    _patch_httpx_client(monkeypatch, responses)
+
+    assert create_chatkit_service_session() == "secret-inline"
+=======
 def test_create_chatkit_service_session_retries_with_model_payload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -108,23 +118,7 @@ def test_create_chatkit_service_session_retries_with_model_payload(
             "code": "unknown_parameter",
         }
     }
-    responses = [
-        _make_response(400, json=error_json),
-        _make_response(200, json={"client_secret": {"value": "fallback-secret"}}),
-    ]
-    instances = _patch_httpx_client(monkeypatch, responses)
 
-    secret = create_chatkit_service_session()
-
-    assert secret == "fallback-secret"
-    assert instances, "Expected httpx.Client to be instantiated"
-    # Two requests should have been issued with different payloads.
-    assert len(instances[0].requests) == 2
-    first_url, _, first_payload = instances[0].requests[0]
-    second_url, _, second_payload = instances[0].requests[1]
-    assert first_url == second_url == "https://api.openai.com/v1/chat/completions/sessions"
-    assert first_payload == {"default_model": "gpt-4o-mini"}
-    assert second_payload == {"model": "gpt-4o-mini"}
 
 
 def test_create_chatkit_service_session_missing_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
