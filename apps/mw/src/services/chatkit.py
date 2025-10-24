@@ -21,12 +21,12 @@ def _env(name: str, default: str | None = None) -> str | None:
 
 
 def _beta_headers(api_key: str) -> dict[str, str]:
-    """Return headers required for beta Chat Completions endpoints."""
+    """Return headers required for the Realtime beta endpoints."""
 
     return {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "OpenAI-Beta": "chat-completions",
+        "OpenAI-Beta": "realtime=v1",
     }
 
 
@@ -39,7 +39,7 @@ def create_chatkit_service_session() -> str:
         raise RuntimeError("OPENAI_API_KEY is not set")
 
     base_url = (_env("OPENAI_BASE_URL", "https://api.openai.com/v1") or "").rstrip("/")
-    sessions_url = f"{base_url}/chat/completions/sessions"
+    sessions_url = f"{base_url}/realtime/sessions"
     headers = _beta_headers(api_key)
 
 
