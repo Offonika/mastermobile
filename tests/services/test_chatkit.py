@@ -96,30 +96,7 @@ def test_create_chatkit_service_session_success(monkeypatch: pytest.MonkeyPatch)
         "Content-Type": "application/json",
         "OpenAI-Beta": "chat-completions",
     }
-    assert first_payload == {"model": "gpt-4o-mini"}
-
-
-def test_create_chatkit_service_session_uses_configured_model(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The service should send the configured model when bootstrapping."""
-
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setenv("OPENAI_CHATKIT_MODEL", "gpt-4o-mini")
-
-    sessions_url = "https://api.openai.com/v1/chat/completions/sessions"
-    responses = [
-        _make_response(200, json={"client_secret": {"value": "fallback-secret"}}, url=sessions_url),
-    ]
-    instances = _patch_httpx_client(monkeypatch, responses)
-
-    secret = create_chatkit_service_session()
-
-    assert secret == "fallback-secret"
-    assert instances, "Expected httpx.Client to be instantiated"
-    assert len(instances[0].requests) == 1
-    payload = instances[0].requests[0][2]
-    assert payload["model"] == "gpt-4o-mini"
+    assert first_payload == {}
 
 
 

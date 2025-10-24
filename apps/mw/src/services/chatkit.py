@@ -30,16 +30,6 @@ def _beta_headers(api_key: str) -> dict[str, str]:
     }
 
 
-def _resolve_model() -> str:
-    """Resolve the model used to bootstrap ChatKit sessions."""
-
-    return (
-        _env("OPENAI_CHATKIT_MODEL")
-        or _env("OPENAI_MODEL")
-        or "gpt-4o-mini"
-    )
-
-
 def create_chatkit_service_session() -> str:
     """Create a ChatKit session using the Chat Completions Sessions API."""
 
@@ -52,11 +42,9 @@ def create_chatkit_service_session() -> str:
     sessions_url = f"{base_url}/chat/completions/sessions"
     headers = _beta_headers(api_key)
 
-    model = _resolve_model()
-
 
     with httpx.Client(timeout=20.0) as http:
-        payload = {"model": model}
+        payload: dict[str, Any] = {}
 
         response = http.post(sessions_url, headers=headers, json=payload)
         try:
