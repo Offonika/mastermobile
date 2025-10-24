@@ -37,7 +37,7 @@ def create_chatkit_service_session() -> str:
         "Content-Type": "application/json",
         "OpenAI-Beta": "chat-completions",
     }
-    payload = {"model": model}
+    payload = {"default_model": model}
 
     logger.debug("POST {url} payload={payload}", url=url, payload=payload)
 
