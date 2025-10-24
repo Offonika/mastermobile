@@ -29,65 +29,37 @@ def create_chatkit_service_session() -> str:
         raise RuntimeError("OPENAI_API_KEY is not set")
 
     base_url = (_env("OPENAI_BASE_URL", "https://api.openai.com/v1") or "").rstrip("/")
-    model = _env("OPENAI_CHATKIT_MODEL") or "gpt-4o-mini"
-
     url = f"{base_url}/chat/completions/sessions"
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
         "OpenAI-Beta": "chat-completions",
     }
-    payload_variants: list[tuple[str, dict[str, Any]]] = [
-        ("default_model", {"default_model": model}),
-        ("model", {"model": model}),
-    ]
+
+    payload: dict[str, Any] = {}
 
     with httpx.Client(timeout=20.0) as http:
-        for index, (variant, payload) in enumerate(payload_variants):
-            logger.debug(
-                "POST {url} payload_variant={variant} payload={payload}",
-                url=url,
-                variant=variant,
-                payload=payload,
-            )
+        logger.debug("POST {url} payload={payload} payload_variant=empty", url=url, payload=payload)
 
-            response = http.post(url, headers=headers, json=payload)
-            if response.status_code < 400:
-                data: Any = response.json()
-                client_secret = (((data or {}).get("client_secret") or {}).get("value"))
-                if not client_secret:
-                    logger.error("No client_secret in response: {data}", data=data)
-                    raise RuntimeError("No client_secret in ChatKit session response")
+        response = http.post(url, headers=headers, json=payload)
+        if response.status_code < 400:
+            data: Any = response.json()
+            client_secret = (((data or {}).get("client_secret") or {}).get("value"))
+            if not client_secret:
+                logger.error("No client_secret in response: {data}", data=data)
+                raise RuntimeError("No client_secret in ChatKit session response")
 
-                return cast(str, client_secret)
+            return cast(str, client_secret)
 
-            error_body = (response.text or "")[:2000]
-            logger.error(
-                "OpenAI ChatKit session creation failed | {code} {url}\n{body}",
-                code=response.status_code,
-                url=url,
-                body=error_body,
-            )
+        error_body = (response.text or "")[:2000]
+        logger.error(
+            "OpenAI ChatKit session creation failed | {code} {url}\n{body}",
+            code=response.status_code,
+            url=url,
+            body=error_body,
+        )
 
-            should_retry = False
-            if response.status_code == 400 and index + 1 < len(payload_variants):
-                try:
-                    parsed: Any = response.json()
-                except ValueError:
-                    parsed = None
-                error_param = None
-                if isinstance(parsed, dict):
-                    error_param = ((parsed.get("error") or {}).get("param"))
-                if variant == "default_model" and error_param in {"model", "default_model"}:
-                    should_retry = True
-                    logger.warning(
-                        "Retrying ChatKit session creation with alternate payload", param=error_param
-                    )
-
-            if should_retry:
-                continue
-
-            response.raise_for_status()
+        response.raise_for_status()
 
     raise RuntimeError("Failed to create ChatKit session")
 
