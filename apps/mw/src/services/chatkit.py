@@ -38,20 +38,20 @@ def _build_request_payloads(workflow_id: str) -> Iterator[dict[str, Any]]:
     normalized_id = workflow_id.strip()
 
     candidates: list[dict[str, Any]] = []
-    if normalized_id:
-        # Legacy contract – retained for on-prem/beta deployments.
-        candidates.append({"workflow_id": normalized_id})
-        # Modern API spelling according to the latest public docs.
-        candidates.append({"workflow": normalized_id})
-        candidates.append({"workflow": {"id": normalized_id}})
 
     if model_override:
+        # Explicit override should be attempted first for the realtime endpoint.
         candidates.append({"model": model_override})
-    elif normalized_id:
-        # Fallback: treat the configured value as a model name when no override
-        # is provided.  This covers environments that migrated to model-based
-        # sessions but reused the existing configuration variable name.
-        candidates.append({"model": normalized_id})
+
+    if normalized_id:
+        if not model_override:
+            # Treat the configured workflow ID as a model name when no override is present.
+            candidates.append({"model": normalized_id})
+
+        # Legacy contracts retained for backwards compatibility.
+        candidates.append({"workflow_id": normalized_id})
+        candidates.append({"workflow": normalized_id})
+        candidates.append({"workflow": {"id": normalized_id}})
 
     seen: set[str] = set()
     for payload in candidates:
@@ -74,9 +74,11 @@ def _candidate_requests(
 ) -> Iterator[tuple[str, dict[str, str]]]:
     """Yield candidate (url, headers) combinations for ChatKit session creation."""
 
+    normalized_base = base_url.rstrip("/")
     urls = [
-        f"{base_url.rstrip('/')}/chat.completions/sessions",
-        f"{base_url.rstrip('/')}/chat/completions/sessions",
+        f"{normalized_base}/realtime/sessions",
+        f"{normalized_base}/chat.completions/sessions",
+        f"{normalized_base}/chat/completions/sessions",
     ]
 
     header_variants: list[dict[str, str]] = []
@@ -85,6 +87,7 @@ def _candidate_requests(
     if beta_header_env:
         beta_candidates.append(beta_header_env)
     # всегда пробуем дефолтный beta-заголовок и вариант без него
+    beta_candidates.append("realtime=v1")
     beta_candidates.append("chat-completions")
     beta_candidates.append(None)
 
