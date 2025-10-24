@@ -72,8 +72,6 @@ def test_create_chatkit_service_session_success(monkeypatch: pytest.MonkeyPatch)
 
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-    monkeypatch.setenv("OPENAI_CHATKIT_MODEL", "gpt-4o-mini")
-
     responses = [_make_response(200, json={"client_secret": {"value": "secret-123"}})]
     instances = _patch_httpx_client(monkeypatch, responses)
 
@@ -89,6 +87,7 @@ def test_create_chatkit_service_session_success(monkeypatch: pytest.MonkeyPatch)
         "Content-Type": "application/json",
         "OpenAI-Beta": "chat-completions",
     }
+
     assert payload == {"session": {"default_model": "gpt-4o-mini"}}
 
 
@@ -128,6 +127,7 @@ def test_create_chatkit_service_session_retries_with_model_payload(
     assert first_payload == {"session": {"default_model": "gpt-4o-mini"}}
     assert second_payload == {"default_model": "gpt-4o-mini"}
     assert third_payload == {"model": "gpt-4o-mini"}
+
 
 
 def test_create_chatkit_service_session_missing_api_key(monkeypatch: pytest.MonkeyPatch) -> None:

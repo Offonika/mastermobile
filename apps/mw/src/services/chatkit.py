@@ -29,14 +29,13 @@ def create_chatkit_service_session() -> str:
         raise RuntimeError("OPENAI_API_KEY is not set")
 
     base_url = (_env("OPENAI_BASE_URL", "https://api.openai.com/v1") or "").rstrip("/")
-    model = _env("OPENAI_CHATKIT_MODEL") or "gpt-4o-mini"
-
     url = f"{base_url}/chat/completions/sessions"
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
         "OpenAI-Beta": "chat-completions",
     }
+
     payload_variants: list[tuple[str, dict[str, Any]]] = [
         ("session.default_model", {"session": {"default_model": model}}),
         ("default_model", {"default_model": model}),

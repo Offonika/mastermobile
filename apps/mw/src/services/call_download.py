@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import AsyncIterable, Callable
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 import httpx
 from loguru import logger
@@ -13,6 +13,8 @@ from apps.mw.src.domain import register_http_failure
 from apps.mw.src.integrations.b24.client import MAX_RETRY_ATTEMPTS
 from apps.mw.src.integrations.b24.downloader import stream_recording
 from apps.mw.src.services.storage import StorageResult, StorageService
+
+UTC = timezone.utc
 
 RecordingStreamFactory = Callable[[str, str | None], AsyncIterable[bytes]]
 
