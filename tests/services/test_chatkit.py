@@ -89,7 +89,7 @@ def test_create_chatkit_service_session_success(monkeypatch: pytest.MonkeyPatch)
         "Content-Type": "application/json",
         "OpenAI-Beta": "chat-completions",
     }
-    assert payload == {"model": "gpt-4o-mini"}
+    assert payload == {"default_model": "gpt-4o-mini"}
 
 
 def test_create_chatkit_service_session_missing_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
