@@ -6,7 +6,6 @@ from typing import Any, Optional, cast
 
 import httpx
 from loguru import logger
-from openai import OpenAI, OpenAIError
 
 __all__ = ["create_chatkit_service_session", "create_chatkit_session"]
 
@@ -22,7 +21,7 @@ def _env(name: str, default: Optional[str] = None) -> Optional[str]:
 
 
 def create_chatkit_service_session() -> str:
-    """Create a ChatKit session using the Chat Completions Sessions API."""
+    """Create a ChatKit session using the Realtime Sessions API."""
 
     api_key = _env("OPENAI_API_KEY")
 
@@ -31,14 +30,18 @@ def create_chatkit_service_session() -> str:
 
     base_url = (_env("OPENAI_BASE_URL", "https://api.openai.com/v1") or "").rstrip("/")
     model = _env("OPENAI_CHATKIT_MODEL") or "gpt-4o-mini"
+    voice = _env("OPENAI_CHATKIT_VOICE")
 
-    url = f"{base_url}/chat/completions/sessions"
+    url = f"{base_url}/realtime/sessions"
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "OpenAI-Beta": "chat-completions",
+        "OpenAI-Beta": "realtime=v1",
     }
-    payload = {"model": model}
+
+    payload: dict[str, Any] = {"model": model}
+    if voice:
+        payload["voice"] = voice
 
     logger.debug("POST {url} payload={payload}", url=url, payload=payload)
 
