@@ -94,8 +94,6 @@ PRD / SRS  →  ER / DDL  →  API Contracts  →  ONE-PAGER / UX
 - `docs/Концепция проекта.md` — цели и границы middleware.
 - `docs/ER‑диаграмма и DDL.md` — единая ER (PostgreSQL ≥ 14).
 - `docs/API‑Contracts.md` — контракт API v1.
-- Core Sync: `PRD — Переход 1С: УТ 10.md`, `SRS — Core Sync 1С: УТ 10.md`,
-  `ONE-PAGER — Переход 1С: УТ 10.md`.
 - Walking Warehouse: `PRD Ходячий склад.md`, `ONE-PAGER-ХодячийРюкзак.md`,
   `UX-скетчи-Рюкзак:Продажа.md`.
 
@@ -140,7 +138,6 @@ PRD / SRS  →  ER / DDL  →  API Contracts  →  ONE-PAGER / UX
 
 | Объект / поток        | PRD / SRS                                              | ER / DDL | API | Примечания |
 |-----------------------|--------------------------------------------------------|---------|-----|------------|
-| Core Sync             | `PRD — Переход 1С: УТ 10.md`, `SRS — Core Sync 1С: УТ 10.md` | v0.6.x  | v1.1.x | SoT = УТ 10.3 |
 | Walking Warehouse     | `PRD Ходячий склад.md` (SRS при появлении)            | v0.6.x  | v1.1.x | Нет нового типа «Возврат» в УТ 10.3 |
 
 | Общий шаблон SRS      | `Software Requirements Specification SRS.md`           | —       | —    | База для новых SRS |
@@ -164,7 +161,6 @@ PRD / SRS  →  ER / DDL  →  API Contracts  →  ONE-PAGER / UX
 
 | Модуль / поток       | Ключевые документы                                                       | Артефакты / ожидания                       |
 |----------------------|---------------------------------------------------------------------------|--------------------------------------------|
-| Core Sync (УТ10.3↔11)| PRD, ONE-PAGER, SRS, ER/DDL, API Contracts                               | Перечень сущностей, статусов, ER v0.6.x    |
 | Walking Warehouse    | PRD, ONE-PAGER, UX-скетчи                                                | Процессы задач/возвратов, UX-скрины        |
 
 
