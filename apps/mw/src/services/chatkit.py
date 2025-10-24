@@ -40,44 +40,6 @@ def _resolve_model() -> str:
     )
 
 
-def _create_minimal_completion(
-    http: httpx.Client,
-    *,
-    url: str,
-    headers: dict[str, str],
-    model: str,
-) -> str:
-    """Create a minimal completion to obtain a ``completion_id``."""
-
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": "bootstrap session"},
-        ],
-        "max_tokens": 1,
-    }
-
-    response = http.post(url, headers=headers, json=payload)
-    try:
-        response.raise_for_status()
-    except httpx.HTTPStatusError:
-        error_body = (response.text or "")[:2000]
-        logger.error(
-            "OpenAI Chat Completion create failed | {code} {url}\n{body}",
-            code=response.status_code,
-            url=url,
-            body=error_body,
-        )
-        raise
-
-    data: Any = response.json()
-    completion_id = cast(str | None, data.get("id"))
-    if not completion_id:
-        logger.error("No completion id in response: {data}", data=data)
-        raise RuntimeError("OpenAI Chat: no completion id in response")
-    return completion_id
-
-
 def create_chatkit_service_session() -> str:
     """Create a ChatKit session using the Chat Completions Sessions API."""
 
@@ -87,22 +49,14 @@ def create_chatkit_service_session() -> str:
         raise RuntimeError("OPENAI_API_KEY is not set")
 
     base_url = (_env("OPENAI_BASE_URL", "https://api.openai.com/v1") or "").rstrip("/")
-    completions_url = f"{base_url}/chat/completions"
-    sessions_url = f"{completions_url}/sessions"
+    sessions_url = f"{base_url}/chat/completions/sessions"
     headers = _beta_headers(api_key)
 
     model = _resolve_model()
 
 
     with httpx.Client(timeout=20.0) as http:
-        completion_id = _create_minimal_completion(
-            http,
-            url=completions_url,
-            headers=headers,
-            model=model,
-        )
-
-        payload = {"completion_id": completion_id}
+        payload = {"model": model}
 
         response = http.post(sessions_url, headers=headers, json=payload)
         try:
