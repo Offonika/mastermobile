@@ -10,9 +10,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from apps.mw.src.api.dependencies import ProblemDetailException, build_error, provide_request_id
 from apps.mw.src.config import Settings, get_settings
-from apps.mw.src.integrations.openai import (
-    create_chatkit_session as create_chatkit_session_integration,
-)
+from apps.mw.src.services.chatkit import create_chatkit_session
 from apps.mw.src.services.chatkit_state import mark_file_search_intent
 
 router = APIRouter(prefix="/api/v1/chatkit", tags=["chatkit"])
@@ -136,7 +134,7 @@ async def create_chatkit_session(
     )
 
     try:
-        client_secret = create_chatkit_session_integration(settings.openai_workflow_id)
+        client_secret = create_chatkit_session(settings.openai_workflow_id)
     except OpenAIError as exc:
         logger.bind(request_id=request_id).exception("Failed to create ChatKit session")
         raise ProblemDetailException(

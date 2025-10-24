@@ -11,9 +11,7 @@ from openai import OpenAIError
 from apps.mw.src.api.dependencies import ProblemDetailException, build_error, provide_request_id
 from apps.mw.src.api.schemas import ChatkitSession, VectorStoreMetadata, VectorStoreUploadResponse
 from apps.mw.src.config import Settings, get_settings
-from apps.mw.src.integrations.openai import (
-    create_chatkit_session as create_chatkit_session_integration,
-)
+from apps.mw.src.services.chatkit import create_chatkit_session
 
 _ALLOWED_CONTENT_TYPES = {
     "application/pdf",
@@ -73,7 +71,7 @@ async def create_chatkit_session(request_id: str = Depends(provide_request_id)) 
     _ensure_configuration(settings, request_id, require=("openai_api_key", "openai_workflow_id"))
 
     try:
-        client_secret = create_chatkit_session_integration(settings.openai_workflow_id)
+        client_secret = create_chatkit_session(settings.openai_workflow_id)
     except OpenAIError as exc:
         logger.bind(request_id=request_id).exception("Failed to create OpenAI ChatKit session")
         raise ProblemDetailException(
