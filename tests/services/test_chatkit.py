@@ -78,10 +78,8 @@ def test_create_chatkit_service_session_success(monkeypatch: pytest.MonkeyPatch)
 
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-    completions_url = "https://api.openai.com/v1/chat/completions"
-    sessions_url = f"{completions_url}/sessions"
+    sessions_url = "https://api.openai.com/v1/chat/completions/sessions"
     responses = [
-        _make_response(200, json={"id": "cmpl-123"}, url=completions_url),
         _make_response(200, json={"client_secret": {"value": "secret-123"}}, url=sessions_url),
     ]
     instances = _patch_httpx_client(monkeypatch, responses)
@@ -92,22 +90,13 @@ def test_create_chatkit_service_session_success(monkeypatch: pytest.MonkeyPatch)
     assert instances, "Expected httpx.Client to be instantiated"
 
     first_url, headers, first_payload = instances[0].requests[0]
-    assert first_url == completions_url
+    assert first_url == sessions_url
     assert headers == {
         "Authorization": "Bearer test-key",
         "Content-Type": "application/json",
         "OpenAI-Beta": "chat-completions",
     }
-    assert first_payload == {
-        "model": "gpt-4o-mini",
-        "messages": [{"role": "system", "content": "bootstrap session"}],
-        "max_tokens": 1,
-    }
-
-    second_url, second_headers, second_payload = instances[0].requests[1]
-    assert second_url == sessions_url
-    assert second_headers == headers
-    assert second_payload == {"completion_id": "cmpl-123"}
+    assert first_payload == {"model": "gpt-4o-mini"}
 
 
 def test_create_chatkit_service_session_uses_configured_model(
@@ -118,10 +107,8 @@ def test_create_chatkit_service_session_uses_configured_model(
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("OPENAI_CHATKIT_MODEL", "gpt-4o-mini")
 
-    completions_url = "https://api.openai.com/v1/chat/completions"
-    sessions_url = f"{completions_url}/sessions"
+    sessions_url = "https://api.openai.com/v1/chat/completions/sessions"
     responses = [
-        _make_response(200, json={"id": "cmpl-abc"}, url=completions_url),
         _make_response(200, json={"client_secret": {"value": "fallback-secret"}}, url=sessions_url),
     ]
     instances = _patch_httpx_client(monkeypatch, responses)
@@ -130,7 +117,7 @@ def test_create_chatkit_service_session_uses_configured_model(
 
     assert secret == "fallback-secret"
     assert instances, "Expected httpx.Client to be instantiated"
-    assert len(instances[0].requests) == 2
+    assert len(instances[0].requests) == 1
     payload = instances[0].requests[0][2]
     assert payload["model"] == "gpt-4o-mini"
 
@@ -149,10 +136,8 @@ def test_create_chatkit_service_session_missing_secret(monkeypatch: pytest.Monke
     """If the response lacks the client secret we should raise an error."""
 
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    completions_url = "https://api.openai.com/v1/chat/completions"
-    sessions_url = f"{completions_url}/sessions"
+    sessions_url = "https://api.openai.com/v1/chat/completions/sessions"
     responses = [
-        _make_response(200, json={"id": "cmpl-456"}, url=completions_url),
         _make_response(200, json={"client_secret": {}}, url=sessions_url),
     ]
     _patch_httpx_client(monkeypatch, responses)
@@ -165,11 +150,9 @@ def test_create_chatkit_service_session_http_error(monkeypatch: pytest.MonkeyPat
     """HTTP failures should propagate ``HTTPStatusError`` to the caller."""
 
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    completions_url = "https://api.openai.com/v1/chat/completions"
-    sessions_url = f"{completions_url}/sessions"
+    sessions_url = "https://api.openai.com/v1/chat/completions/sessions"
     error_response = _make_response(502, json={"error": "bad gateway"}, url=sessions_url)
     responses = [
-        _make_response(200, json={"id": "cmpl-789"}, url=completions_url),
         error_response,
     ]
     instances = _patch_httpx_client(monkeypatch, responses)
@@ -178,34 +161,15 @@ def test_create_chatkit_service_session_http_error(monkeypatch: pytest.MonkeyPat
         create_chatkit_service_session()
 
     assert instances, "Expected httpx.Client to capture the failed request"
-    assert instances[0].requests[1][0] == sessions_url
-
-
-def test_create_chatkit_service_session_completion_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Failure to create the bootstrap completion should raise."""
-
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    completions_url = "https://api.openai.com/v1/chat/completions"
-    responses = [
-        _make_response(429, json={"error": "rate limit"}, url=completions_url),
-    ]
-    instances = _patch_httpx_client(monkeypatch, responses)
-
-    with pytest.raises(httpx.HTTPStatusError):
-        create_chatkit_service_session()
-
-    assert instances, "Expected httpx.Client to capture the failed request"
-    assert instances[0].requests[0][0] == completions_url
+    assert instances[0].requests[0][0] == sessions_url
 
 
 def test_create_chatkit_session_alias(monkeypatch: pytest.MonkeyPatch) -> None:
     """The legacy alias should simply delegate to the service helper."""
 
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    completions_url = "https://api.openai.com/v1/chat/completions"
-    sessions_url = f"{completions_url}/sessions"
+    sessions_url = "https://api.openai.com/v1/chat/completions/sessions"
     responses = [
-        _make_response(200, json={"id": "cmpl-xyz"}, url=completions_url),
         _make_response(200, json={"client_secret": {"value": "secret-456"}}, url=sessions_url),
     ]
     _patch_httpx_client(monkeypatch, responses)
