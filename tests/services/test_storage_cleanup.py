@@ -160,3 +160,36 @@ async def test_storage_cleanup_runner_run_once_invokes_service(tmp_path: Path) -
 
     service.cleanup_expired_assets.assert_called_once_with(now=now)
     assert report is expected
+
+
+def test_storage_cleanup_runner_respects_fractional_interval(tmp_path: Path) -> None:
+    settings = Settings(
+        STORAGE_BACKEND="local",
+        LOCAL_STORAGE_DIR=str(tmp_path),
+        STORAGE_CLEANUP_INTERVAL_HOURS=0.05,
+    )
+    service = MagicMock(spec=StorageService)
+
+    runner = StorageCleanupRunner(storage_service=service, settings=settings)
+
+    assert runner.is_enabled
+    assert runner.interval_seconds == max(1, int(0.05 * 3600))
+
+
+@pytest.mark.asyncio
+async def test_storage_cleanup_runner_can_be_disabled(tmp_path: Path) -> None:
+    settings = Settings(
+        STORAGE_BACKEND="local",
+        LOCAL_STORAGE_DIR=str(tmp_path),
+        STORAGE_CLEANUP_INTERVAL_HOURS=0,
+    )
+    service = MagicMock(spec=StorageService)
+
+    runner = StorageCleanupRunner(storage_service=service, settings=settings)
+
+    assert not runner.is_enabled
+    assert runner.interval_seconds is None
+
+    await runner.run_periodic()
+
+    service.cleanup_expired_assets.assert_not_called()
