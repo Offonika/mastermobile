@@ -1,8 +1,9 @@
 
-00‑Core — Синхронизация документации (v1.3.6)
-Дата обновления: 01.10.2025
-Связанные артефакты: API‑Contracts v1.1.0, SRS Core Sync v1.0.3, [ADR-0002](adr/0002-latency-slo.md)
+00‑Core — Синхронизация документации (v1.3.7)
+Дата обновления: 03.10.2025
+Связанные артефакты: API‑Contracts v1.1.1, SRS Core Sync v1.0.3, [ADR-0002](adr/0002-latency-slo.md)
 
+> Обновление 03.10.2025. Зафиксирована операция `POST /api/v1/returns/{returnId}/reject` в API‑Contracts v1.1.1; Version Map и ссылки приведены к новой версии.
 > Обновление 01.10.2025. Зафиксирована новая схема пагинации `page`/`page_size` и дефолтные значения; 00‑Core синхронизирован с API‑Contracts v1.1.0 и `openapi.yaml`.
 > Обновление 30.09.2025. Согласованы и зафиксированы единые цели p95 латентности для чтения/записи согласно [ADR-0002](adr/0002-latency-slo.md); обновлён раздел 2.7 и changelog.
 > Обновление 27.09.2025. Обновлены целевые показатели доступности/RTO/RPO по согласованию с SRE и продактом; карта синхронизирована с API‑Contracts v1.1.0.
@@ -12,16 +13,16 @@
 ### Version Map (на 21.09.2025)
 | Поток | PRD | SRS | Привязки |
 | --- | --- | --- | --- |
-| Core Sync (1С↔MW) | v1.1.2 (18.09.2025) | v1.0.3 (27.09.2025) | 00‑Core v1.3.6, API‑Contracts v1.1.0, ER Freeze v0.6.4 |
-| Ассистент мастера | [PRD — «Ассистент мастера» v0.1.1 (Final)](PRD%20—%20«Ассистент%20мастера».md) | — | 00‑Core v1.3.6, [API‑Contracts v1.0.0](API%E2%80%91Contracts.md), [Status‑Dictionary v1](00-Core_glossary-status.md#status-dictionary-v1), [SoT = сайт (Bitrix)](00%E2%80%91Core%20%E2%80%94%20%D0%A1%D0%B8%D0%BD%D1%85%D1%80%D0%BE%D0%BD%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D0%B8.md#5-sot-matrix-v1-source-of-truth) |
-| КМП4 | — | [SRS — КМП4 (в подготовке)](SRS%20—%20КМП4.md) | Исходные материалы: `1c/config_dump_txt/`, `1c/external/kmp4_delivery_report/` (исходники в `src/`); привязка к 00‑Core v1.3.6 |
+| Core Sync (1С↔MW) | v1.1.2 (18.09.2025) | v1.0.3 (27.09.2025) | 00‑Core v1.3.7, API‑Contracts v1.1.1, ER Freeze v0.6.4 |
+| Ассистент мастера | [PRD — «Ассистент мастера» v0.1.1 (Final)](PRD%20—%20«Ассистент%20мастера».md) | — | 00‑Core v1.3.7, [API‑Contracts v1.1.1](API%E2%80%91Contracts.md), [Status‑Dictionary v1](00-Core_glossary-status.md#status-dictionary-v1), [SoT = сайт (Bitrix)](00%E2%80%91Core%20%E2%80%94%20%D0%A1%D0%B8%D0%BD%D1%85%D1%80%D0%BE%D0%BD%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D0%B8.md#5-sot-matrix-v1-source-of-truth) |
+| КМП4 | — | [SRS — КМП4 (в подготовке)](SRS%20—%20КМП4.md) | Исходные материалы: `1c/config_dump_txt/`, `1c/external/kmp4_delivery_report/` (исходники в `src/`); привязка к 00‑Core v1.3.7 |
 
 
 1. Ссылочные документы
 Core‑API‑Style v1 (раздел 2 ниже)
 
 
-API‑Contracts v1.1.0 (docs/API‑Contracts.md)
+API‑Contracts v1.1.1 (docs/API‑Contracts.md)
 
 
 Status‑Dictionary v1 — см. [глоссарий статусов](00-Core_glossary-status.md#status-dictionary-v1)
@@ -526,6 +527,7 @@ nsi_counterparty
 
 ## Changelog
 
+- 03.10.2025 — Version Map выровнен на API‑Contracts v1.1.1; добавлено упоминание операции `POST /api/v1/returns/{returnId}/reject` для возвратов.
 - 01.10.2025 — Заменена устаревшая схема `limit`/`offset` на фактическую пагинацию `page`/`page_size`, добавлены дефолтные значения и описание структуры ответов. Ссылки выровнены с API‑Contracts v1.1.0 и `openapi.yaml`.
 - 30.09.2025 — Выравнены цели p95 (чтение 250 мс, запись 400 мс) по итогам синка с NFR/Observability; обновлён раздел 2.7, добавлена ссылка на [ADR-0002](adr/0002-latency-slo.md). Уведомлены команды Core Sync и Walking Warehouse в `#mm-observability`.
 - 28.09.2025 — Подтверждено отсутствие ER Freeze v0.6.5; Version Map и ссылочный пакет возвращены к ER Freeze v0.6.4. [#PR TBD](https://github.com/mastermobile/mastermobile/pull/TBD)

@@ -1,11 +1,12 @@
 # API‑Contracts — MasterMobile API v1.0.0
 
-Версия документа: v1.1.0
-Дата обновления: 02.10.2025
+Версия документа: v1.1.1
+Дата обновления: 03.10.2025
 Статус: draft
 Владелец: Арх / API
 Связанные артефакты: `openapi.yaml` (info.version = 1.0.0)
 
+> Примечание (03.10.2025). Добавлена операция `POST /api/v1/returns/{returnId}/reject` с описанием полезной нагрузки и ролей; синхронизировано с PRD Walking Warehouse.
 > Примечание (02.10.2025). Уточнены сводные маршруты `returns` в обзоре: административные операции опубликованы на `/api/v1/returns/{returnId}`.
 > Примечание (01.10.2025). Пагинация реализована параметрами `page`/`page_size` с дефолтами 1 и 20; ссылки на `limit`/`offset`
 > считаются устаревшими и требуют миграции клиентов.
@@ -17,7 +18,7 @@
 - `openapi.yaml` публикует четыре доменных пространства и связанные эндпоинты:
   - `system` — служебные проверки `/health` и `/api/v1/system/ping`.
 
-  - `returns` — список и создание (`GET|POST /api/v1/returns`), чтение карточки и административные операции (`GET|PUT|DELETE /api/v1/returns/{return_id}`).
+  - `returns` — список и создание (`GET|POST /api/v1/returns`), чтение карточки и административные операции (`GET|PUT|DELETE|POST /api/v1/returns/{return_id}` с маршрутом `reject`).
 
   - `b24-calls` — реестры звонков Bitrix24 с фильтрами `employee_id`, `date_from`, `date_to`, `has_text`: потоковый CSV экспорт (`GET /api/v1/b24-calls/export.csv`) и JSON-выгрузка (`GET /api/v1/b24-calls/export.json`).
   - `walking-warehouse` — курьеры (`GET|POST /api/v1/ww/couriers`), заказы (`GET|POST|PATCH /api/v1/ww/orders`), назначение и статусы (`POST /api/v1/ww/orders/{orderId}/assign`, `POST /api/v1/ww/orders/{orderId}/status`), отчётность и интеграции (`GET /api/v1/ww/report/deliveries`, `GET /api/v1/ww/export/kmp4`).
@@ -69,6 +70,16 @@
 - Требует `source`, `courier_id`, `items[]`.
 - Структура элемента массива совпадает с `items[]` в `Return`, но без `line_id` (генерируется системой).
 
+### 2.3 ReturnRejectRequest
+| Поле | Тип | Обязательность | Описание |
+| --- | --- | --- | --- |
+| `reason_code` | string | Да | Код причины: `no_defect_found`, `other`. |
+| `reason_note` | string/null | Нет | Детализация причины отклонения; обязательна при `reason_code = other`. |
+| `items[]` | array | Да | Список отклонённых строк (см. `ReturnRejectItem`). |
+| `actor` | object | Да | Сведения об исполнителе (`id_1c`, `fio`). |
+
+Элемент `ReturnRejectItem` содержит `line_id`, `sku`, `qty`. Валидация запрещает частичное отклонение строк, ранее переведённых в статус `accepted`.
+
 ## 3. Домен returns
 ### 3.1 GET /api/v1/returns
 - Назначение: пагинированный список возвратов.
@@ -107,6 +118,15 @@
 - Заголовки: `Authorization`, `Idempotency-Key`, опционально `X-Request-Id`.
 - Ответ 204 без тела.
 - Ошибки: 422 (валидация идентификатора), 404 `Error`.
+
+### 3.6 POST /api/v1/returns/{returnId}/reject
+- Назначение: отклонить возврат после проверки качества брака.
+- Роли: `1c`, `admin` (роль «Приёмка/КК» и менеджеры возвратов).
+- Тело: `ReturnRejectRequest`.
+- Заголовки: `Authorization`, `Idempotency-Key`, опционально `X-Request-Id`, `X-Correlation-Id`.
+- Ответ 200: актуальный `Return` со статусом `rejected`.
+- Ошибки: 404 (возврат не найден), 409 (попытка повторного отклонения с иным телом по `Idempotency-Key` либо после принятия строк), 422 (валидация входных данных, несоответствие строк возврату).
+- Побочные эффекты: создание подзадачи в Bitrix24 «Вернуть товар клиенту», уведомление клиента и запись аудита.
 
 ## 4. Домен walking-warehouse
 - Общие требования: `Authorization: Bearer <JWT>`; допустимые роли зависят от операции (см. ниже). Все модифицирующие запросы требуют `Idempotency-Key` и возвращают `Order`/`Courier`.
@@ -202,6 +222,7 @@
 - `GET /api/v1/system/ping` — диагностический ответ `Ping` (статус + timestamp), может вернуть `503` c `Error`.
 
 ## 6. Changelog
+- 03.10.2025 — Добавлена операция `POST /api/v1/returns/{returnId}/reject`, описаны полезные нагрузки и ошибки, актуализирован обзор домена returns.
 - 01.10.2025 — Уточнена схема пагинации (`page`/`page_size`, дефолты и структура ответов), добавлено предупреждение о миграции с `limit`/`offset`; подтверждено соответствие `openapi.yaml`.
 - 30.09.2025 — Обновлён обзор доменов (`system`, `returns`, `b24-calls`, `walking-warehouse`), зафиксированы экспорты звонков и административные операции returns; соответствие подтверждено по `openapi.yaml` (info.version = 1.0.0).
 - 26.09.2025 — Подтверждено, что действующая версия контракта — v1.1.0; сопутствующие документы выровнены на корректные ссылки.
