@@ -1,10 +1,10 @@
-"""In-memory state helpers for ChatKit widget interactions."""
+"""State helpers for ChatKit widget interactions."""
 from __future__ import annotations
 
-import threading
+from apps.mw.src.services.state import KeyValueStore, build_store
 
-_AWAITING_QUERY_FLAGS: dict[str, bool] = {}
-_LOCK = threading.Lock()
+AWAITING_QUERY_TTL_SECONDS = 300
+_STORE: KeyValueStore = build_store("chatkit:awaiting")
 
 
 def mark_awaiting_query(thread_id: str) -> None:
@@ -12,27 +12,29 @@ def mark_awaiting_query(thread_id: str) -> None:
 
     if not thread_id:
         return
-    with _LOCK:
-        _AWAITING_QUERY_FLAGS[thread_id] = True
+    _STORE.set(thread_id, True, ttl=AWAITING_QUERY_TTL_SECONDS)
 
 
 def is_awaiting_query(thread_id: str) -> bool:
     """Check whether a thread is waiting for the next user query."""
 
-    with _LOCK:
-        return _AWAITING_QUERY_FLAGS.get(thread_id, False)
+    if not thread_id:
+        return False
+    value = _STORE.get(thread_id, False)
+    return bool(value)
 
 
 def pop_awaiting_query(thread_id: str) -> bool:
     """Remove and return the awaiting query flag if present."""
 
-    with _LOCK:
-        return bool(_AWAITING_QUERY_FLAGS.pop(thread_id, None))
+    if not thread_id:
+        return False
+    value = _STORE.pop(thread_id, False)
+    return bool(value)
 
 
 def reset_awaiting_query_state() -> None:
     """Clear all recorded awaiting query flags (primarily for tests)."""
 
-    with _LOCK:
-        _AWAITING_QUERY_FLAGS.clear()
+    _STORE.clear()
 
