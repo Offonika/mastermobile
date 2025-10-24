@@ -73,7 +73,7 @@ def test_cleanup_s3_removes_old_objects(tmp_path: Path) -> None:
         S3_REGION="us-east-1",
         RAW_RECORDING_RETENTION_DAYS=30,
         SUMMARY_RETENTION_DAYS=10,
-        TRANSCRIPT_RETENTION_DAYS=0,
+        TRANSCRIPT_RETENTION_DAYS=15,
         STORAGE_CLEANUP_INTERVAL_HOURS=24,
     )
 
@@ -114,6 +114,22 @@ def test_cleanup_s3_removes_old_objects(tmp_path: Path) -> None:
         {},
         {"Bucket": "bucket", "Key": "summaries/2023/old.md"},
     )
+    stubber.add_response(
+        "list_objects_v2",
+        {
+            "Contents": [
+                {"Key": "transcripts/2023/old.txt", "LastModified": now - timedelta(days=25)},
+                {"Key": "transcripts/2024/recent.txt", "LastModified": now - timedelta(days=3)},
+            ],
+            "IsTruncated": False,
+        },
+        {"Bucket": "bucket", "Prefix": "transcripts/"},
+    )
+    stubber.add_response(
+        "delete_object",
+        {},
+        {"Bucket": "bucket", "Key": "transcripts/2023/old.txt"},
+    )
 
     with stubber:
         service = StorageService(settings=settings, s3_client=client)
@@ -122,6 +138,7 @@ def test_cleanup_s3_removes_old_objects(tmp_path: Path) -> None:
     assert sorted(report.removed_s3_keys) == [
         "raw/2023/old.mp3",
         "summaries/2023/old.md",
+        "transcripts/2023/old.txt",
     ]
 
 
