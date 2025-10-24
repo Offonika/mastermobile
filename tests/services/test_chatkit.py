@@ -5,7 +5,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from apps.mw.src.services.chatkit import create_chatkit_session
+from apps.mw.src.services.chatkit import create_chatkit_service_session
 
 
 class _DummyClient:
@@ -22,32 +22,19 @@ class _DummyClient:
 
     def post(self, url: str, *, headers: dict[str, str], json: dict[str, object]) -> httpx.Response:
         self._attempts.append((url, headers, json))
-        if url.endswith("/realtime/sessions"):
-            return httpx.Response(
-                200,
-                request=httpx.Request("POST", url),
-                json={"client_secret": {"value": "secret-123"}},
-            )
-
         return httpx.Response(
-            404,
+            200,
             request=httpx.Request("POST", url),
-            text="not found",
+            json={"client_secret": {"value": "secret-123"}},
         )
 
 
-@pytest.mark.parametrize(
-    "env_workflow, env_model",
-    [
-        ("wf_legacy_id", "gpt-4o-realtime-preview"),
-    ],
-)
-def test_create_chatkit_session_prefers_realtime_endpoint(monkeypatch, env_workflow: str, env_model: str) -> None:
-    """Realtime endpoint should be attempted first and succeed when available."""
+def test_create_chatkit_service_session_uses_chat_completions_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Service should call the chat completions sessions endpoint with model only."""
 
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setenv("OPENAI_WORKFLOW_ID", env_workflow)
-    monkeypatch.setenv("OPENAI_CHATKIT_MODEL", env_model)
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+    monkeypatch.delenv("OPENAI_CHATKIT_MODEL", raising=False)
 
     attempts: list[tuple[str, dict[str, str], dict[str, object]]] = []
 
@@ -56,13 +43,16 @@ def test_create_chatkit_session_prefers_realtime_endpoint(monkeypatch, env_workf
         lambda *args, **kwargs: _DummyClient(attempts),
     )
 
-    secret = create_chatkit_session(env_workflow)
+    secret = create_chatkit_service_session()
 
     assert secret == "secret-123"
     assert attempts, "Expected at least one HTTP call"
 
     first_url, first_headers, first_payload = attempts[0]
-    assert first_url.endswith("/realtime/sessions")
-    assert first_headers.get("OpenAI-Beta") == "realtime=v1"
-    assert first_payload.get("model") == env_model
-    assert "workflow_id" not in first_payload
+    assert first_url == "https://api.openai.com/v1/chat/completions/sessions"
+    assert first_headers == {
+        "Authorization": "Bearer test-key",
+        "Content-Type": "application/json",
+        "OpenAI-Beta": "chat-completions",
+    }
+    assert first_payload == {"model": "gpt-4o-mini"}
