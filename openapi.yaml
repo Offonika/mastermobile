@@ -85,16 +85,24 @@ paths:
                 success:
                   summary: Session issued for the widget
                   value:
-                    client_secret: cs_live_a1b2c3d4e5f6
+                    client_secret: '<string>'
           headers:
             X-Request-Id:
               $ref: '#/components/headers/XRequestId'
         '500':
-          description: ChatKit configuration is incomplete.
+          description: ChatKit session creation failed due to misconfiguration or upstream errors.
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Error'
+              examples:
+                sessionError:
+                  summary: Underlying ChatKit session error
+                  value:
+                    type: about:blank
+                    title: ChatKit session error
+                    status: 500
+                    detail: 'ChatKit session error: ...'
           headers:
             X-Request-Id:
               $ref: '#/components/headers/XRequestId'
@@ -112,7 +120,10 @@ paths:
       tags:
         - chatkit
       summary: Accept actions emitted by the widget
-      description: Accepts ChatKit widget actions to keep the integration responsive and update middleware state.
+      description: |
+        Accepts ChatKit widget actions to keep the integration responsive and update middleware state.
+
+        Supports both modern payloads (`{"type":"tool","name":"search-docs"}`) and legacy payloads (`{"type":"tool.search-docs"}`).
       operationId: handleChatkitWidgetAction
       security: []
       parameters:
@@ -141,21 +152,21 @@ paths:
                     query: 'Warranty terms for smartphones'
       responses:
         '200':
-          description: Widget action acknowledgement.
+          description: Widget action acknowledgement. The `search-docs` tool keeps the widget in a pending state by returning `awaiting_query`.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ChatkitWidgetActionResponse'
               examples:
-                acknowledgement:
-                  summary: Generic acknowledgement
-                  value:
-                    ok: true
-                awaitingQuery:
-                  summary: Widget should prompt the user for a follow-up query
+                searchDocs:
+                  summary: search-docs tool requests a follow-up query
                   value:
                     ok: true
                     awaiting_query: true
+                defaultTool:
+                  summary: Generic acknowledgement for other tools
+                  value:
+                    ok: true
           headers:
             X-Request-Id:
               $ref: '#/components/headers/XRequestId'
