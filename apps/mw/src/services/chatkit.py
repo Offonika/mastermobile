@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any, Iterator, Tuple
+from collections.abc import Iterator
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -36,7 +37,7 @@ def _candidate_requests(
     base_url: str,
     headers_base: dict[str, str],
     beta_header_env: str | None,
-) -> Iterator[Tuple[str, dict[str, str]]]:
+) -> Iterator[tuple[str, dict[str, str]]]:
     """Yield candidate (url, headers) combinations for ChatKit session creation."""
 
     urls = [
@@ -53,7 +54,7 @@ def _candidate_requests(
     beta_candidates.append("chat-completions")
     beta_candidates.append(None)
 
-    seen: set[Tuple[str | None, ...]] = set()
+    seen: set[tuple[str | None, ...]] = set()
     for beta_value in beta_candidates:
         key = (beta_value,)
         if key in seen:
