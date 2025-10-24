@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from datetime import datetime
 from decimal import Decimal
 from io import StringIO
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response, status
 from fastapi.responses import StreamingResponse
@@ -15,6 +16,16 @@ from sqlalchemy.orm import Session
 from apps.mw.src.api.dependencies import ProblemDetailException, build_error, provide_request_id
 from apps.mw.src.db.models import CallRecord
 from apps.mw.src.db.session import get_session
+
+PeriodFromQuery = Annotated[
+    datetime,
+    Query(..., description="Start of the call start timestamp range."),
+]
+PeriodToQuery = Annotated[
+    datetime,
+    Query(..., description="End of the call start timestamp range."),
+]
+SessionDependency = Annotated[Session, Depends(get_session)]
 
 _CSV_HEADERS = [
     "run_id",
@@ -118,9 +129,10 @@ def _stream_csv(rows: Iterable[CallRecord]) -> Iterable[bytes]:
 )
 def export_call_registry(
     response: Response,
-    period_from: datetime = Query(..., description="Start of the call start timestamp range."),
-    period_to: datetime = Query(..., description="End of the call start timestamp range."),
-    session: Session = Depends(get_session),
+    period_from: PeriodFromQuery,
+    period_to: PeriodToQuery,
+    *,
+    session: SessionDependency,
 ) -> StreamingResponse:
     """Stream a semicolon-separated CSV of call records for the requested period."""
 

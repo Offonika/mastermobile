@@ -4,17 +4,18 @@ from __future__ import annotations
 import csv
 import io
 import logging
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Any, Iterable, Literal
+from typing import Annotated, Any, Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Path, Query, Response, status
 
 from apps.mw.src.api.dependencies import (
+    IdempotencyContext,
     ProblemDetailException,
     build_error,
     enforce_idempotency_key,
-    IdempotencyContext,
     provide_request_id,
 )
 from apps.mw.src.api.schemas import (
@@ -25,7 +26,12 @@ from apps.mw.src.api.schemas import (
     Courier,
     CourierCreate,
     CouriersResponse,
+    DeliveryReportResponse,
+    DeliveryReportRow,
+    DeliveryReportTotals,
     Error,
+    KMP4ExportResponse,
+    KMP4Order,
     Order,
     OrderAssign,
     OrderCreate,
@@ -36,11 +42,6 @@ from apps.mw.src.api.schemas import (
     OrderStatusUpdate,
     OrderUpdate,
     WWOrderStatus,
-    DeliveryReportResponse,
-    DeliveryReportRow,
-    DeliveryReportTotals,
-    KMP4ExportResponse,
-    KMP4Order,
 )
 from apps.mw.src.integrations.ww import (
     AssignmentNotFoundError,
@@ -96,12 +97,76 @@ def get_assignment_repository() -> WalkingWarehouseAssignmentRepository:
 
 
 def get_report_service(
-    order_repository: WalkingWarehouseOrderRepository = Depends(get_order_repository),
-    courier_repository: WalkingWarehouseCourierRepository = Depends(get_courier_repository),
+    order_repository: Annotated[
+        WalkingWarehouseOrderRepository, Depends(get_order_repository)
+    ],
+    courier_repository: Annotated[
+        WalkingWarehouseCourierRepository, Depends(get_courier_repository)
+    ],
 ) -> WWReportService:
     """Dependency constructing the Walking Warehouse report service."""
 
     return WWReportService(order_repository, courier_repository)
+
+
+CourierRepositoryDependency = Annotated[
+    WalkingWarehouseCourierRepository, Depends(get_courier_repository)
+]
+OrderRepositoryDependency = Annotated[
+    WalkingWarehouseOrderRepository, Depends(get_order_repository)
+]
+AssignmentRepositoryDependency = Annotated[
+    WalkingWarehouseAssignmentRepository, Depends(get_assignment_repository)
+]
+ReportServiceDependency = Annotated[WWReportService, Depends(get_report_service)]
+IdempotencyDependency = Annotated[IdempotencyContext, Depends(enforce_idempotency_key)]
+CourierSearchQuery = Annotated[
+    str | None,
+    Query(
+        description="Case-insensitive search across courier id, name and phone.",
+        min_length=1,
+    ),
+]
+OrderStatusFilter = Annotated[
+    list[WWOrderStatus] | None,
+    Query(
+        alias="status",
+        description="Filter by order status; multiple values allowed.",
+    ),
+]
+OrderSearchQuery = Annotated[
+    str | None,
+    Query(
+        description="Case-insensitive search across id, title and customer name.",
+        min_length=1,
+    ),
+]
+CourierFilterQuery = Annotated[
+    str | None,
+    Query(
+        description="Filter deliveries handled by a specific courier.",
+        min_length=1,
+    ),
+]
+CreatedFromQuery = Annotated[
+    datetime | None,
+    Query(
+        description="Return deliveries created on or after the specified timestamp.",
+    ),
+]
+CreatedToQuery = Annotated[
+    datetime | None,
+    Query(
+        description="Return deliveries created on or before the specified timestamp.",
+    ),
+]
+ReportFormatQuery = Annotated[
+    Literal["json", "csv"],
+    Query(
+        alias="format",
+        description="Set to `csv` to receive the response as UTF-8 CSV.",
+    ),
+]
 
 
 def _serialize_courier(record: object) -> Courier:
@@ -227,8 +292,9 @@ def _serialize_items(items: Iterable[OrderCreateItem | dict[str, Any]]) -> list[
 async def create_courier(
     payload: CourierCreate,
     response: Response,
-    repository: WalkingWarehouseCourierRepository = Depends(get_courier_repository),
-    _idempotency: IdempotencyContext = Depends(enforce_idempotency_key),
+    *,
+    repository: CourierRepositoryDependency,
+    _idempotency: IdempotencyDependency,
 ) -> Courier:
     """Register a new courier in the Walking Warehouse registry."""
 
@@ -263,12 +329,9 @@ async def create_courier(
     },
 )
 def list_couriers(
-    repository: WalkingWarehouseCourierRepository = Depends(get_courier_repository),
-    q: str | None = Query(
-        default=None,
-        description="Case-insensitive search across courier id, name and phone.",
-        min_length=1,
-    ),
+    *,
+    repository: CourierRepositoryDependency,
+    q: CourierSearchQuery = None,
 ) -> CouriersResponse:
     """Retrieve couriers optionally filtered by a search query."""
 
@@ -292,9 +355,10 @@ def list_couriers(
 async def create_order(
     payload: OrderCreate,
     response: Response,
-    order_repository: WalkingWarehouseOrderRepository = Depends(get_order_repository),
-    courier_repository: WalkingWarehouseCourierRepository = Depends(get_courier_repository),
-    idempotency: IdempotencyContext = Depends(enforce_idempotency_key),
+    *,
+    order_repository: OrderRepositoryDependency,
+    courier_repository: CourierRepositoryDependency,
+    idempotency: IdempotencyDependency,
 ) -> Order:
     """Create a new instant order."""
 
@@ -380,17 +444,10 @@ async def create_order(
     },
 )
 def list_orders(
-    order_repository: WalkingWarehouseOrderRepository = Depends(get_order_repository),
-    status_filter: list[WWOrderStatus] | None = Query(
-        default=None,
-        alias="status",
-        description="Filter by order status; multiple values allowed.",
-    ),
-    q: str | None = Query(
-        default=None,
-        description="Case-insensitive search across id, title and customer name.",
-        min_length=1,
-    ),
+    *,
+    order_repository: OrderRepositoryDependency,
+    status_filter: OrderStatusFilter = None,
+    q: OrderSearchQuery = None,
 ) -> OrderListResponse:
     """List orders optionally filtered by status and search query."""
 
@@ -418,8 +475,9 @@ async def update_order(
     payload: OrderUpdate,
     response: Response,
     order_id: str = Path(..., description="Identifier of the order to update."),
-    order_repository: WalkingWarehouseOrderRepository = Depends(get_order_repository),
-    _idempotency: IdempotencyContext = Depends(enforce_idempotency_key),
+    *,
+    order_repository: OrderRepositoryDependency,
+    _idempotency: IdempotencyDependency,
 ) -> Order:
     """Apply partial updates to an order."""
 
@@ -490,9 +548,10 @@ async def assign_order(
     payload: OrderAssign,
     response: Response,
     order_id: str = Path(..., description="Identifier of the order to update."),
-    order_repository: WalkingWarehouseOrderRepository = Depends(get_order_repository),
-    courier_repository: WalkingWarehouseCourierRepository = Depends(get_courier_repository),
-    _idempotency: IdempotencyContext = Depends(enforce_idempotency_key),
+    *,
+    order_repository: OrderRepositoryDependency,
+    courier_repository: CourierRepositoryDependency,
+    _idempotency: IdempotencyDependency,
 ) -> Order:
     """Assign or unassign a courier for an order."""
 
@@ -615,11 +674,10 @@ async def accept_assignment(
     payload: AssignmentAcceptRequest,
     response: Response,
     assignment_id: str = Path(..., description="Identifier of the assignment."),
-    assignment_repository: WalkingWarehouseAssignmentRepository = Depends(
-        get_assignment_repository
-    ),
-    order_repository: WalkingWarehouseOrderRepository = Depends(get_order_repository),
-    _idempotency: IdempotencyContext = Depends(enforce_idempotency_key),
+    *,
+    assignment_repository: AssignmentRepositoryDependency,
+    order_repository: OrderRepositoryDependency,
+    _idempotency: IdempotencyDependency,
 ) -> AssignmentActionResponse:
     """Mark an assignment as accepted and move the order in transit."""
 
@@ -719,11 +777,10 @@ async def decline_assignment(
     payload: AssignmentDeclineRequest,
     response: Response,
     assignment_id: str = Path(..., description="Identifier of the assignment."),
-    assignment_repository: WalkingWarehouseAssignmentRepository = Depends(
-        get_assignment_repository
-    ),
-    order_repository: WalkingWarehouseOrderRepository = Depends(get_order_repository),
-    _idempotency: IdempotencyContext = Depends(enforce_idempotency_key),
+    *,
+    assignment_repository: AssignmentRepositoryDependency,
+    order_repository: OrderRepositoryDependency,
+    _idempotency: IdempotencyDependency,
 ) -> AssignmentActionResponse:
     """Decline an assignment and reset the linked order."""
 
@@ -830,30 +887,13 @@ async def decline_assignment(
 )
 def get_delivery_report(
     response: Response,
-    report_service: WWReportService = Depends(get_report_service),
-    status_filter: list[WWOrderStatus] | None = Query(
-        default=None,
-        alias="status",
-        description="Filter by order status; multiple values allowed.",
-    ),
-    courier_id: str | None = Query(
-        default=None,
-        description="Filter deliveries handled by a specific courier.",
-        min_length=1,
-    ),
-    created_from: datetime | None = Query(
-        default=None,
-        description="Return deliveries created on or after the specified timestamp.",
-    ),
-    created_to: datetime | None = Query(
-        default=None,
-        description="Return deliveries created on or before the specified timestamp.",
-    ),
-    output_format: Literal["json", "csv"] = Query(
-        default="json",
-        alias="format",
-        description="Set to `csv` to receive the response as UTF-8 CSV.",
-    ),
+    *,
+    report_service: ReportServiceDependency,
+    status_filter: OrderStatusFilter = None,
+    courier_id: CourierFilterQuery = None,
+    created_from: CreatedFromQuery = None,
+    created_to: CreatedToQuery = None,
+    output_format: ReportFormatQuery = "json",
 ) -> DeliveryReportResponse | Response:
     """Return aggregated delivery metrics optionally rendered as CSV."""
 
@@ -907,25 +947,12 @@ def get_delivery_report(
 )
 def export_kmp4(
     response: Response,
-    report_service: WWReportService = Depends(get_report_service),
-    status_filter: list[WWOrderStatus] | None = Query(
-        default=None,
-        alias="status",
-        description="Filter by order status; multiple values allowed.",
-    ),
-    courier_id: str | None = Query(
-        default=None,
-        description="Filter deliveries handled by a specific courier.",
-        min_length=1,
-    ),
-    created_from: datetime | None = Query(
-        default=None,
-        description="Return deliveries created on or after the specified timestamp.",
-    ),
-    created_to: datetime | None = Query(
-        default=None,
-        description="Return deliveries created on or before the specified timestamp.",
-    ),
+    *,
+    report_service: ReportServiceDependency,
+    status_filter: OrderStatusFilter = None,
+    courier_id: CourierFilterQuery = None,
+    created_from: CreatedFromQuery = None,
+    created_to: CreatedToQuery = None,
 ) -> KMP4ExportResponse:
     """Serialize deliveries into the structure expected by the KMP4 upload."""
 
@@ -980,8 +1007,9 @@ async def update_order_status(
     payload: OrderStatusUpdate,
     response: Response,
     order_id: str = Path(..., description="Identifier of the order to update."),
-    order_repository: WalkingWarehouseOrderRepository = Depends(get_order_repository),
-    _idempotency: IdempotencyContext = Depends(enforce_idempotency_key),
+    *,
+    order_repository: OrderRepositoryDependency,
+    _idempotency: IdempotencyDependency,
 ) -> Order:
     """Transition an order to a new status."""
 
@@ -1058,7 +1086,8 @@ async def update_order_status(
 def list_order_logs(
     response: Response,
     order_id: str = Path(..., description="Identifier of the order to inspect."),
-    order_repository: WalkingWarehouseOrderRepository = Depends(get_order_repository),
+    *,
+    order_repository: OrderRepositoryDependency,
 ) -> OrderStatusLogResponse:
     """Return stored status update log entries for the order."""
 

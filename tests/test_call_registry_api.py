@@ -4,16 +4,16 @@ import codecs
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-import httpx
 import pytest
-import pytest_asyncio
 from sqlalchemy import Column, Table, create_engine
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError, StatementError
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
 
+import httpx
+import pytest_asyncio
 from apps.mw.src.app import app
 from apps.mw.src.db.models import (
     Base,
@@ -22,7 +22,8 @@ from apps.mw.src.db.models import (
     CallRecord,
     CallRecordStatus,
 )
-from apps.mw.src.db.session import configure_engine, engine as default_engine, get_session
+from apps.mw.src.db.session import configure_engine, get_session
+from apps.mw.src.db.session import engine as default_engine
 
 BASE_URL = "http://testserver"
 
@@ -298,7 +299,7 @@ async def test_export_call_registry_streams_csv(
     assert header == expected_headers
     assert len(lines) == 2
     values = lines[1].split(";")
-    row = dict(zip(header, values))
+    row = dict(zip(header, values, strict=False))
     assert row["call_id"] == "CALL-001"
     assert row["record_id"] == "REC-001"
     assert row["employee"] == "EMP-001"
@@ -396,7 +397,7 @@ async def test_export_b24_calls_csv_applies_filters(
     assert header == expected_headers
     assert len(rows) == 2
     values = rows[1].split(";")
-    row = dict(zip(header, values))
+    row = dict(zip(header, values, strict=False))
     assert row["call_id"] == "CALL-100"
     assert row["record_id"] == "REC-100"
     assert row["employee"] == "EMP-900"

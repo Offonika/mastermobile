@@ -3,16 +3,17 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import AsyncIterable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import boto3
-import httpx
 import pytest
+import respx
 from botocore.stub import Stubber
 
+import httpx
 from apps.mw.src.config.settings import get_settings
 from apps.mw.src.db.models import CallRecord, CallRecordStatus
 from apps.mw.src.integrations.b24 import stream_recording
@@ -52,7 +53,7 @@ def _call_record(status: CallRecordStatus = CallRecordStatus.PENDING) -> CallRec
         run_id=uuid4(),
         call_id="42",
         record_id="1001",
-        call_started_at=datetime(2024, 9, 1, 12, 0, tzinfo=timezone.utc),
+        call_started_at=datetime(2024, 9, 1, 12, 0, tzinfo=UTC),
         duration_sec=120,
         recording_url=None,
         storage_path=None,
@@ -66,7 +67,7 @@ def _call_record(status: CallRecordStatus = CallRecordStatus.PENDING) -> CallRec
 
 @pytest.mark.asyncio
 async def test_stream_recording_retries_and_streams_bytes(
-    respx_mock: "respx.MockRouter", sleep_mock: AsyncMock
+    respx_mock: respx.MockRouter, sleep_mock: AsyncMock
 ) -> None:
     """Downloader applies retry/backoff logic and yields streamed data."""
 
@@ -100,7 +101,7 @@ async def test_storage_local_persists_file_with_checksum(tmp_path: Path) -> None
     result = await service.store_call_recording(
         "abc",
         generator(),
-        started_at=datetime(2024, 9, 2, 15, 30, tzinfo=timezone.utc),
+        started_at=datetime(2024, 9, 2, 15, 30, tzinfo=UTC),
         record_identifier="rec-abc",
     )
 
@@ -132,7 +133,7 @@ async def test_storage_local_sanitizes_call_id_path(tmp_path: Path) -> None:
     result = await service.store_call_recording(
         "../escape/../../call",
         generator(),
-        started_at=datetime(2024, 9, 2, 15, 30, tzinfo=timezone.utc),
+        started_at=datetime(2024, 9, 2, 15, 30, tzinfo=UTC),
         record_identifier="segment/../../id",
     )
 
@@ -158,7 +159,7 @@ async def test_storage_local_sanitizes_call_id_path(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_download_workflow_updates_status_and_checksum(
-    respx_mock: "respx.MockRouter",
+    respx_mock: respx.MockRouter,
 ) -> None:
     """Successful download transitions the record and stores metadata."""
 
@@ -182,7 +183,7 @@ async def test_download_workflow_updates_status_and_checksum(
 
 @pytest.mark.asyncio
 async def test_download_workflow_skips_when_already_downloaded(
-    respx_mock: "respx.MockRouter",
+    respx_mock: respx.MockRouter,
 ) -> None:
     """Existing storage path and checksum prevent duplicate downloads."""
 
@@ -302,7 +303,7 @@ async def test_download_records_with_same_call_id_store_distinct_files() -> None
 
 @pytest.mark.asyncio
 async def test_download_workflow_respects_retry_limit(
-    respx_mock: "respx.MockRouter",
+    respx_mock: respx.MockRouter,
 ) -> None:
     """Records stop processing once the maximum retry limit is reached."""
 
@@ -362,7 +363,7 @@ async def test_storage_s3_backend_uses_configured_bucket(
     result = await service.store_call_recording(
         "42",
         generator(),
-        started_at=datetime(2024, 9, 1, tzinfo=timezone.utc),
+        started_at=datetime(2024, 9, 1, tzinfo=UTC),
         record_identifier="1001",
     )
 

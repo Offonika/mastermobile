@@ -6,10 +6,10 @@ from collections.abc import Iterable
 from datetime import datetime
 from decimal import Decimal
 from io import StringIO
-
-from fastapi import APIRouter, Depends, Query, Response, status
+from typing import Annotated
 from uuid import UUID
 
+from fastapi import APIRouter, Depends, Query, Response, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import or_, select
@@ -18,6 +18,29 @@ from sqlalchemy.orm import Session
 from apps.mw.src.api.dependencies import ProblemDetailException, build_error, provide_request_id
 from apps.mw.src.db.models import CallRecord
 from apps.mw.src.db.session import get_session
+
+EmployeeIdFilter = Annotated[
+    str | None,
+    Query(
+        description="Filter by Bitrix24 employee identifier.",
+        max_length=128,
+    ),
+]
+DateFromFilter = Annotated[
+    datetime | None,
+    Query(description="Start of the call start timestamp range (inclusive)."),
+]
+DateToFilter = Annotated[
+    datetime | None,
+    Query(description="End of the call start timestamp range (inclusive)."),
+]
+HasTextFilter = Annotated[
+    bool | None,
+    Query(
+        description="When true, return only calls that have a transcript; false for missing transcripts.",
+    ),
+]
+SessionDependency = Annotated[Session, Depends(get_session)]
 
 
 class B24CallRecordPayload(BaseModel):
@@ -48,7 +71,7 @@ class B24CallRecordPayload(BaseModel):
     has_text: bool
 
     @classmethod
-    def from_record(cls, record: CallRecord) -> "B24CallRecordPayload":
+    def from_record(cls, record: CallRecord) -> B24CallRecordPayload:
         """Build a payload object using database record attributes."""
 
         status_value = (
@@ -241,24 +264,12 @@ def _build_filename(*, date_from: datetime | None, date_to: datetime | None) -> 
 )
 def export_b24_calls_csv(
     response: Response,
-    employee_id: str | None = Query(
-        default=None,
-        description="Filter by Bitrix24 employee identifier.",
-        max_length=128,
-    ),
-    date_from: datetime | None = Query(
-        default=None,
-        description="Start of the call start timestamp range (inclusive).",
-    ),
-    date_to: datetime | None = Query(
-        default=None,
-        description="End of the call start timestamp range (inclusive).",
-    ),
-    has_text: bool | None = Query(
-        default=None,
-        description="When true, return only calls that have a transcript; false for missing transcripts.",
-    ),
-    session: Session = Depends(get_session),
+    employee_id: EmployeeIdFilter = None,
+    date_from: DateFromFilter = None,
+    date_to: DateToFilter = None,
+    has_text: HasTextFilter = None,
+    *,
+    session: SessionDependency,
 ) -> StreamingResponse:
     """Stream filtered Bitrix24 call records as CSV."""
 
@@ -298,24 +309,12 @@ def export_b24_calls_csv(
 )
 def export_b24_calls_json(
     response: Response,
-    employee_id: str | None = Query(
-        default=None,
-        description="Filter by Bitrix24 employee identifier.",
-        max_length=128,
-    ),
-    date_from: datetime | None = Query(
-        default=None,
-        description="Start of the call start timestamp range (inclusive).",
-    ),
-    date_to: datetime | None = Query(
-        default=None,
-        description="End of the call start timestamp range (inclusive).",
-    ),
-    has_text: bool | None = Query(
-        default=None,
-        description="When true, return only calls that have a transcript; false for missing transcripts.",
-    ),
-    session: Session = Depends(get_session),
+    employee_id: EmployeeIdFilter = None,
+    date_from: DateFromFilter = None,
+    date_to: DateToFilter = None,
+    has_text: HasTextFilter = None,
+    *,
+    session: SessionDependency,
 ) -> JSONResponse:
     """Return filtered Bitrix24 call records as a JSON array."""
 

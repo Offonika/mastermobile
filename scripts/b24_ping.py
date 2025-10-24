@@ -23,8 +23,9 @@ import sys
 from datetime import UTC, datetime, time, timedelta
 from pathlib import Path
 
-import httpx
 from dotenv import load_dotenv
+
+import httpx
 
 
 def load_environment() -> None:
@@ -116,7 +117,7 @@ def main() -> None:
     except KeyError as exc:  # pragma: no cover - essential configuration guard
         missing = exc.args[0]
         print(f"Missing required environment variable: {missing}", file=sys.stderr)
-        raise SystemExit(1)
+        raise SystemExit(1) from exc
 
     request_url = build_request_url(base_url, user_id, token)
     date_from, date_to = calculate_previous_day()

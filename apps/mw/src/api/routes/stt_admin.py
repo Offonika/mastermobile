@@ -3,8 +3,10 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from datetime import UTC, datetime
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
+from loguru import logger
 from redis import Redis
 from sqlalchemy.orm import Session
 
@@ -17,7 +19,6 @@ from apps.mw.src.api.dependencies import (
 from apps.mw.src.api.schemas import STTDLQRequeueResponse, STTJobPayload
 from apps.mw.src.db.session import get_session
 from apps.mw.src.services.stt_queue import STTQueue, create_redis_client
-from loguru import logger
 
 router = APIRouter(
     prefix="/api/v1/admin/stt",
@@ -34,6 +35,11 @@ def _get_stt_queue() -> Generator[STTQueue, None, None]:
         redis_client.close()
 
 
+SessionDependency = Annotated[Session, Depends(get_session)]
+QueueDependency = Annotated[STTQueue, Depends(_get_stt_queue)]
+AdminDependency = Annotated[Principal, Depends(require_admin)]
+
+
 @router.post(
     "/dlq/{entry_id}/requeue",
     response_model=STTDLQRequeueResponse,
@@ -43,9 +49,9 @@ def _get_stt_queue() -> Generator[STTQueue, None, None]:
 def requeue_stt_dlq_entry(
     entry_id: str,
     *,
-    session: Session = Depends(get_session),
-    queue: STTQueue = Depends(_get_stt_queue),
-    admin: Principal = Depends(require_admin),
+    session: SessionDependency,
+    queue: QueueDependency,
+    admin: AdminDependency,
 ) -> STTDLQRequeueResponse:
     """Requeue a DLQ job by identifier returning the restored metadata."""
 

@@ -3,8 +3,9 @@ from __future__ import annotations
 
 import hashlib
 import threading
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Annotated, Mapping
+from typing import Annotated
 from uuid import uuid4
 
 from fastapi import Depends, Header, Request, Response, status
@@ -205,7 +206,10 @@ def get_current_principal(
     return Principal(subject=subject, roles=roles, request_id=request_id)
 
 
-def require_admin(principal: Principal = Depends(get_current_principal)) -> Principal:
+AdminPrincipal = Annotated[Principal, Depends(get_current_principal)]
+
+
+def require_admin(principal: AdminPrincipal) -> Principal:
     """Ensure the current principal carries the administrator role."""
 
     if "admin" not in principal.roles:
