@@ -204,6 +204,13 @@ class StorageService:
                     now,
                 )
             )
+            removed_s3.extend(
+                self._cleanup_s3_prefix(
+                    "transcripts/",
+                    self._settings.transcript_retention_days,
+                    now,
+                )
+            )
 
         return CleanupReport(removed_local_paths=removed_local, removed_s3_keys=removed_s3)
 
