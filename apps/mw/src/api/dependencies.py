@@ -128,7 +128,7 @@ async def enforce_idempotency_key(
     if not key:
         raise ProblemDetailException(
             build_error(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
                 title="Invalid Idempotency-Key header",
                 detail="Idempotency-Key header must not be blank.",
                 request_id=request_id,

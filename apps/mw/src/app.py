@@ -2,21 +2,20 @@
 from __future__ import annotations
 
 import asyncio
-from contextlib import suppress
-from typing import Any
+from contextlib import asynccontextmanager, suppress
+from typing import Any, AsyncIterator
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from apps.mw.src.api.dependencies import (
     ProblemDetailException,
     build_error,
     provide_request_id,
 )
-from apps.mw.src.config import get_settings
 from apps.mw.src.api.routes import b24_calls as b24_calls_router
 from apps.mw.src.api.routes import call_registry as call_registry_router
 from apps.mw.src.api.routes import chatkit as chatkit_routes_router
@@ -26,6 +25,7 @@ from apps.mw.src.api.routes import system as system_router
 from apps.mw.src.api.routes import ww as ww_router
 from apps.mw.src.api.routers import chatkit as chatkit_router
 from apps.mw.src.api.schemas import Error, Health
+from apps.mw.src.config import get_settings
 from apps.mw.src.health import get_health_payload
 from apps.mw.src.observability import (
     RequestContextMiddleware,
@@ -36,7 +36,36 @@ from apps.mw.src.observability import (
 from apps.mw.src.services.cleanup import StorageCleanupRunner
 from apps.mw.src.services.storage import StorageService
 
-app = FastAPI(title="MasterMobile MW", lifespan=create_logging_lifespan())
+
+logging_lifespan = create_logging_lifespan()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Initialise application-wide infrastructure and background jobs."""
+
+    async with logging_lifespan(app):
+        settings = get_settings()
+        storage_service = StorageService(settings=settings)
+        cleanup_runner = StorageCleanupRunner(
+            storage_service=storage_service,
+            settings=settings,
+        )
+        task = asyncio.create_task(cleanup_runner.run_periodic(), name="storage-cleanup")
+        app.state.storage_cleanup_runner = cleanup_runner
+        app.state.storage_cleanup_task = task
+
+        try:
+            yield
+        finally:
+            task = getattr(app.state, "storage_cleanup_task", None)
+            if task is not None:
+                task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await task
+
+
+app = FastAPI(title="MasterMobile MW", lifespan=lifespan)
 app.add_middleware(RequestContextMiddleware)
 app.add_middleware(RequestMetricsMiddleware)
 register_metrics(app)
@@ -59,31 +88,6 @@ app.include_router(stt_admin_router.router)
 app.include_router(ww_router.router)
 app.include_router(chatkit_routes_router.router)
 app.include_router(chatkit_router.router)
-
-
-@app.on_event("startup")
-async def start_background_jobs() -> None:
-    """Initialise background tasks that run for the app lifespan."""
-
-    settings = get_settings()
-    storage_service = StorageService(settings=settings)
-    cleanup_runner = StorageCleanupRunner(storage_service=storage_service, settings=settings)
-    task = asyncio.create_task(cleanup_runner.run_periodic(), name="storage-cleanup")
-    app.state.storage_cleanup_runner = cleanup_runner
-    app.state.storage_cleanup_task = task
-
-
-@app.on_event("shutdown")
-async def stop_background_jobs() -> None:
-    """Cancel background tasks before shutting down the application."""
-
-    task = getattr(app.state, "storage_cleanup_task", None)
-    if task is None:
-        return
-
-    task.cancel()
-    with suppress(asyncio.CancelledError):
-        await task
 
 
 @app.get("/health", response_model=Health)
@@ -137,7 +141,7 @@ async def handle_validation_error(request: Request, exc: RequestValidationError)
         })
 
     problem = build_error(
-        status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status.HTTP_422_UNPROCESSABLE_CONTENT,
         title="Validation failed",
         detail="Request validation failed.",
         request_id=request_id,

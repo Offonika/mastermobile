@@ -286,7 +286,7 @@ def _serialize_items(items: Iterable[OrderCreateItem | dict[str, Any]]) -> list[
         status.HTTP_401_UNAUTHORIZED: {"model": Error, "description": "Missing principal."},
         status.HTTP_403_FORBIDDEN: {"model": Error, "description": "Forbidden."},
         status.HTTP_409_CONFLICT: {"model": Error, "description": "Courier already exists."},
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Error, "description": "Validation error."},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": Error, "description": "Validation error."},
     },
 )
 async def create_courier(
@@ -325,7 +325,7 @@ async def create_courier(
     responses={
         status.HTTP_401_UNAUTHORIZED: {"model": Error, "description": "Missing principal."},
         status.HTTP_403_FORBIDDEN: {"model": Error, "description": "Forbidden."},
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Error, "description": "Validation error."},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": Error, "description": "Validation error."},
     },
 )
 def list_couriers(
@@ -349,7 +349,7 @@ def list_couriers(
         status.HTTP_403_FORBIDDEN: {"model": Error, "description": "Forbidden."},
         status.HTTP_404_NOT_FOUND: {"model": Error, "description": "Related courier not found."},
         status.HTTP_409_CONFLICT: {"model": Error, "description": "Order already exists."},
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Error, "description": "Validation error."},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": Error, "description": "Validation error."},
     },
 )
 async def create_order(
@@ -440,7 +440,7 @@ async def create_order(
     responses={
         status.HTTP_401_UNAUTHORIZED: {"model": Error, "description": "Missing principal."},
         status.HTTP_403_FORBIDDEN: {"model": Error, "description": "Forbidden."},
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Error, "description": "Validation error."},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": Error, "description": "Validation error."},
     },
 )
 def list_orders(
@@ -468,7 +468,7 @@ def list_orders(
         status.HTTP_401_UNAUTHORIZED: {"model": Error, "description": "Missing principal."},
         status.HTTP_403_FORBIDDEN: {"model": Error, "description": "Forbidden."},
         status.HTTP_404_NOT_FOUND: {"model": Error, "description": "Order not found."},
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Error, "description": "Validation error."},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": Error, "description": "Validation error."},
     },
 )
 async def update_order(
@@ -523,7 +523,7 @@ def _assignment_transition_error(
 ) -> ProblemDetailException:
     tracker.failure("invalid_assignment_transition")
     error = build_error(
-        status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status.HTTP_422_UNPROCESSABLE_CONTENT,
         title="Invalid assignment status transition",
         detail=(
             f"Cannot transition assignment {assignment_id} from {current} to {new}."
@@ -541,7 +541,7 @@ def _assignment_transition_error(
         status.HTTP_401_UNAUTHORIZED: {"model": Error, "description": "Missing principal."},
         status.HTTP_403_FORBIDDEN: {"model": Error, "description": "Forbidden."},
         status.HTTP_404_NOT_FOUND: {"model": Error, "description": "Order or courier not found."},
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Error, "description": "Validation error."},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": Error, "description": "Validation error."},
     },
 )
 async def assign_order(
@@ -594,7 +594,7 @@ async def assign_order(
         ).inc()
         tracker.failure("invalid_transition")
         error = build_error(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             title="Invalid order status transition",
             detail=detail,
             request_id=response.headers.get("X-Request-Id"),
@@ -621,7 +621,7 @@ async def assign_order(
     if payload.decline and record.courier_id is None:
         tracker.failure("invalid_assignment_state")
         error = build_error(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             title="Invalid assignment state",
             detail="Cannot decline an order without an assigned courier.",
             request_id=response.headers.get("X-Request-Id"),
@@ -667,7 +667,7 @@ async def assign_order(
         status.HTTP_401_UNAUTHORIZED: {"model": Error, "description": "Missing principal."},
         status.HTTP_403_FORBIDDEN: {"model": Error, "description": "Forbidden."},
         status.HTTP_404_NOT_FOUND: {"model": Error, "description": "Assignment or order not found."},
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Error, "description": "Validation error."},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": Error, "description": "Validation error."},
     },
 )
 async def accept_assignment(
@@ -726,7 +726,7 @@ async def accept_assignment(
         ).inc()
         tracker.failure("invalid_transition")
         error = build_error(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             title="Invalid order status transition",
             detail=detail,
             request_id=response.headers.get("X-Request-Id"),
@@ -770,7 +770,7 @@ async def accept_assignment(
         status.HTTP_401_UNAUTHORIZED: {"model": Error, "description": "Missing principal."},
         status.HTTP_403_FORBIDDEN: {"model": Error, "description": "Forbidden."},
         status.HTTP_404_NOT_FOUND: {"model": Error, "description": "Assignment or order not found."},
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Error, "description": "Validation error."},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": Error, "description": "Validation error."},
     },
 )
 async def decline_assignment(
@@ -826,7 +826,7 @@ async def decline_assignment(
         ).inc()
         tracker.failure("invalid_transition")
         error = build_error(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             title="Invalid order status transition",
             detail=(
                 f"Cannot transition order {order_record.id} from {exc.current}"
@@ -882,7 +882,7 @@ async def decline_assignment(
     responses={
         status.HTTP_401_UNAUTHORIZED: {"model": Error, "description": "Missing principal."},
         status.HTTP_403_FORBIDDEN: {"model": Error, "description": "Forbidden."},
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Error, "description": "Validation error."},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": Error, "description": "Validation error."},
     },
 )
 def get_delivery_report(
@@ -903,7 +903,7 @@ def get_delivery_report(
     if created_from and created_to and created_from > created_to:
         tracker.failure("invalid_date_range")
         error = build_error(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             title="Invalid date range",
             detail="`created_from` must be earlier than or equal to `created_to`.",
             request_id=response.headers.get("X-Request-Id"),
@@ -938,7 +938,7 @@ def get_delivery_report(
     responses={
         status.HTTP_401_UNAUTHORIZED: {"model": Error, "description": "Missing principal."},
         status.HTTP_403_FORBIDDEN: {"model": Error, "description": "Forbidden."},
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Error, "description": "Validation error."},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": Error, "description": "Validation error."},
         status.HTTP_500_INTERNAL_SERVER_ERROR: {
             "model": Error,
             "description": "Unexpected export serialization error.",
@@ -962,7 +962,7 @@ def export_kmp4(
     if created_from and created_to and created_from > created_to:
         tracker.failure("invalid_date_range")
         error = build_error(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             title="Invalid date range",
             detail="`created_from` must be earlier than or equal to `created_to`.",
             request_id=response.headers.get("X-Request-Id"),
@@ -1000,7 +1000,7 @@ def export_kmp4(
         status.HTTP_401_UNAUTHORIZED: {"model": Error, "description": "Missing principal."},
         status.HTTP_403_FORBIDDEN: {"model": Error, "description": "Forbidden."},
         status.HTTP_404_NOT_FOUND: {"model": Error, "description": "Order not found."},
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Error, "description": "Validation error."},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": Error, "description": "Validation error."},
     },
 )
 async def update_order_status(
@@ -1040,7 +1040,7 @@ async def update_order_status(
         ).inc()
         tracker.failure("invalid_transition")
         error = build_error(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             title="Invalid order status transition",
             detail=f"Cannot transition order {order_id} from {exc.current} to {exc.new}.",
             request_id=response.headers.get("X-Request-Id"),
@@ -1080,7 +1080,7 @@ async def update_order_status(
         status.HTTP_401_UNAUTHORIZED: {"model": Error, "description": "Missing principal."},
         status.HTTP_403_FORBIDDEN: {"model": Error, "description": "Forbidden."},
         status.HTTP_404_NOT_FOUND: {"model": Error, "description": "Order not found."},
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Error, "description": "Validation error."},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": Error, "description": "Validation error."},
     },
 )
 def list_order_logs(
