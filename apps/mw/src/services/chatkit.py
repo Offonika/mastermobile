@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import os
-from typing import Any, cast
+from collections.abc import Mapping
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -53,17 +54,39 @@ def create_chatkit_service_session() -> str:
             response.raise_for_status()
 
         data: Any = response.json()
-        client_secret = (((data or {}).get("client_secret") or {}).get("value"))
+        client_secret = _extract_client_secret(data)
         if not client_secret:
             logger.error("No client_secret in response: {data}", data=data)
             raise RuntimeError("No client_secret in ChatKit session response")
 
-        return cast(str, client_secret)
+        return client_secret
 
 
 def create_chatkit_session() -> str:
     """Backward compatible alias for the service helper."""
 
     return create_chatkit_service_session()
+
+
+def _extract_client_secret(payload: Any) -> str | None:
+    """Return the client secret from the API payload if present."""
+
+    if not isinstance(payload, Mapping):
+        return None
+
+    secret_payload = payload.get("client_secret")
+
+    if isinstance(secret_payload, Mapping):
+        value = secret_payload.get("value")
+        if isinstance(value, str):
+            stripped = value.strip()
+            return stripped or None
+        return None
+
+    if isinstance(secret_payload, str):
+        stripped = secret_payload.strip()
+        return stripped or None
+
+    return None
 
 

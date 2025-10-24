@@ -92,6 +92,18 @@ def test_create_chatkit_service_session_success(monkeypatch: pytest.MonkeyPatch)
     assert payload == {"default_model": "gpt-4o-mini"}
 
 
+def test_create_chatkit_service_session_secret_as_string(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The helper should accept plain string secrets returned by the API."""
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    responses = [_make_response(200, json={"client_secret": " secret-inline "})]
+    _patch_httpx_client(monkeypatch, responses)
+
+    assert create_chatkit_service_session() == "secret-inline"
+
+
 def test_create_chatkit_service_session_missing_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     """The service should raise if the API key is absent."""
 
