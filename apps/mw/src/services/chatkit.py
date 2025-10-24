@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 from typing import Any, Optional, cast
 
+import httpx
 from loguru import logger
 from openai import OpenAI, OpenAIError
 
