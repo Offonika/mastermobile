@@ -14,7 +14,7 @@ class _DummyClient:
     def __init__(self, attempts: list[tuple[str, dict[str, str], dict[str, object]]]):
         self._attempts = attempts
 
-    def __enter__(self) -> "_DummyClient":
+    def __enter__(self) -> _DummyClient:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:  # pragma: no cover - no cleanup required
