@@ -38,20 +38,38 @@ def create_chatkit_service_session() -> str:
         "Content-Type": "application/json",
         "OpenAI-Beta": "chat-completions",
     }
-    payload = {"default_model": model}
-
-    logger.debug("POST {url} payload={payload}", url=url, payload=payload)
+    payload_variants: list[tuple[str, dict[str, Any]]] = [
+        ("default_model", {"default_model": model}),
+        ("model", {"model": model}),
+    ]
 
     with httpx.Client(timeout=20.0) as http:
-        response = http.post(url, headers=headers, json=payload)
-        if response.status_code >= 400:
+        for index, (variant, payload) in enumerate(payload_variants):
+            logger.debug(
+                "POST {url} payload_variant={variant} payload={payload}",
+                url=url,
+                variant=variant,
+                payload=payload,
+            )
+
+            response = http.post(url, headers=headers, json=payload)
+            if response.status_code < 400:
+                data: Any = response.json()
+                client_secret = (((data or {}).get("client_secret") or {}).get("value"))
+                if not client_secret:
+                    logger.error("No client_secret in response: {data}", data=data)
+                    raise RuntimeError("No client_secret in ChatKit session response")
+
+                return cast(str, client_secret)
+
+            error_body = (response.text or "")[:2000]
             logger.error(
                 "OpenAI ChatKit session creation failed | {code} {url}\n{body}",
                 code=response.status_code,
                 url=url,
-                body=(response.text or "")[:2000],
+                body=error_body,
             )
-            response.raise_for_status()
+
 
         data: Any = response.json()
         client_secret = _extract_client_secret(data)
@@ -60,6 +78,7 @@ def create_chatkit_service_session() -> str:
             raise RuntimeError("No client_secret in ChatKit session response")
 
         return client_secret
+
 
 
 def create_chatkit_session() -> str:

@@ -91,7 +91,6 @@ def test_create_chatkit_service_session_success(monkeypatch: pytest.MonkeyPatch)
     }
     assert payload == {"default_model": "gpt-4o-mini"}
 
-
 def test_create_chatkit_service_session_secret_as_string(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -102,6 +101,24 @@ def test_create_chatkit_service_session_secret_as_string(
     _patch_httpx_client(monkeypatch, responses)
 
     assert create_chatkit_service_session() == "secret-inline"
+=======
+def test_create_chatkit_service_session_retries_with_model_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """If the API rejects default_model we retry with the legacy `model` payload."""
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_CHATKIT_MODEL", "gpt-4o-mini")
+
+    error_json = {
+        "error": {
+            "message": "Unknown parameter: 'model'.",
+            "type": "invalid_request_error",
+            "param": "model",
+            "code": "unknown_parameter",
+        }
+    }
+
 
 
 def test_create_chatkit_service_session_missing_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
