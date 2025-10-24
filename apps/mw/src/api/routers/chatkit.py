@@ -57,7 +57,7 @@ class WidgetActionRequest(BaseModel):
         return normalised
 
     @model_validator(mode="after")
-    def validate_tool_action(self) -> "WidgetActionRequest":
+    def validate_tool_action(self) -> WidgetActionRequest:
         """Ensure the expected fields are present for tool actions."""
 
         if self.type == "tool" and not self.name:
@@ -160,7 +160,7 @@ async def create_chatkit_session(
                 request_id=request_id,
                 type_="https://api.mastermobile.app/errors/openai",
             )
-        )
+        ) from exc
 
     logger.bind(request_id=request_id).info("Created ChatKit session for widget")
     return ChatkitSessionResponse(client_secret=client_secret)

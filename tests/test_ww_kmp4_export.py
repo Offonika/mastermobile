@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -20,7 +20,7 @@ from apps.mw.src.integrations.ww.repositories import OrderItemRecord, OrderRecor
 
 
 def _order_record(status: str) -> OrderRecord:
-    timestamp = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    timestamp = datetime(2024, 1, 1, tzinfo=UTC)
     return OrderRecord(
         id="order-1",
         title="Sample order",

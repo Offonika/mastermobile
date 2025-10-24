@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterator
 from uuid import uuid4
 
 from sqlalchemy import Column, String, Table, create_engine, text
@@ -20,10 +20,10 @@ from apps.mw.src.db.models import (
     CallRecordStatus,
 )
 from apps.mw.src.services.storage import StorageService
-from apps.mw.src.services.summarizer import CallSummarizer
-from apps.mw.src.services.stt_queue import STTJob, STTQueue
 from apps.mw.src.services.stt_providers import TranscriptionResult
+from apps.mw.src.services.stt_queue import STTJob, STTQueue
 from apps.mw.src.services.stt_worker import STTWorker
+from apps.mw.src.services.summarizer import CallSummarizer
 
 
 class _DummyRedis:
@@ -79,15 +79,15 @@ def _prepare_engine() -> Iterator[Engine]:
 def _seed_record(session: Session) -> CallRecord:
     export = CallExport(
         run_id=uuid4(),
-        period_from=datetime(2024, 1, 1, tzinfo=timezone.utc),
-        period_to=datetime(2024, 1, 2, tzinfo=timezone.utc),
+        period_from=datetime(2024, 1, 1, tzinfo=UTC),
+        period_to=datetime(2024, 1, 2, tzinfo=UTC),
         status=CallExportStatus.IN_PROGRESS,
     )
     record = CallRecord(
         export=export,
         call_id="CALL-123",
         record_id="REC-123",
-        call_started_at=datetime(2024, 1, 1, 10, 0, tzinfo=timezone.utc),
+        call_started_at=datetime(2024, 1, 1, 10, 0, tzinfo=UTC),
         direction=CallDirection.INBOUND,
         from_number="+70000000001",
         to_number="+70000000002",
@@ -125,7 +125,7 @@ def test_stt_worker_persists_summary_when_enabled(tmp_path: Path) -> None:
         summarizer = CallSummarizer(
             settings=settings,
             storage_service=storage,
-            timestamp_provider=lambda: datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
+            timestamp_provider=lambda: datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
         )
 
         job = STTJob(
@@ -179,7 +179,7 @@ def test_stt_worker_skips_summary_when_disabled(tmp_path: Path) -> None:
         summarizer = CallSummarizer(
             settings=settings,
             storage_service=storage,
-            timestamp_provider=lambda: datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
+            timestamp_provider=lambda: datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
         )
 
         job = STTJob(

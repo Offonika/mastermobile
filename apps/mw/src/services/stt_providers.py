@@ -1,15 +1,15 @@
 """Speech-to-text provider implementations and helpers."""
 from __future__ import annotations
 
-import contextlib
 import json
 import shutil
 import subprocess
 import tempfile
 import wave
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Protocol
+from typing import Protocol
 from urllib.parse import urlparse
 
 import httpx
@@ -18,7 +18,6 @@ from loguru import logger
 
 from apps.mw.src.config import Settings, get_settings
 from apps.mw.src.services.stt_queue import STTJob
-
 
 ENGINE_STUB = "stub"
 ENGINE_OPENAI = "openai-whisper"
@@ -131,7 +130,7 @@ def _convert_to_wav_mono16k(source_path: Path, target_path: Path) -> float:
         ).error("Failed to convert audio to wav mono 16k")
         raise TranscriptionError(None, "Audio conversion failed")
 
-    with contextlib.closing(wave.open(str(target_path), "rb")) as wav_file:  # type: ignore[name-defined]
+    with wave.open(str(target_path), "rb") as wav_file:
         frames = wav_file.getnframes()
         frame_rate = wav_file.getframerate() or 1
     duration_seconds = frames / float(frame_rate)
@@ -342,7 +341,9 @@ class LocalTranscriptionProvider(_BaseHttpProvider):
             client = self._build_http_client()
             try:
                 files = {"file": (f"{job.call_id}.wav", wav_path.read_bytes(), "audio/wav")}
-                response = client.post(self._settings.local_stt_url, data=data, files=files, headers=headers)
+                local_url = self._settings.local_stt_url
+                assert local_url is not None  # Guarded by __init__ validation
+                response = client.post(local_url, data=data, files=files, headers=headers)
             finally:
                 client.close()
 

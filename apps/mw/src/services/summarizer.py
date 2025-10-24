@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import math
 import re
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Callable, Iterable, Sequence
+from datetime import UTC, datetime
 
 from loguru import logger
 
@@ -39,7 +39,7 @@ class CallSummarizer:
     ) -> None:
         self._settings = settings or get_settings()
         self._storage = storage_service or StorageService(self._settings)
-        self._now = timestamp_provider or (lambda: datetime.now(tz=timezone.utc))
+        self._now = timestamp_provider or (lambda: datetime.now(tz=UTC))
 
     def summarize(self, call_id: str, transcript_text: str) -> SummaryResult:
         """Generate a Markdown summary and persist it using storage service."""

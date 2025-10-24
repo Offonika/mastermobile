@@ -1,10 +1,11 @@
 """In-memory repositories modelling Walking Warehouse storages."""
 from __future__ import annotations
 
+from builtins import list as list_type
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Iterable, Sequence
 
 
 class InvalidAssignmentStatusTransitionError(RuntimeError):
@@ -19,7 +20,7 @@ class InvalidAssignmentStatusTransitionError(RuntimeError):
 def _utcnow() -> datetime:
     """Return timezone-aware UTC timestamps."""
 
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 @dataclass(slots=True)
@@ -59,7 +60,7 @@ class OrderRecord:
     created_at: datetime
     updated_at: datetime
     items: list[OrderItemRecord] = field(default_factory=list)
-    logs: list["OrderLogRecord"] = field(default_factory=list)
+    logs: list[OrderLogRecord] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -144,7 +145,7 @@ class WalkingWarehouseCourierRepository:
             raise CourierNotFoundError(courier_id)
         return record
 
-    def list(self, *, q: str | None = None) -> list[CourierRecord]:
+    def list(self, *, q: str | None = None) -> list_type[CourierRecord]:
         records = list(self._couriers.values())
         if q:
             needle = q.strip().lower()
@@ -217,7 +218,7 @@ class WalkingWarehouseOrderRepository:
         courier_id: str | None = None,
         created_from: datetime | None = None,
         created_to: datetime | None = None,
-    ) -> list[OrderRecord]:
+    ) -> list_type[OrderRecord]:
         records = list(self._orders.values())
 
         if statuses:
@@ -317,7 +318,7 @@ class WalkingWarehouseOrderRepository:
     def clear(self) -> None:
         self._orders.clear()
 
-    def list_logs(self, order_id: str) -> list[OrderLogRecord]:
+    def list_logs(self, order_id: str) -> list_type[OrderLogRecord]:
         record = self.get(order_id)
         return list(record.logs)
 

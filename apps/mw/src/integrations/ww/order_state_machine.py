@@ -48,7 +48,7 @@ class OrderStateMachine:
         self.current = new
 
     @classmethod
-    def from_raw(cls, status: WWOrderStatus | str) -> "OrderStateMachine":
+    def from_raw(cls, status: WWOrderStatus | str) -> OrderStateMachine:
         """Create a state machine from a raw stored status value."""
 
         if isinstance(status, WWOrderStatus):

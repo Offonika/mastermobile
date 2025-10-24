@@ -1,10 +1,10 @@
 """Helpers generating Walking Warehouse analytical reports."""
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import Iterable
 
 from apps.mw.src.integrations.ww import (
     CourierNotFoundError,

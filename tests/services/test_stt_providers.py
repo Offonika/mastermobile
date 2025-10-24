@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 import respx
+from httpx import Request, Response, codes
 
 from apps.mw.src.config import Settings
 from apps.mw.src.services.stt_providers import (
@@ -15,7 +16,6 @@ from apps.mw.src.services.stt_providers import (
     TranscriptionError,
 )
 from apps.mw.src.services.stt_queue import STTJob
-from httpx import Request, Response, codes
 
 
 def _write_sine_wave(path: Path, *, seconds: float = 0.5, sample_rate: int = 16000) -> None:

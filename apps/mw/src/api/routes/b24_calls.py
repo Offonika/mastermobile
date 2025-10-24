@@ -12,7 +12,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Response, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import or_, select
+from sqlalchemy import Select, or_, select
 from sqlalchemy.orm import Session
 
 from apps.mw.src.api.dependencies import ProblemDetailException, build_error, provide_request_id
@@ -77,29 +77,30 @@ class B24CallRecordPayload(BaseModel):
         status_value = (
             record.status.value if hasattr(record.status, "value") else str(record.status)
         )
-        return cls(
-            run_id=record.run_id,
-            call_id=record.call_id,
-            record_id=record.record_id,
-            employee=getattr(record, "employee_id", None),
-            datetime_start=getattr(record, "call_started_at", None),
-            direction=getattr(record, "direction", None),
-            from_=getattr(record, "from_number", None),
-            to=getattr(record, "to_number", None),
-            duration_sec=record.duration_sec,
-            recording_url=getattr(record, "recording_url", None),
-            transcript_path=getattr(record, "transcript_path", None),
-            summary_path=getattr(record, "summary_path", None),
-            text_preview=getattr(record, "text_preview", None),
-            transcription_cost=getattr(record, "transcription_cost", None),
-            currency_code=getattr(record, "currency_code", None),
-            language=getattr(record, "language", None),
-            status=status_value,
-            error_code=getattr(record, "error_code", None),
-            retry_count=int(getattr(record, "attempts", 0) or 0),
-            checksum=getattr(record, "checksum", None),
-            has_text=bool(getattr(record, "transcript_path", None)),
-        )
+        payload = {
+            "run_id": record.run_id,
+            "call_id": record.call_id,
+            "record_id": getattr(record, "record_id", None),
+            "employee": getattr(record, "employee_id", None),
+            "datetime_start": getattr(record, "call_started_at", None),
+            "direction": getattr(record, "direction", None),
+            "from": getattr(record, "from_number", None),
+            "to": getattr(record, "to_number", None),
+            "duration_sec": record.duration_sec,
+            "recording_url": getattr(record, "recording_url", None),
+            "transcript_path": getattr(record, "transcript_path", None),
+            "summary_path": getattr(record, "summary_path", None),
+            "text_preview": getattr(record, "text_preview", None),
+            "transcription_cost": getattr(record, "transcription_cost", None),
+            "currency_code": getattr(record, "currency_code", None),
+            "language": getattr(record, "language", None),
+            "status": status_value,
+            "error_code": getattr(record, "error_code", None),
+            "retry_count": int(getattr(record, "attempts", 0) or 0),
+            "checksum": getattr(record, "checksum", None),
+            "has_text": bool(getattr(record, "transcript_path", None)),
+        }
+        return cls.model_validate(payload)
 
 
 router = APIRouter(
@@ -214,7 +215,7 @@ def _build_statement(
     date_from: datetime | None,
     date_to: datetime | None,
     has_text: bool | None,
-):
+) -> Select[tuple[CallRecord]]:
     """Construct a filtered select statement for call records."""
 
     stmt = select(CallRecord)

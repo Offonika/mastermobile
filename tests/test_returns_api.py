@@ -6,16 +6,17 @@ from uuid import uuid4
 
 import httpx
 import pytest
-import pytest_asyncio
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from apps.mw.src.app import app
+import pytest_asyncio
 from apps.mw.src.api.dependencies import reset_idempotency_cache
+from apps.mw.src.app import app
 from apps.mw.src.db.models import Base, Return, ReturnLine
-from apps.mw.src.db.session import configure_engine, engine as default_engine, get_session
+from apps.mw.src.db.session import configure_engine, get_session
+from apps.mw.src.db.session import engine as default_engine
 
 BASE_URL = "http://testserver"
 

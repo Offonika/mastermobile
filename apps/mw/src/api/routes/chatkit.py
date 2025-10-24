@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Annotated, Any
+from io import BytesIO
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from loguru import logger
@@ -168,18 +169,25 @@ async def upload_to_vector_store(
         )
 
     client = _create_openai_client(settings)
-    payload = {
-        "file_name": filename,
-        "content": content,
-    }
     metadata_payload = metadata_model.model_dump(exclude_none=True)
 
     try:
-        client.vector_stores.files.upload(
-            vector_store_id=settings.openai_vector_store_id,
-            file=payload,
-            metadata=metadata_payload,
-        )
+        files_client = client.vector_stores.files
+        upload_file = (filename, BytesIO(content))
+        attributes = metadata_payload or None
+        if hasattr(files_client, "upload_and_poll"):
+            files_client.upload_and_poll(
+                vector_store_id=settings.openai_vector_store_id,
+                file=upload_file,
+                attributes=attributes,
+            )
+        else:  # pragma: no cover - compatibility shim for mocked clients
+            legacy_payload = {"file_name": filename, "content": content}
+            cast(Any, files_client).upload(
+                vector_store_id=settings.openai_vector_store_id,
+                file=legacy_payload,
+                metadata=metadata_payload,
+            )
     except OpenAIError as exc:
         logger.bind(request_id=request_id, filename=filename).exception(
             "Failed to upload document to OpenAI vector store",

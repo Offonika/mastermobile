@@ -19,7 +19,7 @@ def _compute_backoff_delay(base: float, attempt: int) -> float:
 
     if base <= 0:
         return 0.0
-    return base * (2 ** (attempt - 1))
+    return float(base * (2 ** (attempt - 1)))
 
 
 async def stream_recording(call_id: str, record_id: str | None = None) -> AsyncIterator[bytes]:

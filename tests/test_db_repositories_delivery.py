@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from collections.abc import Iterator
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Iterator
 
 import pytest
 from sqlalchemy import create_engine
@@ -88,7 +88,7 @@ def test_delivery_order_repository_flow(session: Session) -> None:
         courier_id=courier.courier_id,
         delivery_price=Decimal("250.00"),
         cod_amount=Decimal("500.00"),
-        expected_delivery_at=datetime(2024, 4, 2, 12, 0, tzinfo=timezone.utc),
+        expected_delivery_at=datetime(2024, 4, 2, 12, 0, tzinfo=UTC),
         metadata={"priority": "high"},
     )
 
@@ -98,7 +98,7 @@ def test_delivery_order_repository_flow(session: Session) -> None:
     active_orders = order_repo.list_active_for_courier(courier.courier_id)
     assert active_orders == [order]
 
-    order_repo.update_status(order, DeliveryOrderStatus.DELIVERED, delivered_at=datetime.now(timezone.utc))
+    order_repo.update_status(order, DeliveryOrderStatus.DELIVERED, delivered_at=datetime.now(tz=UTC))
     order_repo.assign_courier(order, courier_id=None)
     order_repo.update_amounts(order, delivery_price=Decimal("260.00"))
 
@@ -141,7 +141,7 @@ def test_delivery_assignment_repository_flow(session: Session) -> None:
     assignment_repo.update_status(
         assignment,
         DeliveryAssignmentStatus.IN_PROGRESS,
-        accepted_at=datetime(2024, 4, 1, 9, 0, tzinfo=timezone.utc),
+        accepted_at=datetime(2024, 4, 1, 9, 0, tzinfo=UTC),
     )
     assignment_repo.reassign(
         assignment,
@@ -151,7 +151,7 @@ def test_delivery_assignment_repository_flow(session: Session) -> None:
     assignment_repo.update_status(
         assignment,
         DeliveryAssignmentStatus.COMPLETED,
-        completed_at=datetime(2024, 4, 1, 10, 0, tzinfo=timezone.utc),
+        completed_at=datetime(2024, 4, 1, 10, 0, tzinfo=UTC),
     )
 
     assert assignment.status is DeliveryAssignmentStatus.COMPLETED

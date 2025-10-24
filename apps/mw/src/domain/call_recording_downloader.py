@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from apps.mw.src.db.models import CallRecord, CallRecordStatus
 
@@ -13,7 +13,7 @@ DEFAULT_MAX_ATTEMPTS = 5
 def _now_utc() -> datetime:
     """Return timezone-aware timestamp for bookkeeping fields."""
 
-    return datetime.now(timezone.utc)
+    return datetime.now(tz=UTC)
 
 
 def register_http_failure(

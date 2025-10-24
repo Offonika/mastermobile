@@ -12,7 +12,6 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml README.md ./
-COPY httpx ./httpx
 COPY apps ./apps
 COPY openapi.yaml ./openapi.yaml
 

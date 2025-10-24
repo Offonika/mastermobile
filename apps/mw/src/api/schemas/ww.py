@@ -4,7 +4,6 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import List
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -59,7 +58,7 @@ class Courier(CourierCreate):
 class CouriersResponse(WWBaseModel):
     """Collection of couriers."""
 
-    items: List[Courier] = Field(description="List of couriers matching the filters.")
+    items: list[Courier] = Field(description="List of couriers matching the filters.")
 
 
 class OrderItemBase(WWBaseModel):
@@ -102,7 +101,7 @@ class Order(WWBaseModel):
     )
     created_at: datetime = Field(description="Timestamp when the order was created.")
     updated_at: datetime = Field(description="Timestamp when the order was last updated.")
-    items: List[OrderItem] = Field(
+    items: list[OrderItem] = Field(
         description="Order lines for the courier to deliver.",
         min_length=1,
     )
@@ -139,7 +138,7 @@ class OrderCreate(WWBaseModel):
         default=None,
         description="Optional notes displayed to the courier.",
     )
-    items: List[OrderCreateItem] = Field(
+    items: list[OrderCreateItem] = Field(
         description="Order lines for the courier to deliver.",
         min_length=1,
     )
@@ -171,7 +170,7 @@ class OrderUpdate(WWBaseModel):
         ge=0,
         description="Updated order total.",
     )
-    items: List[OrderCreateItem] | None = Field(
+    items: list[OrderCreateItem] | None = Field(
         default=None,
         description="Replacement set of order lines.",
     )
@@ -240,7 +239,7 @@ class OrderStatusLogEntry(WWBaseModel):
 class OrderStatusLogResponse(WWBaseModel):
     """Collection wrapper for order status log entries."""
 
-    items: List[OrderStatusLogEntry] = Field(
+    items: list[OrderStatusLogEntry] = Field(
         description="List of log entries ordered from oldest to newest.",
     )
 
@@ -248,7 +247,7 @@ class OrderStatusLogResponse(WWBaseModel):
 class OrderListResponse(WWBaseModel):
     """Collection of orders with metadata."""
 
-    items: List[Order] = Field(description="Orders matching requested filters.")
+    items: list[Order] = Field(description="Orders matching requested filters.")
     total: int = Field(ge=0, description="Total number of orders after filters.")
 
 

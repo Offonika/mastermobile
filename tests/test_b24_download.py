@@ -9,11 +9,11 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import boto3
+import httpx
 import pytest
 import respx
 from botocore.stub import Stubber
 
-import httpx
 from apps.mw.src.config.settings import get_settings
 from apps.mw.src.db.models import CallRecord, CallRecordStatus
 from apps.mw.src.integrations.b24 import stream_recording

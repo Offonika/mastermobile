@@ -4,6 +4,7 @@ import codecs
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+import httpx
 import pytest
 from sqlalchemy import Column, Table, create_engine
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
@@ -12,7 +13,6 @@ from sqlalchemy.exc import IntegrityError, StatementError
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-import httpx
 import pytest_asyncio
 from apps.mw.src.app import app
 from apps.mw.src.db.models import (

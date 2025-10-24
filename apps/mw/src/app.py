@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import asyncio
-from contextlib import asynccontextmanager, suppress
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator, Callable
+from contextlib import AbstractAsyncContextManager, asynccontextmanager, suppress
+from typing import Any
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Request, Response, status
@@ -16,6 +17,7 @@ from apps.mw.src.api.dependencies import (
     build_error,
     provide_request_id,
 )
+from apps.mw.src.api.routers import chatkit as chatkit_router
 from apps.mw.src.api.routes import b24_calls as b24_calls_router
 from apps.mw.src.api.routes import call_registry as call_registry_router
 from apps.mw.src.api.routes import chatkit as chatkit_routes_router
@@ -23,7 +25,6 @@ from apps.mw.src.api.routes import returns as returns_router
 from apps.mw.src.api.routes import stt_admin as stt_admin_router
 from apps.mw.src.api.routes import system as system_router
 from apps.mw.src.api.routes import ww as ww_router
-from apps.mw.src.api.routers import chatkit as chatkit_router
 from apps.mw.src.api.schemas import Error, Health
 from apps.mw.src.config import get_settings
 from apps.mw.src.health import get_health_payload
@@ -36,8 +37,7 @@ from apps.mw.src.observability import (
 from apps.mw.src.services.cleanup import StorageCleanupRunner
 from apps.mw.src.services.storage import StorageService
 
-
-logging_lifespan = create_logging_lifespan()
+logging_lifespan: Callable[[FastAPI], AbstractAsyncContextManager[None]] = create_logging_lifespan()
 
 
 @asynccontextmanager
@@ -51,18 +51,20 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             storage_service=storage_service,
             settings=settings,
         )
-        task = asyncio.create_task(cleanup_runner.run_periodic(), name="storage-cleanup")
+        cleanup_task = asyncio.create_task(
+            cleanup_runner.run_periodic(), name="storage-cleanup"
+        )
         app.state.storage_cleanup_runner = cleanup_runner
-        app.state.storage_cleanup_task = task
+        app.state.storage_cleanup_task = cleanup_task
 
         try:
             yield
         finally:
-            task = getattr(app.state, "storage_cleanup_task", None)
-            if task is not None:
-                task.cancel()
+            stored_task = getattr(app.state, "storage_cleanup_task", None)
+            if isinstance(stored_task, asyncio.Task):
+                stored_task.cancel()
                 with suppress(asyncio.CancelledError):
-                    await task
+                    await stored_task
 
 
 app = FastAPI(title="MasterMobile MW", lifespan=lifespan)
@@ -94,12 +96,7 @@ app.include_router(chatkit_router.router)
 async def health(response: Response, request_id: str = Depends(provide_request_id)) -> Health:
     """Simple health-check endpoint used by smoke tests."""
 
-    payload = get_health_payload()
-    if isinstance(payload, Health):
-        return payload
-    if isinstance(payload, dict):
-        payload = Health.model_validate(payload)
-    return payload
+    return Health.model_validate(get_health_payload())
 
 
 @app.exception_handler(ProblemDetailException)

@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
+import httpx
 import pytest
 import respx
 
-import httpx
 from apps.mw.src.config.settings import get_settings
 from apps.mw.src.integrations.b24 import list_calls
 

@@ -5,10 +5,10 @@ import argparse
 import csv
 import hashlib
 import sys
+from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import Dict, Iterable, Iterator, List
 
-MANIFEST: Dict[str, Dict[str, object]] = {
+MANIFEST: dict[str, dict[str, object]] = {
     "config_dump_txt/Документ.ВозвратТоваровОтПокупателя.Макет.Накладная.Макет.mxl": {
         "size": 6466,
         "sha256": "004dfab2e6b66e8bdaf032c6b012fcd8e58617b3e369d7aaed0e5ed69c38aa5f"
@@ -361,10 +361,10 @@ def sha256sum(path: Path) -> str:
 
 def check_kmp4_build_artifact(
     repo_root: Path, *, size_limit: int = TEN_MEBIBYTES
-) -> List[str]:
+) -> list[str]:
     """Ensure the packaged KMP4 delivery report is present and under the limit."""
 
-    errors: List[str] = []
+    errors: list[str] = []
     artifact = repo_root / 'build' / '1c' / 'kmp4_delivery_report.epf'
     if not artifact.exists():
         errors.append(
@@ -393,8 +393,8 @@ def iter_kmp4_csv_files(base: Path) -> Iterator[Path]:
             yield path
 
 
-def _detect_forbidden_characters(path: Path, payload: str) -> List[str]:
-    errors: List[str] = []
+def _detect_forbidden_characters(path: Path, payload: str) -> list[str]:
+    errors: list[str] = []
     line = 1
     column = 1
     for char in payload:
@@ -414,10 +414,10 @@ def _detect_forbidden_characters(path: Path, payload: str) -> List[str]:
     return errors
 
 
-def validate_kmp4_csv_file(path: Path) -> List[str]:
+def validate_kmp4_csv_file(path: Path) -> list[str]:
     """Validate forbidden characters and header structure for a CSV export."""
 
-    errors: List[str] = []
+    errors: list[str] = []
     text = path.read_text(encoding='utf-8-sig')
     errors.extend(_detect_forbidden_characters(path, text))
     if errors:
@@ -447,8 +447,8 @@ def validate_kmp4_csv_file(path: Path) -> List[str]:
     return errors
 
 
-def validate_tree(repo_root: Path) -> List[str]:
-    errors: List[str] = []
+def validate_tree(repo_root: Path) -> list[str]:
+    errors: list[str] = []
     base = repo_root / '1c'
     if not base.exists():
         errors.append(f"Missing directory: {base}")

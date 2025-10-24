@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID, uuid4
 
@@ -15,9 +15,9 @@ from sqlalchemy.orm import Session
 from apps.mw.src.db.models import (
     B24Transcript,
     Base,
+    CallDirection,
     CallExport,
     CallExportStatus,
-    CallDirection,
     CallRecord,
     CallRecordStatus,
 )
@@ -64,7 +64,7 @@ def test_call_export_crud_matches_schema() -> None:
     with engine.begin() as conn:
         conn.execute(insert(core_users).values(user_id=actor_id))
 
-    period_from = datetime(2024, 9, 1, tzinfo=timezone.utc)
+    period_from = datetime(2024, 9, 1, tzinfo=UTC)
     period_to = period_from + timedelta(days=1)
 
     with Session(engine) as session:
@@ -121,7 +121,7 @@ def test_call_record_crud_and_cascade() -> None:
         ],
     )
 
-    period_from = datetime(2024, 9, 1, tzinfo=timezone.utc)
+    period_from = datetime(2024, 9, 1, tzinfo=UTC)
     period_to = period_from + timedelta(days=1)
 
     with Session(engine) as session:

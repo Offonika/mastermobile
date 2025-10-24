@@ -1,8 +1,8 @@
 """Create tables for Bitrix24 call exports and records."""
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.

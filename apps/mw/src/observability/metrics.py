@@ -1,5 +1,6 @@
 """Prometheus metrics helpers for the middleware services."""
 from __future__ import annotations
+
 from time import perf_counter
 from typing import Final
 

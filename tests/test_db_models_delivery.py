@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
 
@@ -59,7 +59,7 @@ def test_delivery_order_relationships_roundtrip() -> None:
             delivery_price=Decimal("150.50"),
             cod_amount=Decimal("500.00"),
             currency_code="RUB",
-            expected_delivery_at=datetime(2024, 4, 1, tzinfo=timezone.utc),
+            expected_delivery_at=datetime(2024, 4, 1, tzinfo=UTC),
         )
         assignment = DeliveryAssignment(
             order=order,

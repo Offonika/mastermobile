@@ -1,21 +1,21 @@
 """Integration tests for Walking Warehouse API endpoints."""
 from __future__ import annotations
 
-from typing import Any, Tuple
+from typing import Any
 from uuid import uuid4
 
 import httpx
 import pytest
-import pytest_asyncio
 from prometheus_client import REGISTRY
 
-from apps.mw.src.app import app
+import pytest_asyncio
 from apps.mw.src.api.dependencies import reset_idempotency_cache
 from apps.mw.src.api.routes.ww import (
     get_assignment_repository,
     get_courier_repository,
     get_order_repository,
 )
+from apps.mw.src.app import app
 from apps.mw.src.integrations.ww import (
     WalkingWarehouseAssignmentRepository,
     WalkingWarehouseCourierRepository,
@@ -55,7 +55,7 @@ def _reset_idempotency() -> None:
 
 
 @pytest.fixture(autouse=True)
-def override_repositories() -> Tuple[
+def override_repositories() -> tuple[
     WalkingWarehouseCourierRepository,
     WalkingWarehouseOrderRepository,
     WalkingWarehouseAssignmentRepository,
@@ -498,7 +498,7 @@ async def test_decline_without_assignment_returns_422(api_client: httpx.AsyncCli
 @pytest.mark.asyncio
 async def test_assignment_accept_endpoint(
     api_client: httpx.AsyncClient,
-    override_repositories: Tuple[
+    override_repositories: tuple[
         WalkingWarehouseCourierRepository,
         WalkingWarehouseOrderRepository,
         WalkingWarehouseAssignmentRepository,
@@ -540,7 +540,7 @@ async def test_assignment_accept_endpoint(
 @pytest.mark.asyncio
 async def test_assignment_decline_endpoint_resets_order(
     api_client: httpx.AsyncClient,
-    override_repositories: Tuple[
+    override_repositories: tuple[
         WalkingWarehouseCourierRepository,
         WalkingWarehouseOrderRepository,
         WalkingWarehouseAssignmentRepository,

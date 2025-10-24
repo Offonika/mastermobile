@@ -2,9 +2,8 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import AsyncIterable
-from datetime import datetime, timezone
-from typing import Callable
+from collections.abc import AsyncIterable, Callable
+from datetime import UTC, datetime
 
 import httpx
 from loguru import logger
@@ -14,7 +13,6 @@ from apps.mw.src.domain import register_http_failure
 from apps.mw.src.integrations.b24.client import MAX_RETRY_ATTEMPTS
 from apps.mw.src.integrations.b24.downloader import stream_recording
 from apps.mw.src.services.storage import StorageResult, StorageService
-
 
 RecordingStreamFactory = Callable[[str, str | None], AsyncIterable[bytes]]
 
@@ -41,7 +39,7 @@ async def download_call_record(
             record.status = CallRecordStatus.ERROR
             record.error_code = "max_attempts"
             record.error_message = "Maximum download attempts exceeded"
-        record.last_attempt_at = datetime.now(tz=timezone.utc)
+        record.last_attempt_at = datetime.now(tz=UTC)
         logger.bind(
             event="call_export.download",
             stage="max_retries",
@@ -54,7 +52,7 @@ async def download_call_record(
     storage = storage or StorageService()
 
     record.status = CallRecordStatus.DOWNLOADING
-    record.last_attempt_at = datetime.now(tz=timezone.utc)
+    record.last_attempt_at = datetime.now(tz=UTC)
     attempt_number = record.attempts + 1
     logger.bind(
         event="call_export.download",
@@ -102,7 +100,7 @@ async def download_call_record(
 
 def _handle_failure(record: CallRecord, code: str, message: str) -> None:
     record.attempts += 1
-    record.last_attempt_at = datetime.now(tz=timezone.utc)
+    record.last_attempt_at = datetime.now(tz=UTC)
     record.status = CallRecordStatus.ERROR
     record.error_code = code
     record.error_message = message

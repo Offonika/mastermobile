@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Final, cast
@@ -212,14 +212,17 @@ class STTQueue:
         while True:
             item: str | None
             if block:
-                result = self._redis.blpop([self._queue_key], timeout=wait_timeout)
+                result = cast(
+                    Sequence[str] | None,
+                    self._redis.blpop([self._queue_key], timeout=wait_timeout),
+                )
                 block = False
                 wait_timeout = 0
                 if result is None:
                     return None
-                item = cast(str, result[1])
+                item = result[1]
             else:
-                item = self._redis.lpop(self._queue_key)
+                item = cast(str | None, self._redis.lpop(self._queue_key))
                 if item is None:
                     return None
 
@@ -253,7 +256,7 @@ class STTQueue:
             return []
 
         end = -1 if limit is None else limit - 1
-        raw_entries = self._redis.lrange(self._dlq_key, 0, end)
+        raw_entries = cast(Sequence[str], self._redis.lrange(self._dlq_key, 0, end))
         items: list[DLQItem] = []
         for payload in raw_entries:
             entry = DLQEntry.from_json(payload)
@@ -263,7 +266,7 @@ class STTQueue:
     def pop_dlq_entry(self, entry_id: str) -> DLQEntry | None:
         """Remove and return a DLQ entry by its derived identifier."""
 
-        raw_entries = self._redis.lrange(self._dlq_key, 0, -1)
+        raw_entries = cast(Sequence[str], self._redis.lrange(self._dlq_key, 0, -1))
         for payload in raw_entries:
             if _dlq_entry_id(payload) != entry_id:
                 continue
