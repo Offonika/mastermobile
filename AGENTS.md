@@ -244,8 +244,6 @@ PRD / SRS  →  ER / DDL  →  API Contracts  →  ONE-PAGER / UX
 - Концепция: `docs/Концепция проекта.md`
 - ER/DDL: `docs/ER‑диаграмма и DDL.md`
 - API: `docs/API‑Contracts.md`
-- Core Sync: `docs/PRD — Переход 1С: УТ 10.md`, `docs/SRS — Core Sync 1С: УТ 10.md`,
-  `docs/ONE-PAGER — Переход 1С: УТ 10.md`
 - Walking Warehouse: `docs/PRD Ходячий склад.md`, `docs/ONE-PAGER-ХодячийРюкзак.md`,
   `docs/UX-скетчи-Рюкзак:Продажа.md`
 - Шаблон SRS: `docs/Software Requirements Specification SRS.md`
