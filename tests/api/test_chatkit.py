@@ -29,7 +29,7 @@ async def test_create_chatkit_session_returns_client_secret(monkeypatch: pytest.
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("OPENAI_WORKFLOW_ID", "workflow-123")
     monkeypatch.setattr(
-        "apps.mw.src.api.routes.chatkit.create_chatkit_session_integration",
+        "apps.mw.src.api.routes.chatkit.create_chatkit_session",
         lambda workflow_id: "client-secret-abc",
     )
 
