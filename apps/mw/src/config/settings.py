@@ -113,6 +113,19 @@ class Settings(BaseSettings):
     disk_encryption_flag: bool = Field(default=False, alias="DISK_ENCRYPTION_FLAG")
     call_summary_enabled: bool = Field(default=False, alias="CALL_SUMMARY_ENABLED")
 
+    # --- Shim для обратной совместимости со старым кодом ---
+    @property
+    def OPENAI_API_KEY(self) -> str | None:
+        return self.openai_api_key
+
+    @property
+    def OPENAI_WORKFLOW_ID(self) -> str | None:
+        return self.openai_workflow_id
+
+    @property
+    def CORS_ORIGINS(self) -> str | None:
+        return self.cors_origins
+
     @model_validator(mode="before")
     @classmethod
     def enable_pii_masking_by_default(cls, data: dict[str, Any]) -> dict[str, Any]:
