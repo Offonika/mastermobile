@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import List
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -67,7 +66,7 @@ class DeliveryReportTotals(WWReportBaseModel):
 class DeliveryReportResponse(WWReportBaseModel):
     """Response payload returned by the delivery report endpoint."""
 
-    items: List[DeliveryReportRow] = Field(
+    items: list[DeliveryReportRow] = Field(
         description="Delivery records matching the requested filters.",
     )
     totals: DeliveryReportTotals = Field(
@@ -114,7 +113,7 @@ class KMP4Order(WWReportBaseModel):
     updated_at: datetime = Field(
         description="Timestamp of the latest order change exported to KMP4.",
     )
-    items: List[KMP4OrderItem] = Field(
+    items: list[KMP4OrderItem] = Field(
         description="Order lines included in the export payload.",
     )
 
@@ -122,7 +121,7 @@ class KMP4Order(WWReportBaseModel):
 class KMP4ExportResponse(WWReportBaseModel):
     """Response containing orders serialized for KMP4."""
 
-    items: List[KMP4Order] = Field(
+    items: list[KMP4Order] = Field(
         description="Orders ready to be consumed by the KMP4 extension.",
     )
     total: int = Field(ge=0, description="Number of orders in the export payload.")

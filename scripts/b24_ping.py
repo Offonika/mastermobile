@@ -23,9 +23,8 @@ import sys
 from datetime import UTC, datetime, time, timedelta
 from pathlib import Path
 
-from dotenv import load_dotenv
-
 import httpx
+from dotenv import load_dotenv
 
 
 def load_environment() -> None:

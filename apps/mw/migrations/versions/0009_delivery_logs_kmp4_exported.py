@@ -11,7 +11,7 @@ down_revision = "0008_delivery_tables"
 branch_labels = None
 depends_on = None
 
-def _payload_type(bind: sa.engine.Connectable) -> sa.types.TypeEngine:
+def _payload_type(bind: sa.engine.Connection) -> sa.types.TypeEngine[object]:
     if bind.dialect.name == "postgresql":
         return postgresql.JSONB(astext_type=sa.Text())
     return sa.JSON()
@@ -80,6 +80,7 @@ def _downgrade_rows(connection: sa.engine.Connection) -> None:
 
 def upgrade() -> None:
     bind = op.get_bind()
+    assert isinstance(bind, sa.engine.Connection)
     _upgrade_rows(bind)
     op.alter_column(
         "delivery_logs",
@@ -93,6 +94,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     bind = op.get_bind()
+    assert isinstance(bind, sa.engine.Connection)
     op.alter_column(
         "delivery_logs",
         "payload",

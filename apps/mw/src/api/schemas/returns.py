@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -107,7 +106,7 @@ class Return(APIModel):
     )
     created_at: datetime = Field(description="When the return was created.")
     updated_at: datetime = Field(description="When the return was last updated.")
-    items: List[ReturnItem] = Field(
+    items: list[ReturnItem] = Field(
         description="Items included in the return.",
         min_length=1,
     )
@@ -153,7 +152,7 @@ class ReturnCreate(APIModel):
         default=None,
         description="Additional notes for operators.",
     )
-    items: List[ReturnCreateItem] = Field(
+    items: list[ReturnCreateItem] = Field(
         description="Items being returned.",
         min_length=1,
     )
@@ -162,7 +161,7 @@ class ReturnCreate(APIModel):
 class PaginatedReturns(APIModel):
     """Paginated collection of returns."""
 
-    items: List[Return] = Field(description="Page of returns.")
+    items: list[Return] = Field(description="Page of returns.")
     page: int = Field(ge=1, description="Current page number.")
     page_size: int = Field(ge=1, description="Number of items per page.")
     total_items: int = Field(ge=0, description="Total number of returns available.")

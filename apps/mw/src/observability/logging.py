@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import sys
-from contextlib import asynccontextmanager, contextmanager
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
+from contextlib import AbstractAsyncContextManager, asynccontextmanager, contextmanager
 from contextvars import ContextVar, Token
-from typing import Any, AsyncIterator, Callable, Iterator
+from typing import Any
 
 from fastapi import FastAPI
 from loguru import logger
@@ -84,8 +85,8 @@ def _mask_extra(extra: dict[str, Any]) -> dict[str, Any]:
     return {key: _mask_value(key, value) for key, value in extra.items()}
 
 
-def _build_patcher(settings: Settings):
-    def _patch(record: dict[str, Any]) -> None:
+def _build_patcher(settings: Settings) -> Callable[[Any], None]:
+    def _patch(record: Any) -> None:
         correlation_id = _correlation_id_var.get()
         record.setdefault("extra", {})
         record["extra"]["correlation_id"] = correlation_id
@@ -118,7 +119,9 @@ def configure_logging(*, sink: Any | None = None) -> None:
     )
 
 
-def create_logging_lifespan(*, sink: Any | None = None) -> Callable[[FastAPI], AsyncIterator[None]]:
+def create_logging_lifespan(
+    *, sink: Any | None = None
+) -> Callable[[FastAPI], AbstractAsyncContextManager[None]]:
     """Return a FastAPI lifespan context manager that initialises logging."""
 
     @asynccontextmanager
@@ -132,7 +135,11 @@ def create_logging_lifespan(*, sink: Any | None = None) -> Callable[[FastAPI], A
 class RequestContextMiddleware(BaseHTTPMiddleware):
     """Attach a correlation id to each request and logging context."""
 
-    async def dispatch(self, request: Request, call_next) -> Response:  # type: ignore[override]
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
         provisional_response = Response()
         request_id = provide_request_id(provisional_response, request.headers.get("X-Request-Id"))
         request.state.request_id = request_id

@@ -6,8 +6,8 @@ import pytest
 from fastapi import FastAPI, Response
 
 from apps.mw.src.observability.metrics import (
-    HTTP_REQUESTS_TOTAL,
     HTTP_REQUEST_DURATION_SECONDS,
+    HTTP_REQUESTS_TOTAL,
     RequestMetricsMiddleware,
 )
 

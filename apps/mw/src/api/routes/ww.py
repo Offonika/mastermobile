@@ -4,7 +4,7 @@ from __future__ import annotations
 import csv
 import io
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from datetime import datetime
 from typing import Annotated, Any, Literal
 from uuid import uuid4
@@ -51,6 +51,7 @@ from apps.mw.src.integrations.ww import (
     InvalidOrderStatusTransitionError,
     OrderAlreadyExistsError,
     OrderItemRecord,
+    OrderLogRecord,
     OrderNotFoundError,
     OrderStateMachine,
     WalkingWarehouseAssignmentRepository,
@@ -1092,7 +1093,7 @@ def list_order_logs(
     """Return stored status update log entries for the order."""
 
     try:
-        records = order_repository.list_logs(order_id)
+        records: Sequence[OrderLogRecord] = order_repository.list_logs(order_id)
     except OrderNotFoundError as exc:
         error = build_error(
             status.HTTP_404_NOT_FOUND,

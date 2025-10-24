@@ -9,8 +9,8 @@ import pytest
 from fastapi import UploadFile
 from starlette.datastructures import Headers
 
-from apps.mw.src.api.routes import chatkit as chatkit_routes
 from apps.mw.src.api.routers import chatkit as chatkit_router
+from apps.mw.src.api.routes import chatkit as chatkit_routes
 from apps.mw.src.config.settings import get_settings
 
 

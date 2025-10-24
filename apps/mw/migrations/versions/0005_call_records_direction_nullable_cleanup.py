@@ -1,8 +1,8 @@
 """Ensure call record direction and numbers are non-null enums."""
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "0005_call_records_direction_nullable_cleanup"

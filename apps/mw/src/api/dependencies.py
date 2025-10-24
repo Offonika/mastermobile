@@ -22,7 +22,7 @@ class ProblemDetailException(Exception):
 
 
 _RequestIdHeader = Annotated[str | None, Header(alias="X-Request-Id", max_length=128)]
-_IdempotencyKeyHeader = Annotated[str, Header(alias="Idempotency-Key", max_length=128)]
+_IdempotencyKeyHeader = Annotated[str | None, Header(alias="Idempotency-Key", max_length=128)]
 _PrincipalIdHeader = Annotated[str | None, Header(alias="X-Principal-Id", max_length=128)]
 _PrincipalRolesHeader = Annotated[
     str | None, Header(alias="X-Principal-Roles", max_length=512)
@@ -119,9 +119,9 @@ def provide_request_id(response: Response, request_id: _RequestIdHeader = None) 
 async def enforce_idempotency_key(
     request: Request,
     response: Response,
-    request_id: str = Depends(provide_request_id),
     idempotency_key: _IdempotencyKeyHeader = None,
-) -> str:
+    request_id: str = Depends(provide_request_id),
+) -> IdempotencyContext:
     """Validate and track idempotency keys for unsafe HTTP operations."""
 
     key = (idempotency_key or "").strip()

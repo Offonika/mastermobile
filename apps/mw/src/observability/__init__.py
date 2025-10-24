@@ -10,9 +10,9 @@ from .logging import (
 from .metrics import (
     HTTP_REQUEST_DURATION_SECONDS,
     HTTP_REQUESTS_TOTAL,
-    RequestMetricsMiddleware,
     STT_JOB_DURATION_SECONDS,
     STT_JOBS_TOTAL,
+    RequestMetricsMiddleware,
     register_metrics,
 )
 

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import Iterator
+from collections.abc import Iterator
 
 import pytest
 from sqlalchemy.orm import Session
 
 from apps.mw.src.db.repositories.transcripts import B24TranscriptRepository
+
 from .transcript_test_utils import make_call_record, transcript_session
 
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from fastapi import status
@@ -137,7 +137,7 @@ def test_admin_requeue_records_audit_event() -> None:
     redis = _FakeRedis()
     queue = STTQueue(redis)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(tz=UTC)
     with Session(engine) as session:
         export = CallExport(
             period_from=now,

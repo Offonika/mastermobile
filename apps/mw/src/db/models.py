@@ -12,7 +12,6 @@ from sqlalchemy import (
     BigInteger,
     CheckConstraint,
     DateTime,
-    Enum as SqlEnum,
     ForeignKey,
     Index,
     Integer,
@@ -21,6 +20,9 @@ from sqlalchemy import (
     Text,
     func,
     text,
+)
+from sqlalchemy import (
+    Enum as SqlEnum,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
@@ -525,7 +527,7 @@ class CallRecord(Base):
     )
 
     export: Mapped[CallExport] = relationship(back_populates="records")
-    transcript: Mapped["B24Transcript | None"] = relationship(
+    transcript: Mapped[B24Transcript | None] = relationship(
         back_populates="call_record",
         cascade="all, delete-orphan",
         uselist=False,
@@ -619,15 +621,15 @@ class Courier(Base):
         onupdate=func.now(),
     )
 
-    orders: Mapped[list["DeliveryOrder"]] = relationship(
+    orders: Mapped[list[DeliveryOrder]] = relationship(
         back_populates="courier",
         cascade="all, delete-orphan",
     )
-    assignments: Mapped[list["DeliveryAssignment"]] = relationship(
+    assignments: Mapped[list[DeliveryAssignment]] = relationship(
         back_populates="courier",
         cascade="all, delete-orphan",
     )
-    logs: Mapped[list["DeliveryLog"]] = relationship(back_populates="courier")
+    logs: Mapped[list[DeliveryLog]] = relationship(back_populates="courier")
 
 
 class DeliveryOrder(Base):
@@ -730,11 +732,11 @@ class DeliveryOrder(Base):
         back_populates="orders",
         lazy="joined",
     )
-    assignments: Mapped[list["DeliveryAssignment"]] = relationship(
+    assignments: Mapped[list[DeliveryAssignment]] = relationship(
         back_populates="order",
         cascade="all, delete-orphan",
     )
-    logs: Mapped[list["DeliveryLog"]] = relationship(
+    logs: Mapped[list[DeliveryLog]] = relationship(
         back_populates="order",
         cascade="all, delete-orphan",
     )
@@ -817,7 +819,7 @@ class DeliveryAssignment(Base):
 
     order: Mapped[DeliveryOrder] = relationship(back_populates="assignments")
     courier: Mapped[Courier] = relationship(back_populates="assignments")
-    logs: Mapped[list["DeliveryLog"]] = relationship(
+    logs: Mapped[list[DeliveryLog]] = relationship(
         back_populates="assignment",
         cascade="all, delete-orphan",
     )

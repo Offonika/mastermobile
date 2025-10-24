@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from loguru import logger
@@ -56,7 +56,11 @@ async def _fetch_page(
                     call_id=None,
                     attempt=attempt + 1,
                 ).debug("Received Bitrix24 call list page")
-                return response.json()
+                payload = response.json()
+                if not isinstance(payload, dict):
+                    msg = "Unexpected Bitrix24 payload"
+                    raise RuntimeError(msg)
+                return cast(dict[str, Any], payload)
             except ValueError as exc:  # pragma: no cover - defensive guard
                 raise RuntimeError("Unexpected Bitrix24 payload") from exc
 

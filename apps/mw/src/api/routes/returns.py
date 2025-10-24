@@ -28,7 +28,6 @@ PageSizeQuery = Annotated[
     int, Query(ge=1, le=100, description="Number of items per page.")
 ]
 IdempotencyDependency = Annotated[IdempotencyContext, Depends(enforce_idempotency_key)]
-IdempotencyKeyDependency = Annotated[str, Depends(enforce_idempotency_key)]
 
 router = APIRouter(
     prefix="/api/v1/returns",
@@ -236,7 +235,7 @@ async def update_return(
     payload: ReturnCreate,
     return_id: ReturnIdPath,
     session: SessionDependency,
-    _idempotency_key: IdempotencyKeyDependency,
+    _idempotency: IdempotencyDependency,
 ) -> Return:
     """Replace return fields and line items with supplied payload."""
 
@@ -295,7 +294,7 @@ async def delete_return(
     response: Response,
     return_id: ReturnIdPath,
     session: SessionDependency,
-    _idempotency_key: IdempotencyKeyDependency,
+    _idempotency: IdempotencyDependency,
 ) -> None:
     """Remove a return and all associated line items."""
 

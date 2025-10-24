@@ -5,16 +5,15 @@ from collections.abc import Callable
 from pathlib import Path
 from threading import Lock
 from time import perf_counter, sleep
+from urllib.parse import urlparse
+
 from loguru import logger
 from prometheus_client import start_http_server
 from sqlalchemy.orm import Session
 
-from urllib.parse import urlparse
-
 from apps.mw.src.config import Settings, get_settings
 from apps.mw.src.db.session import SessionLocal
 from apps.mw.src.observability import STT_JOB_DURATION_SECONDS, STT_JOBS_TOTAL
-from apps.mw.src.services.summarizer import CallSummarizer
 from apps.mw.src.services.stt_providers import (
     ProviderRouter,
     SpeechToTextProvider,
@@ -22,6 +21,7 @@ from apps.mw.src.services.stt_providers import (
     TranscriptionResult,
 )
 from apps.mw.src.services.stt_queue import DLQEntry, STTJob, STTQueue, create_redis_client
+from apps.mw.src.services.summarizer import CallSummarizer
 
 DEFAULT_MAX_RETRIES = 5
 DEFAULT_BACKOFF_SECONDS = 2.0

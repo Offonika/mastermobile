@@ -1,7 +1,7 @@
 """Service helpers for interacting with OpenAI ChatKit sessions."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from openai import OpenAI
 
@@ -32,7 +32,8 @@ def create_chatkit_session(workflow_id: str, *, settings: Settings | None = None
         raise ValueError("Workflow identifier must be a non-empty string.")
 
     client = _create_openai_client(settings)
-    session = client.chatkit.sessions.create({"workflow": {"id": workflow_id}})
+    chatkit = cast(Any, client).chatkit
+    session = chatkit.sessions.create({"workflow": {"id": workflow_id}})
 
     client_secret = getattr(session, "client_secret", None)
     if client_secret is None and isinstance(session, dict):

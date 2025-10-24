@@ -1,22 +1,23 @@
 """Repositories for the Walking Warehouse integration."""
 
+from .order_state_machine import (
+    InvalidOrderStatusTransitionError,
+    OrderStateMachine,
+)
 from .repositories import (
     AssignmentAlreadyExistsError,
     AssignmentNotFoundError,
-    InvalidAssignmentStatusTransitionError,
     CourierAlreadyExistsError,
     CourierNotFoundError,
+    InvalidAssignmentStatusTransitionError,
     OrderAlreadyExistsError,
     OrderItemRecord,
+    OrderLogRecord,
     OrderNotFoundError,
     OrderRecord,
     WalkingWarehouseAssignmentRepository,
     WalkingWarehouseCourierRepository,
     WalkingWarehouseOrderRepository,
-)
-from .order_state_machine import (
-    InvalidOrderStatusTransitionError,
-    OrderStateMachine,
 )
 
 __all__ = [
@@ -24,6 +25,7 @@ __all__ = [
     "CourierNotFoundError",
     "OrderAlreadyExistsError",
     "OrderItemRecord",
+    "OrderLogRecord",
     "OrderNotFoundError",
     "OrderRecord",
     "AssignmentAlreadyExistsError",

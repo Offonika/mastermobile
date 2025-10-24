@@ -1,7 +1,7 @@
 """System level API endpoints."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 
@@ -21,6 +21,6 @@ async def ping() -> Ping:
 
     return Ping(
         status="pong",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(tz=UTC),
         service="master-mobile-middleware",
     )

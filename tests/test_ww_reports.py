@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-import pytest
-import pytest_asyncio
-
 import httpx
+import pytest
+
+import pytest_asyncio
 from apps.mw.src.api.dependencies import reset_idempotency_cache
 from apps.mw.src.api.routes.ww import (
     get_courier_repository,
