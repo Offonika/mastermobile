@@ -2,15 +2,15 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Optional, cast
+from typing import Any, cast
 
+import httpx
 from loguru import logger
-from openai import OpenAI, OpenAIError
 
 __all__ = ["create_chatkit_service_session", "create_chatkit_session"]
 
 
-def _env(name: str, default: Optional[str] = None) -> Optional[str]:
+def _env(name: str, default: str | None = None) -> str | None:
     """Return a normalised environment value."""
 
     value = os.getenv(name, default)
