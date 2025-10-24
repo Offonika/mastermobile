@@ -111,7 +111,7 @@
 
 1. Скопируйте `.env.example` в `.env`, задайте доступы 1С/Bitrix24 и флаги Walking Warehouse (например, включение кнопки «Положить в рюкзак» и уведомлений).
 2. Поднимите окружение: `make init && make up`. Метрики FastAPI проверяются на `http://localhost:8000/metrics`; health-пинг — `http://localhost:8000/health`.
-3. Проверьте REST-контракт возвратов: `curl -H "X-Request-Id: doc-readme" http://localhost:8000/api/v1/returns` должен возвращать пагинированный список. Для CRUD сценариев используйте `tests/test_returns_api.py`.
+3. Проверьте REST-контракт возвратов: подготовьте JWT с ролью `1c` или `admin` (см. `JWT_SECRET`/`JWT_ISSUER` в `.env`). Выполните `curl -H "Authorization: Bearer $JWT_TOKEN" -H "X-Request-Id: doc-readme" http://localhost:8000/api/v1/returns` и убедитесь, что возвращается пагинированный список. Для CRUD сценариев используйте `tests/test_returns_api.py`.
 4. Запустите профильные тесты Walking Warehouse: `pytest tests/test_returns_api.py tests/test_db_models_returns.py` (или общий `make test`). Они подтверждают идемпотентность `/api/v1/returns`, ORM-схему и ограничения по причинам возврата.
 
 ### Docs linting
@@ -133,7 +133,7 @@
 ## API v1 — быстрые вызовы
 
 - `GET /api/v1/system/ping` — пинг сервисного слоя; заголовок `X-Request-Id` опционален (будет сгенерирован, если не передан).
-- `GET /api/v1/returns` — пагинированный список возвратов. Необязательные query-параметры: `page`, `page_size`.
+- `GET /api/v1/returns` — пагинированный список возвратов. Требует `Authorization: Bearer <JWT>` с ролью `1c` или `admin`; необязательные query-параметры: `page`, `page_size`.
 - `POST /api/v1/returns` — создание возврата. Требует `Idempotency-Key` (уникальный ≤128 символов) и желательно `X-Request-Id`.
 - `GET /api/v1/returns/{return_id}` — просмотр конкретного возврата.
 - `PUT /api/v1/returns/{return_id}` — полная замена возврата. Требует `Idempotency-Key` и рекомендуемый `X-Request-Id`.
@@ -144,6 +144,7 @@
 ```bash
 curl -X POST http://localhost:8000/api/v1/returns \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -H "Idempotency-Key: $(uuidgen)" \
   -H "X-Request-Id: $(uuidgen)" \
   -d '{
