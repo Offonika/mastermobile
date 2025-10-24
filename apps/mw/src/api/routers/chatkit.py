@@ -16,6 +16,7 @@ from apps.mw.src.integrations.openai import (
 from apps.mw.src.services.chatkit_state import mark_file_search_intent
 
 router = APIRouter(prefix="/api/v1/chatkit", tags=["chatkit"])
+__all__ = ["router"]
 
 
 class ChatkitSessionResponse(BaseModel):
@@ -39,15 +40,21 @@ class WidgetActionRequest(BaseModel):
         if not isinstance(data, dict):
             raise ValueError("Widget action payload must be an object.")
 
-        raw_type = data.get("type")
-        if isinstance(raw_type, str) and "." in raw_type and "name" not in data:
+        normalised = dict(data)
+
+        payload = normalised.get("payload", {})
+        if payload is None:
+            normalised["payload"] = {}
+        elif not isinstance(payload, dict):
+            raise ValueError("Widget action payload must be an object.")
+
+        raw_type = normalised.get("type")
+        if isinstance(raw_type, str) and "." in raw_type and "name" not in normalised:
             prefix, _, suffix = raw_type.partition(".")
             if prefix and suffix:
-                normalised = dict(data)
                 normalised["type"] = prefix
                 normalised["name"] = suffix
-                return normalised
-        return data
+        return normalised
 
     @model_validator(mode="after")
     def validate_tool_action(self) -> "WidgetActionRequest":

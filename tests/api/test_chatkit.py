@@ -131,3 +131,36 @@ async def test_widget_action_supports_legacy_tool_format(monkeypatch: pytest.Mon
     assert response.status_code == 200
     assert response.json() == {"ok": True, "awaiting_query": True}
     assert captured.get("identifier") == "session-xyz"
+
+
+@pytest.mark.asyncio
+async def test_widget_action_accepts_modern_tool_format(monkeypatch: pytest.MonkeyPatch) -> None:
+    """New-format tool actions with a separate name should be processed."""
+
+    captured: dict[str, str] = {}
+
+    def _mark(identifier: str) -> None:
+        captured["identifier"] = identifier
+
+    monkeypatch.setattr(
+        "apps.mw.src.api.routers.chatkit.mark_file_search_intent",
+        _mark,
+    )
+
+    payload = {
+        "type": "tool",
+        "name": "search-docs",
+        "payload": {"conversation_id": "conv-123"},
+    }
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url=BASE_URL) as client:
+        response = await client.post(
+            "/api/v1/chatkit/widget-action",
+            json=payload,
+            headers={"X-Request-Id": "req-widget-action-modern"},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "awaiting_query": True}
+    assert captured.get("identifier") == "conv-123"
