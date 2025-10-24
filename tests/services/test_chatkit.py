@@ -40,8 +40,10 @@ class _DummyRealtime:
         self.client_secrets = client_secrets
 
 
-class _DummyOpenAI:
-    """Record constructor kwargs and expose the realtime facade."""
+
+    def __enter__(self) -> _DummyClient:
+        return self
+
 
     def __init__(self, responses: list[Any], kwargs: dict[str, Any]):
         self.kwargs = kwargs
