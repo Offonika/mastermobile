@@ -36,6 +36,8 @@ def create_chatkit_service_session() -> str:
         "OpenAI-Beta": "chat-completions",
     }
 
+    model = _env("OPENAI_CHATKIT_MODEL") or "gpt-4o-mini"
+
     payload_variants: list[tuple[str, dict[str, Any]]] = [
         ("session.default_model", {"session": {"default_model": model}}),
         ("default_model", {"default_model": model}),

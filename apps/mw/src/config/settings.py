@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 from urllib.parse import urlsplit
 
 from pydantic import Field, model_validator
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     db_user: str = Field(default="postgres", alias="DB_USER")
     db_password: str = Field(default="postgres", alias="DB_PASSWORD")
     db_name: str = Field(default="mastermobile", alias="DB_NAME")
-    database_url: Optional[str] = Field(default=None, alias="DATABASE_URL")
+    database_url: str | None = Field(default=None, alias="DATABASE_URL")
 
     redis_host: str = Field(default="redis", alias="REDIS_HOST")
     redis_port: int = Field(default=6379, alias="REDIS_PORT")
@@ -44,8 +44,8 @@ class Settings(BaseSettings):
 
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
     openai_base_url: str = Field(default="https://api.openai.com/v1", alias="OPENAI_BASE_URL")
-    openai_project: Optional[str] = Field(default=None, alias="OPENAI_PROJECT")
-    openai_org: Optional[str] = Field(default=None, alias="OPENAI_ORG")
+    openai_project: str | None = Field(default=None, alias="OPENAI_PROJECT")
+    openai_org: str | None = Field(default=None, alias="OPENAI_ORG")
     openai_workflow_id: str = Field(default="", alias="OPENAI_WORKFLOW_ID")
     openai_vector_store_id: str = Field(default="", alias="OPENAI_VECTOR_STORE_ID")
     whisper_rate_per_min_usd: float = Field(
@@ -53,7 +53,7 @@ class Settings(BaseSettings):
         alias="WHISPER_RATE_PER_MIN_USD",
     )
     stt_default_engine: str = Field(default="stub", alias="STT_DEFAULT_ENGINE")
-    stt_default_language: Optional[str] = Field(default=None, alias="STT_DEFAULT_LANGUAGE")
+    stt_default_language: str | None = Field(default=None, alias="STT_DEFAULT_LANGUAGE")
     stt_openai_model: str = Field(default="whisper-1", alias="STT_OPENAI_MODEL")
     stt_openai_enabled: bool = Field(default=False, alias="STT_OPENAI_ENABLED")
     stt_local_enabled: bool = Field(default=False, alias="STT_LOCAL_ENABLED")
@@ -67,19 +67,19 @@ class Settings(BaseSettings):
         default="Формат записи не распознан. Попробуйте WAV/MP3/M4A.",
         alias="STT_ERROR_HINT_422",
     )
-    local_stt_url: Optional[str] = Field(default=None, alias="LOCAL_STT_URL")
-    local_stt_api_key: Optional[str] = Field(default=None, alias="LOCAL_STT_API_KEY")
-    chatgpt_proxy_url: Optional[str] = Field(default=None, alias="CHATGPT_PROXY_URL")
+    local_stt_url: str | None = Field(default=None, alias="LOCAL_STT_URL")
+    local_stt_api_key: str | None = Field(default=None, alias="LOCAL_STT_API_KEY")
+    chatgpt_proxy_url: str | None = Field(default=None, alias="CHATGPT_PROXY_URL")
 
     storage_backend: Literal["local", "s3"] = Field(
         default="local",
         alias="STORAGE_BACKEND",
     )
-    s3_endpoint_url: Optional[str] = Field(default=None, alias="S3_ENDPOINT_URL")
-    s3_region: Optional[str] = Field(default=None, alias="S3_REGION")
-    s3_bucket: Optional[str] = Field(default=None, alias="S3_BUCKET")
-    s3_access_key_id: Optional[str] = Field(default=None, alias="S3_ACCESS_KEY_ID")
-    s3_secret_access_key: Optional[str] = Field(default=None, alias="S3_SECRET_ACCESS_KEY")
+    s3_endpoint_url: str | None = Field(default=None, alias="S3_ENDPOINT_URL")
+    s3_region: str | None = Field(default=None, alias="S3_REGION")
+    s3_bucket: str | None = Field(default=None, alias="S3_BUCKET")
+    s3_access_key_id: str | None = Field(default=None, alias="S3_ACCESS_KEY_ID")
+    s3_secret_access_key: str | None = Field(default=None, alias="S3_SECRET_ACCESS_KEY")
     local_storage_dir: str = Field(default="/app/storage", alias="LOCAL_STORAGE_DIR")
     raw_recording_retention_days: int = Field(
         default=90,
@@ -115,15 +115,15 @@ class Settings(BaseSettings):
 
     # --- Shim для обратной совместимости со старым кодом ---
     @property
-    def OPENAI_API_KEY(self) -> Optional[str]:
+    def OPENAI_API_KEY(self) -> str | None:
         return self.openai_api_key
 
     @property
-    def OPENAI_WORKFLOW_ID(self) -> Optional[str]:
+    def OPENAI_WORKFLOW_ID(self) -> str | None:
         return self.openai_workflow_id
 
     @property
-    def CORS_ORIGINS(self) -> Optional[str]:
+    def CORS_ORIGINS(self) -> str | None:
         return self.cors_origins
 
     @model_validator(mode="before")
