@@ -93,6 +93,7 @@ def create_chatkit_service_session() -> str:
 
     model = _resolve_model()
 
+
     with httpx.Client(timeout=20.0) as http:
         completion_id = _create_minimal_completion(
             http,
