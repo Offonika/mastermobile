@@ -51,11 +51,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             storage_service=storage_service,
             settings=settings,
         )
-        cleanup_task = asyncio.create_task(
-            cleanup_runner.run_periodic(), name="storage-cleanup"
-        )
         app.state.storage_cleanup_runner = cleanup_runner
-        app.state.storage_cleanup_task = cleanup_task
+        if cleanup_runner.is_enabled:
+            cleanup_task = asyncio.create_task(
+                cleanup_runner.run_periodic(), name="storage-cleanup"
+            )
+            app.state.storage_cleanup_task = cleanup_task
+        else:
+            app.state.storage_cleanup_task = None
 
         try:
             yield

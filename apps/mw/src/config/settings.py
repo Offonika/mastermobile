@@ -96,10 +96,10 @@ class Settings(BaseSettings):
         alias="SUMMARY_RETENTION_DAYS",
         ge=0,
     )
-    storage_cleanup_interval_hours: int = Field(
-        default=24,
+    storage_cleanup_interval_hours: float = Field(
+        default=24.0,
         alias="STORAGE_CLEANUP_INTERVAL_HOURS",
-        ge=1,
+        ge=0.0,
     )
 
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")

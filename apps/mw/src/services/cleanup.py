@@ -22,10 +22,32 @@ class StorageCleanupRunner:
     ) -> None:
         self._settings = settings or get_settings()
         self._storage = storage_service or StorageService(settings=self._settings)
-        self._interval_seconds = max(1, int(self._settings.storage_cleanup_interval_hours * 3600))
+        interval_hours = float(self._settings.storage_cleanup_interval_hours)
+        if interval_hours <= 0:
+            self._interval_seconds: int | None = None
+        else:
+            self._interval_seconds = max(1, int(interval_hours * 3600))
+
+    @property
+    def interval_seconds(self) -> int | None:
+        """Return the configured sleep interval in seconds or ``None`` when disabled."""
+
+        return self._interval_seconds
+
+    @property
+    def is_enabled(self) -> bool:
+        """Whether the periodic cleanup loop is allowed to run."""
+
+        return self._interval_seconds is not None
 
     async def run_periodic(self) -> None:
         """Run the cleanup loop until the task is cancelled."""
+
+        if not self.is_enabled:
+            logger.info("Storage cleanup runner disabled; skipping periodic execution")
+            return
+
+        assert self._interval_seconds is not None  # for type checkers
 
         while True:
             await self._run_once_with_logging()
