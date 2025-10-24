@@ -81,6 +81,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ChatkitSession'
+              examples:
+                success:
+                  summary: Session issued for the widget
+                  value:
+                    client_secret: cs_live_a1b2c3d4e5f6
           headers:
             X-Request-Id:
               $ref: '#/components/headers/XRequestId'
@@ -118,6 +123,22 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ChatkitWidgetActionRequest'
+            examples:
+              modern:
+                summary: Modern widget action with explicit tool name
+                value:
+                  type: tool
+                  name: search-docs
+                  payload:
+                    thread_id: thread_123
+                    query: 'Return policy for accessories'
+              legacy:
+                summary: Legacy widget action encoding the tool name in type
+                value:
+                  type: tool.search-docs
+                  payload:
+                    conversation_id: convo_456
+                    query: 'Warranty terms for smartphones'
       responses:
         '200':
           description: Widget action acknowledgement.
@@ -125,6 +146,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ChatkitWidgetActionResponse'
+              examples:
+                acknowledgement:
+                  summary: Generic acknowledgement
+                  value:
+                    ok: true
+                awaitingQuery:
+                  summary: Widget should prompt the user for a follow-up query
+                  value:
+                    ok: true
+                    awaiting_query: true
           headers:
             X-Request-Id:
               $ref: '#/components/headers/XRequestId'
@@ -1276,12 +1307,21 @@ components:
           example: cs_live_a1b2c3d4e5f6
     ChatkitWidgetActionRequest:
       type: object
+      description: |
+        ChatKit widget actions support two payload formats.
+
+        - **Modern format** — the `type` field contains a high-level category (for example, `tool`)
+          and the `name` field specifies the tool identifier (for example, `search-docs`).
+        - **Legacy format** — the `type` field encodes both values separated by a dot
+          (for example, `tool.search-docs`).
+
+        Both formats share the same payload envelope and are accepted by the middleware.
       required:
         - type
       properties:
         type:
           type: string
-          description: High-level action category produced by the ChatKit widget.
+          description: Action category or legacy identifier produced by the ChatKit widget.
           example: tool
         name:
           type: string
