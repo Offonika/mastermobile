@@ -28,14 +28,12 @@ async def test_widget_session_returns_fixed_secret(monkeypatch: pytest.MonkeyPat
     """ChatKit widget session endpoint returns the client secret from the service."""
 
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setenv("OPENAI_WORKFLOW_ID", "workflow-123")
     monkeypatch.setattr(
-
-        "apps.mw.src.api.routes.chatkit.create_chatkit_service_session",
-        lambda workflow_id: "client-secret-abc",
+        "apps.mw.src.api.routers.chatkit.create_chatkit_service_session",
+        lambda: "client-secret-abc",
     )
 
-    response = await chatkit_routes.create_chatkit_session(request_id="req-chatkit-session")
+    response = await chatkit_router.create_chatkit_session(request_id="req-chatkit-session")
 
 
     assert response.client_secret == "client-secret-abc"

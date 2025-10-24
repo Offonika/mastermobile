@@ -3,16 +3,14 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
+import httpx
 from fastapi import APIRouter, Depends, Header, status
 from loguru import logger
-from openai import OpenAIError
 from pydantic import BaseModel, Field, model_validator
 
 from apps.mw.src.api.dependencies import ProblemDetailException, build_error, provide_request_id
 from apps.mw.src.config import Settings, get_settings
-from apps.mw.src.services.chatkit import (
-    create_chatkit_session as create_chatkit_service_session,
-)
+from apps.mw.src.services.chatkit import create_chatkit_service_session
 from apps.mw.src.services.chatkit_state import mark_awaiting_query
 
 router = APIRouter(prefix="/api/v1/chatkit", tags=["chatkit"])
@@ -132,12 +130,12 @@ async def create_chatkit_session(
     _ensure_configuration(
         settings,
         request_id,
-        required=("openai_api_key", "openai_workflow_id"),
+        required=("openai_api_key",),
     )
 
     try:
-        client_secret = create_chatkit_service_session(settings.openai_workflow_id)
-    except OpenAIError as exc:
+        client_secret = create_chatkit_service_session()
+    except httpx.HTTPError as exc:
         logger.bind(request_id=request_id).exception("Failed to create ChatKit session")
         raise ProblemDetailException(
             build_error(
@@ -148,7 +146,7 @@ async def create_chatkit_session(
                 type_="https://api.mastermobile.app/errors/openai",
             )
         ) from exc
-    except ValueError as exc:
+    except RuntimeError as exc:
         logger.bind(request_id=request_id).error(
             "OpenAI ChatKit response did not include a client secret",
         )

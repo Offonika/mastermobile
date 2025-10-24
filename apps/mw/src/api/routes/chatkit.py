@@ -5,15 +5,13 @@ from collections.abc import Sequence
 from io import BytesIO
 from typing import TYPE_CHECKING, Annotated, Any, cast
 
-import httpx
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from loguru import logger
 from openai import OpenAIError
 
 from apps.mw.src.api.dependencies import ProblemDetailException, build_error, provide_request_id
-from apps.mw.src.api.schemas import ChatkitSession, VectorStoreMetadata, VectorStoreUploadResponse
+from apps.mw.src.api.schemas import VectorStoreMetadata, VectorStoreUploadResponse
 from apps.mw.src.config import Settings, get_settings
-from apps.mw.src.services.chatkit import create_chatkit_session as create_chatkit_service_session
 
 if TYPE_CHECKING:
     from openai import OpenAI
@@ -61,51 +59,6 @@ def _create_openai_client(settings: Settings) -> OpenAI:
     if settings.openai_project:
         client_kwargs["project"] = settings.openai_project
     return OpenAI(**client_kwargs)
-
-
-@router.post(
-    "/chatkit/session",
-    response_model=ChatkitSession,
-    status_code=status.HTTP_200_OK,
-    summary="Create a ChatKit session",
-)
-async def create_chatkit_session(
-    request_id: Annotated[str, Depends(provide_request_id)]
-) -> ChatkitSession:
-    """Create a ChatKit session using the configured workflow identifier."""
-
-    settings = get_settings()
-    _ensure_configuration(settings, request_id, require=("openai_api_key", "openai_workflow_id"))
-
-    try:
-        client_secret = create_chatkit_service_session(settings.openai_workflow_id)
-    except (OpenAIError, httpx.HTTPError) as exc:
-        logger.bind(request_id=request_id).exception("Failed to create OpenAI ChatKit session")
-        raise ProblemDetailException(
-            build_error(
-                status.HTTP_502_BAD_GATEWAY,
-                title="ChatKit session creation failed",
-                detail="OpenAI ChatKit API request failed.",
-                request_id=request_id,
-                type_="https://api.mastermobile.app/errors/openai",
-            )
-        ) from exc
-    except ValueError as exc:
-        logger.bind(request_id=request_id).error(
-            "OpenAI ChatKit session response is missing client secret",
-        )
-        raise ProblemDetailException(
-            build_error(
-                status.HTTP_502_BAD_GATEWAY,
-                title="ChatKit session creation failed",
-                detail=str(exc),
-                request_id=request_id,
-                type_="https://api.mastermobile.app/errors/openai",
-            )
-        ) from exc
-
-    logger.bind(request_id=request_id).info("Created OpenAI ChatKit session")
-    return ChatkitSession(client_secret=client_secret)
 
 
 @router.post(

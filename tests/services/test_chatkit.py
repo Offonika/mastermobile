@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 from openai import OpenAIError
 
-from apps.mw.src.services.chatkit import create_chatkit_session
+from apps.mw.src.services.chatkit import create_chatkit_service_session
 
 
 @dataclass
@@ -45,6 +45,22 @@ class _DummyRealtime:
         return self
 
 
+    def __exit__(self, exc_type, exc, tb) -> None:  # pragma: no cover - no cleanup required
+        return None
+
+    def post(self, url: str, *, headers: dict[str, str], json: dict[str, object]) -> httpx.Response:
+        self._attempts.append((url, headers, json))
+        return httpx.Response(
+            200,
+            request=httpx.Request("POST", url),
+            json={"client_secret": {"value": "secret-123"}},
+        )
+
+
+def test_create_chatkit_service_session_uses_chat_completions_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Service should call the chat completions sessions endpoint with model only."""
+
+
     def __init__(self, responses: list[Any], kwargs: dict[str, Any]):
         self.kwargs = kwargs
         self.closed = False
@@ -73,16 +89,8 @@ def _reset_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENAI_CHATKIT_MODEL", raising=False)
     monkeypatch.delenv("OPENAI_CHATKIT_VOICE", raising=False)
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setenv("OPENAI_WORKFLOW_ID", "wf_default")
-    monkeypatch.delenv("OPENAI_BETA_HEADER", raising=False)
-    monkeypatch.delenv("OPENAI_ORG", raising=False)
-    monkeypatch.delenv("OPENAI_PROJECT", raising=False)
-
-
-def _patch_openai(monkeypatch: pytest.MonkeyPatch, responses: list[Any]) -> _OpenAIFactory:
-    factory = _OpenAIFactory(responses)
-    monkeypatch.setattr("apps.mw.src.services.chatkit.OpenAI", factory)
-    return factory
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+    monkeypatch.delenv("OPENAI_CHATKIT_MODEL", raising=False)
 
 
 def test_create_chatkit_session_uses_model_override(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -90,10 +98,9 @@ def test_create_chatkit_session_uses_model_override(monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setenv("OPENAI_CHATKIT_MODEL", "gpt-4o-realtime-preview")
 
-    responses = [_DummyClientSecretResponse("secret-123")]
-    factory = _patch_openai(monkeypatch, responses)
 
-    secret = create_chatkit_session("wf_legacy")
+    secret = create_chatkit_service_session()
+
 
     assert secret == "secret-123"
     assert factory.instances, "Expected OpenAI client to be instantiated"
@@ -157,5 +164,12 @@ def test_create_chatkit_session_raises_when_openai_errors(monkeypatch: pytest.Mo
     with pytest.raises(OpenAIError):
         create_chatkit_session("wf_failure")
 
-    # Ensure at least one attempt was made before raising
-    assert factory.instances[0].realtime.client_secrets.calls
+    first_url, first_headers, first_payload = attempts[0]
+    assert first_url == "https://api.openai.com/v1/chat/completions/sessions"
+    assert first_headers == {
+        "Authorization": "Bearer test-key",
+        "Content-Type": "application/json",
+        "OpenAI-Beta": "chat-completions",
+    }
+    assert first_payload == {"model": "gpt-4o-mini"}
+
