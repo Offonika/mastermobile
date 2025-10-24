@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Annotated, Any
 
 import httpx
-from fastapi import APIRouter, Depends, Header, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from loguru import logger
 from pydantic import BaseModel, Field, model_validator
 
@@ -12,6 +12,11 @@ from apps.mw.src.api.dependencies import ProblemDetailException, build_error, pr
 from apps.mw.src.config import Settings, get_settings
 from apps.mw.src.services.chatkit import create_chatkit_service_session
 from apps.mw.src.services.chatkit_state import mark_awaiting_query
+from apps.mw.src.services.state import build_store
+
+RATE_LIMIT_MAX_REQUESTS = 5
+RATE_LIMIT_WINDOW_SECONDS = 10
+_RATE_LIMIT_STORE = build_store("chatkit:rate-limit")
 
 router = APIRouter(prefix="/api/v1/chatkit", tags=["chatkit"])
 __all__ = ["router"]
@@ -79,6 +84,15 @@ def _extract_conversation_identifier(payload: dict[str, Any]) -> str | None:
         if isinstance(value, str) and value.strip():
             return value.strip()
     return None
+
+
+def _rate_limit_key(identifier: str | None, client_ip: str | None) -> str:
+    """Return a deduplicated key for rate limiting."""
+
+    safe_ip = (client_ip or "").strip() or "unknown"
+    if identifier:
+        return f"{identifier}:{safe_ip}"
+    return f"ip:{safe_ip}"
 
 
 def _ensure_configuration(settings: Settings, request_id: str, *, required: tuple[str, ...]) -> None:
@@ -162,6 +176,7 @@ async def create_chatkit_session(
     summary="Accept actions emitted by the widget",
 )
 async def handle_widget_action(
+    request: Request,
     action: WidgetActionRequest,
     request_id: str = Depends(provide_request_id),
     thread_id: Annotated[str | None, Header(alias="x-chatkit-thread-id")] = None,
@@ -169,6 +184,26 @@ async def handle_widget_action(
     """Acknowledge widget actions to keep the integration responsive."""
 
     bound_logger = logger.bind(request_id=request_id)
+    client_ip = request.client.host if request.client else None
+    conversation_identifier = thread_id or _extract_conversation_identifier(action.payload)
+    rate_limit_key = _rate_limit_key(conversation_identifier, client_ip)
+
+    current_count = _RATE_LIMIT_STORE.increment(
+        rate_limit_key,
+        ttl=RATE_LIMIT_WINDOW_SECONDS,
+    )
+    if current_count > RATE_LIMIT_MAX_REQUESTS:
+        bound_logger.warning(
+            "ChatKit widget action rate limited",
+            identifier=conversation_identifier,
+            client_ip=client_ip,
+            count=current_count,
+        )
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="rate limit",
+        )
+
     tool_name = resolve_tool(action)
 
     bound_logger.info(
@@ -187,12 +222,11 @@ async def handle_widget_action(
         return WidgetActionResponse(ok=False)
 
     if tool_name == "search-docs":
-        identifier = thread_id or _extract_conversation_identifier(action.payload)
-        if identifier:
-            mark_awaiting_query(identifier)
+        if conversation_identifier:
+            mark_awaiting_query(conversation_identifier)
             bound_logger.debug(
                 "Marked conversation as awaiting file search query",
-                conversation_id=identifier,
+                conversation_id=conversation_identifier,
             )
         else:
             bound_logger.warning(
@@ -202,3 +236,4 @@ async def handle_widget_action(
         return WidgetActionResponse(awaiting_query=True)
 
     return WidgetActionResponse()
+
