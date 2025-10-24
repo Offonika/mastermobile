@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from loguru import logger
@@ -12,6 +12,9 @@ from apps.mw.src.api.dependencies import ProblemDetailException, build_error, pr
 from apps.mw.src.api.schemas import ChatkitSession, VectorStoreMetadata, VectorStoreUploadResponse
 from apps.mw.src.config import Settings, get_settings
 from apps.mw.src.services.chatkit import create_chatkit_session as create_chatkit_service_session
+
+if TYPE_CHECKING:
+    from openai import OpenAI
 
 _ALLOWED_CONTENT_TYPES = {
     "application/pdf",
@@ -45,7 +48,7 @@ def _ensure_configuration(settings: Settings, request_id: str | None, *, require
         _raise_missing_configuration(request_id, missing)
 
 
-def _create_openai_client(settings: Settings) -> "OpenAI":
+def _create_openai_client(settings: Settings) -> OpenAI:
     from openai import OpenAI
 
     client_kwargs: dict[str, Any] = {"api_key": settings.openai_api_key}
@@ -64,7 +67,9 @@ def _create_openai_client(settings: Settings) -> "OpenAI":
     status_code=status.HTTP_200_OK,
     summary="Create a ChatKit session",
 )
-async def create_chatkit_session(request_id: str = Depends(provide_request_id)) -> ChatkitSession:
+async def create_chatkit_session(
+    request_id: Annotated[str, Depends(provide_request_id)]
+) -> ChatkitSession:
     """Create a ChatKit session using the configured workflow identifier."""
 
     settings = get_settings()
@@ -95,7 +100,7 @@ async def create_chatkit_session(request_id: str = Depends(provide_request_id)) 
                 request_id=request_id,
                 type_="https://api.mastermobile.app/errors/openai",
             )
-        )
+        ) from exc
 
     logger.bind(request_id=request_id).info("Created OpenAI ChatKit session")
     return ChatkitSession(client_secret=client_secret)
@@ -108,13 +113,14 @@ async def create_chatkit_session(request_id: str = Depends(provide_request_id)) 
     summary="Upload a document to the vector store",
 )
 async def upload_to_vector_store(
-    file: UploadFile = File(...),
-    title: str | None = Form(None),
-    dept: str | None = Form(None),
-    version: str | None = Form(None),
-    updated_at: str | None = Form(None),
-    source: str = Form("manual"),
-    request_id: str = Depends(provide_request_id),
+    file: Annotated[UploadFile, File(...)],
+    title: Annotated[str | None, Form()] = None,
+    dept: Annotated[str | None, Form()] = None,
+    version: Annotated[str | None, Form()] = None,
+    updated_at: Annotated[str | None, Form()] = None,
+    source: Annotated[str, Form()] = "manual",
+    *,
+    request_id: Annotated[str, Depends(provide_request_id)],
 ) -> VectorStoreUploadResponse:
     """Upload a document and its metadata to the configured OpenAI vector store."""
 

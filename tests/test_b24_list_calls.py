@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
-import httpx
 import pytest
+import respx
 
+import httpx
 from apps.mw.src.config.settings import get_settings
 from apps.mw.src.integrations.b24 import list_calls
 
@@ -35,7 +36,7 @@ def sleep_mock(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
 
 
 @pytest.mark.asyncio
-async def test_list_calls_paginates_and_propagates_filters(respx_mock: "respx.MockRouter", sleep_mock: AsyncMock) -> None:
+async def test_list_calls_paginates_and_propagates_filters(respx_mock: respx.MockRouter, sleep_mock: AsyncMock) -> None:
     """The helper fetches subsequent pages and forwards the filters to Bitrix24."""
 
     url = "https://example.bitrix24.ru/rest/1/token/voximplant.statistic.get.json"
@@ -65,7 +66,7 @@ async def test_list_calls_paginates_and_propagates_filters(respx_mock: "respx.Mo
 
 
 @pytest.mark.asyncio
-async def test_list_calls_retries_on_rate_limit(respx_mock: "respx.MockRouter", sleep_mock: AsyncMock) -> None:
+async def test_list_calls_retries_on_rate_limit(respx_mock: respx.MockRouter, sleep_mock: AsyncMock) -> None:
     """HTTP 429 triggers exponential backoff and a retry."""
 
     url = "https://example.bitrix24.ru/rest/1/token/voximplant.statistic.get.json"
@@ -87,7 +88,7 @@ async def test_list_calls_retries_on_rate_limit(respx_mock: "respx.MockRouter", 
 
 
 @pytest.mark.asyncio
-async def test_list_calls_raises_after_exhausting_retries(respx_mock: "respx.MockRouter", sleep_mock: AsyncMock) -> None:
+async def test_list_calls_raises_after_exhausting_retries(respx_mock: respx.MockRouter, sleep_mock: AsyncMock) -> None:
     """The helper retries on 5xx and raises after the configured limit."""
 
     url = "https://example.bitrix24.ru/rest/1/token/voximplant.statistic.get.json"

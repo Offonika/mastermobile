@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+from typing import Annotated
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Path, Query, Response, status
@@ -19,6 +20,15 @@ from apps.mw.src.api.schemas import Error, PaginatedReturns, Return, ReturnCreat
 from apps.mw.src.db.models import Return as ReturnModel
 from apps.mw.src.db.models import ReturnLine as ReturnLineModel
 from apps.mw.src.db.session import get_session
+
+SessionDependency = Annotated[Session, Depends(get_session)]
+ReturnIdPath = Annotated[UUID, Path(..., description="Identifier of the return.")]
+PageQuery = Annotated[int, Query(ge=1, description="Page number to return.")]
+PageSizeQuery = Annotated[
+    int, Query(ge=1, le=100, description="Number of items per page.")
+]
+IdempotencyDependency = Annotated[IdempotencyContext, Depends(enforce_idempotency_key)]
+IdempotencyKeyDependency = Annotated[str, Depends(enforce_idempotency_key)]
 
 router = APIRouter(
     prefix="/api/v1/returns",
@@ -68,9 +78,10 @@ def _serialize_return(model: ReturnModel) -> Return:
     },
 )
 def list_returns(
-    page: int = Query(1, ge=1, description="Page number to return."),
-    page_size: int = Query(20, ge=1, le=100, description="Number of items per page."),
-    session: Session = Depends(get_session),
+    page: PageQuery = 1,
+    page_size: PageSizeQuery = 20,
+    *,
+    session: SessionDependency,
 ) -> PaginatedReturns:
     """Return a paginated list of stored returns."""
 
@@ -121,8 +132,8 @@ def _allocate_line_ids(session: Session, count: int) -> list[int | None]:
 async def create_return(
     payload: ReturnCreate,
     response: Response,
-    session: Session = Depends(get_session),
-    idempotency: IdempotencyContext = Depends(enforce_idempotency_key),
+    session: SessionDependency,
+    idempotency: IdempotencyDependency,
 ) -> Return:
     """Persist a new return document together with its line items."""
 
@@ -192,8 +203,8 @@ async def create_return(
 )
 def get_return(
     response: Response,
-    return_id: UUID = Path(..., description="Identifier of the return."),
-    session: Session = Depends(get_session),
+    return_id: ReturnIdPath,
+    session: SessionDependency,
 ) -> Return:
     """Fetch a single return by its identifier."""
 
@@ -223,9 +234,9 @@ def get_return(
 async def update_return(
     response: Response,
     payload: ReturnCreate,
-    return_id: UUID = Path(..., description="Identifier of the return."),
-    session: Session = Depends(get_session),
-    _idempotency_key: str = Depends(enforce_idempotency_key),
+    return_id: ReturnIdPath,
+    session: SessionDependency,
+    _idempotency_key: IdempotencyKeyDependency,
 ) -> Return:
     """Replace return fields and line items with supplied payload."""
 
@@ -282,9 +293,9 @@ async def update_return(
 )
 async def delete_return(
     response: Response,
-    return_id: UUID = Path(..., description="Identifier of the return."),
-    session: Session = Depends(get_session),
-    _idempotency_key: str = Depends(enforce_idempotency_key),
+    return_id: ReturnIdPath,
+    session: SessionDependency,
+    _idempotency_key: IdempotencyKeyDependency,
 ) -> None:
     """Remove a return and all associated line items."""
 
