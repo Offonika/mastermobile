@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from io import BytesIO
 from typing import TYPE_CHECKING, Annotated, Any, cast
 
+import httpx
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from loguru import logger
 from openai import OpenAIError
@@ -78,7 +79,7 @@ async def create_chatkit_session(
 
     try:
         client_secret = create_chatkit_service_session(settings.openai_workflow_id)
-    except OpenAIError as exc:
+    except (OpenAIError, httpx.HTTPError) as exc:
         logger.bind(request_id=request_id).exception("Failed to create OpenAI ChatKit session")
         raise ProblemDetailException(
             build_error(
