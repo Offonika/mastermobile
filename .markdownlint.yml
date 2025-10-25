@@ -5,12 +5,17 @@
 # Enable all default rules, then selectively customize exceptions.
 default: true
 
-# Allow long lines in tables and code examples.
-MD013:
-  line_length: 120
-  heading_line_length: 120
-  code_block_line_length: 120
-  tables: false
+# Allow long narrative lines in legacy documents without forcing artificial wrapping.
+MD013: false
+
+# Preserve historical formatting that relies on intentional spacing and compact headings.
+MD007: false
+MD012: false
+MD022: false
+MD029: false
+MD031: false
+MD032: false
+MD058: false
 
 # Permit inline HTML for diagrams and complex embeds.
 MD033: false
