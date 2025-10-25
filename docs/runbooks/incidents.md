@@ -51,7 +51,7 @@
 - Добавить сценарии воспроизведения в `docs/testing/strategy.md` и ошибки в `error_catalog.json`.
 
 ## Шаблон отчёта
-```
+```text
 Инцидент: INC-YYYYMMDD-XX
 SEV: 1/2/3
 Время обнаружения: HH:MM TZ

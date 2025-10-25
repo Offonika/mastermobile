@@ -11,6 +11,7 @@
 Назначение. Единая «шина» правил и ссылочный пакет для двух проектов — «Ходячий рюкзак» (мобильная доставка и возвраты) и «Core Sync» (единый обмен 1С ↔ middleware). Документ фиксирует общий стиль API, словари статусов, версионирование, источники истины (SoT), цельную ER‑модель и ворота релизов. Все продуктовые PRD/SRS ссылаются на данный документ и не дублируют его содержимое.
 
 ### Version Map (на 03.10.2025)
+
 | Поток | PRD | SRS | Привязки |
 | --- | --- | --- | --- |
 | Core Sync (1С↔MW) | v1.1.2 (18.09.2025) | v1.0.3 (27.09.2025) | 00‑Core v1.3.7, API‑Contracts v1.1.0, ER Freeze v0.6.4, SoT Matrix update 03.10.2025 (возвраты = 1С) |
@@ -66,6 +67,7 @@ Content-Type: application/json; charset=utf-8. Accept: application/json.
 
 
 Пример deprecation‑ответа:
+```json
 {
   "deprecation": {
     "sunset": "2026-03-31T00:00:00Z",
@@ -73,10 +75,12 @@ Content-Type: application/json; charset=utf-8. Accept: application/json.
     "notes": "Field `payment_type` will be removed; use `tenders[]`."
   }
 }
+```
 
 2.3. Формат ошибок
 Ответы об ошибках возвращаются с `Content-Type: application/problem+json` и соответствуют RFC 7807.
 Минимальный набор полей v1.0.0:
+```json
 {
   "type": "https://api.mastermobile.app/errors/validation",
   "title": "Validation failed",
@@ -85,6 +89,7 @@ Content-Type: application/json; charset=utf-8. Accept: application/json.
   "errors": [{"field": "items[0].sku", "message": "Required field"}],
   "request_id": "7b1c9945-70ab-4170-9c7e-4d6e9de5a0f9"
 }
+```
 
 Поля `type`, `title`, `status`, `detail` и `request_id` обязательны; `errors[]` используется для детальной валидации. Поля `code` и `instance` в текущем контракте отсутствуют.
 
@@ -295,11 +300,13 @@ Active monitoring: алерты по недоступности API, росту 
 
 12. Примеры и шаблоны
 12.1. cURL — подписанный вебхук
+```bash
 X_TS=$(date -u +%s)
 SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$SECRET" -binary | xxd -p -c 256)
 curl -X POST https://mw.example.com/v1/webhooks \
   -H "X-Timestamp: $X_TS" -H "X-Webhook-Signature: sha256=$SIG" \
   -H "Idempotency-Key: $UUID" -d "$BODY"
+```
 
 12.2. Retry‑расписание вебхуков: 1м → 5м → 15м → 1ч → 3ч → 12ч (далее DLQ).
  12.3. Нейминг метрик Prometheus: mw_http_request_duration_seconds{route,method}, mw_http_requests_total{status}, mw_webhook_delivery_latency_seconds{system}, mw_integration_failures_total{system,code}.

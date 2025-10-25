@@ -35,7 +35,7 @@
 | **FAILED** | manager | ON_ROUTE · DELIVERED | — | Нарушение SLA, требуется ручная обработка. |
 | **REFUSED** | manager | READY | — | Отказ клиента/менеджера; заменяет устаревший `CANCELLED`. |
 
-**Устаревшие статусы**
+#### Устаревшие статусы
 
 - `CANCELLED` — заменён на `REFUSED`; в `status_dict` помечается `deprecated=true`.
 - `NON_CASH_CONFIRMED` — закрывается статусом `DONE`.
