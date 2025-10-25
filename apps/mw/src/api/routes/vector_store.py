@@ -1,4 +1,4 @@
-"""Routes integrating with OpenAI ChatKit and vector store APIs."""
+"""Routes integrating with the OpenAI vector store API."""
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -22,7 +22,7 @@ _ALLOWED_CONTENT_TYPES = {
     "application/msword",
 }
 
-router = APIRouter(prefix="/api", tags=["openai"])
+router = APIRouter(prefix="/api", tags=["openai", "vector-store"])
 
 
 def _raise_missing_configuration(request_id: str | None, missing: Sequence[str]) -> None:
