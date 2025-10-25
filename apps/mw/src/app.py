@@ -20,7 +20,7 @@ from apps.mw.src.api.dependencies import (
 from apps.mw.src.api.routers import chatkit as chatkit_router
 from apps.mw.src.api.routes import b24_calls as b24_calls_router
 from apps.mw.src.api.routes import call_registry as call_registry_router
-from apps.mw.src.api.routes import chatkit as chatkit_routes_router
+from apps.mw.src.api.routes import vector_store as vector_store_router
 from apps.mw.src.api.routes import returns as returns_router
 from apps.mw.src.api.routes import stt_admin as stt_admin_router
 from apps.mw.src.api.routes import system as system_router
@@ -91,7 +91,7 @@ app.include_router(call_registry_router.router)
 app.include_router(returns_router.router)
 app.include_router(stt_admin_router.router)
 app.include_router(ww_router.router)
-app.include_router(chatkit_routes_router.router)
+app.include_router(vector_store_router.router)
 app.include_router(chatkit_router.router)
 
 
