@@ -33,6 +33,12 @@
 - База данных — задержка репликации, время выполнения долгих запросов.
 - Redis — размер очередей, количество повторов задач.
 
+## Прокси nginx
+- Используйте конфигурацию из `infra/nginx/mastermobile.conf`.
+- Локация `/api/` проброшена в unix-сокет приложения (`/var/run/mastermobile/mw.sock`),
+  поэтому POST `https://master-mobile.ru/api/v1/chatkit/session` должен возвращать `200`.
+- После выката перезапустите nginx и убедитесь в отсутствии 4xx/5xx в access-логах.
+
 ## Проверки после выката
 1. Smoke-тесты против production (`pytest -m smoke --env=prod`).
 2. Сверка версий: `curl https://prod.example.com/health` → `version` соответствует тегу.
