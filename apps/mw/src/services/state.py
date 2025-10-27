@@ -5,7 +5,7 @@ import json
 import os
 import threading
 import time
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 import redis
 from redis import Redis
@@ -150,7 +150,8 @@ class RedisStore:
         if payload is None:
             return default
         try:
-            return json.loads(payload)
+            payload_str = cast(str | bytes | bytearray, payload)
+            return json.loads(payload_str)
         except (TypeError, json.JSONDecodeError):
             return default
 
@@ -166,7 +167,8 @@ class RedisStore:
         if payload is None:
             return default
         try:
-            return json.loads(payload)
+            payload_str = cast(str | bytes | bytearray, payload)
+            return json.loads(payload_str)
         except (TypeError, json.JSONDecodeError):
             return default
 
@@ -194,14 +196,18 @@ class RedisStore:
         name = self._format_key(key)
         pipe = self._redis.pipeline()
         pipe.incrby(name, amount)
-        ttl_result_index = None
+        ttl_result_index: int | None = None
         if ttl is not None:
             ttl_result_index = len(pipe.command_stack)
             pipe.ttl(name)
         results = pipe.execute()
         new_value = int(results[0])
-        if ttl is not None:
-            current_ttl = int(results[ttl_result_index])
+        if ttl_result_index is not None and ttl is not None:
+            ttl_result = results[ttl_result_index]
+            try:
+                current_ttl = int(ttl_result)
+            except (TypeError, ValueError):
+                current_ttl = -2
             if current_ttl == -1:
                 self._redis.expire(name, ttl)
         return new_value
@@ -223,7 +229,7 @@ def build_store(
 
     redis_url = redis_url or os.getenv("REDIS_URL")
     if redis_url:
-        client = redis.from_url(redis_url, decode_responses=True)
+        client = redis.Redis.from_url(redis_url, decode_responses=True)
         return RedisStore(client, namespace=namespace)
 
     return InMemoryStore()

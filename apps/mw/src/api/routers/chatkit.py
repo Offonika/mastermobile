@@ -170,23 +170,19 @@ async def create_chatkit_session(
     return ChatkitSessionResponse(client_secret=client_secret)
 
 
-@router.post(
-    "/widget-action",
-    response_model=WidgetActionResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Accept actions emitted by the widget",
-)
 async def handle_widget_action(
     action: WidgetActionRequest,
-    request: Request = None,
-    request_id: str = Depends(provide_request_id),
-    thread_id: Annotated[str | None, Header(alias="x-chatkit-thread-id")] = None,
+    request: Request | None = None,
+    *,
+    request_id: str,
+    thread_id: str | None = None,
 ) -> WidgetActionResponse:
     """Acknowledge widget actions to keep the integration responsive."""
 
     started = perf_counter()
     bound_logger = logger.bind(request_id=request_id)
-    client_ip = request.client.host if request and request.client else None
+    client = request.client if request else None
+    client_ip = client.host if client else None
     conversation_identifier = thread_id or _extract_conversation_identifier(action.payload)
     rate_limit_key = _rate_limit_key(conversation_identifier, client_ip)
     origin_header = request.headers.get("origin") if request else None
@@ -239,4 +235,26 @@ async def handle_widget_action(
 
     _emit("acknowledged", status_code=status.HTTP_200_OK)
     return WidgetActionResponse()
+
+
+@router.post(
+    "/widget-action",
+    response_model=WidgetActionResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Accept actions emitted by the widget",
+)
+async def handle_widget_action_endpoint(
+    action: WidgetActionRequest,
+    request: Request,
+    request_id: str = Depends(provide_request_id),
+    thread_id: Annotated[str | None, Header(alias="x-chatkit-thread-id")] = None,
+) -> WidgetActionResponse:
+    """FastAPI endpoint delegating to the shared handler logic."""
+
+    return await handle_widget_action(
+        action,
+        request,
+        request_id=request_id,
+        thread_id=thread_id,
+    )
 
