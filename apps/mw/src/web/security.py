@@ -7,6 +7,7 @@ from typing import Final
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
+from starlette.types import ASGIApp
 
 ASSISTANT_PATH_PREFIX: Final[str] = "/assistant"
 DEFAULT_ASSISTANT_CSP: Final[str] = (
@@ -29,7 +30,7 @@ class AssistantSecurityHeadersMiddleware(BaseHTTPMiddleware):
 
     def __init__(
         self,
-        app,
+        app: ASGIApp,
         *,
         csp: str = DEFAULT_ASSISTANT_CSP,
         cache_control: str = CACHE_CONTROL_NO_CACHE,

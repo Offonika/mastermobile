@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
 from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager, suppress
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -22,10 +22,10 @@ from apps.mw.src.api.dependencies import (
 from apps.mw.src.api.routers import chatkit as chatkit_router
 from apps.mw.src.api.routes import b24_calls as b24_calls_router
 from apps.mw.src.api.routes import call_registry as call_registry_router
-from apps.mw.src.api.routes import vector_store as vector_store_router
 from apps.mw.src.api.routes import returns as returns_router
 from apps.mw.src.api.routes import stt_admin as stt_admin_router
 from apps.mw.src.api.routes import system as system_router
+from apps.mw.src.api.routes import vector_store as vector_store_router
 from apps.mw.src.api.routes import ww as ww_router
 from apps.mw.src.api.schemas import Error, Health
 from apps.mw.src.config import get_settings
@@ -39,8 +39,8 @@ from apps.mw.src.observability import (
 from apps.mw.src.services.cleanup import StorageCleanupRunner
 from apps.mw.src.services.storage import StorageService
 from apps.mw.src.web import (
-    AssistantSecurityHeadersMiddleware,
     DEFAULT_ASSISTANT_CSP,
+    AssistantSecurityHeadersMiddleware,
 )
 
 logging_lifespan: Callable[[FastAPI], AbstractAsyncContextManager[None]] = create_logging_lifespan()

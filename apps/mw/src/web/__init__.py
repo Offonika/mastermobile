@@ -1,6 +1,6 @@
 """Web-facing utilities for the MasterMobile middleware."""
 
-from .security import AssistantSecurityHeadersMiddleware, DEFAULT_ASSISTANT_CSP
+from .security import DEFAULT_ASSISTANT_CSP, AssistantSecurityHeadersMiddleware
 
 __all__ = [
     "AssistantSecurityHeadersMiddleware",
