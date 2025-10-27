@@ -16,6 +16,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Verify assistant static assets
+        run: |
+          set -euo pipefail
+          assistant_dir="apps/mw/src/web/static/assistant"
+          if [ ! -d "$assistant_dir" ]; then
+            echo "Assistant static directory not found: $assistant_dir" >&2
+            exit 1
+          fi
+
+          if [ -z "$(ls -A "$assistant_dir")" ]; then
+            echo "Assistant static directory is empty: $assistant_dir" >&2
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: HTML lint (frontend/index.html)
+        working-directory: frontend
+        run: npx --yes htmlhint index.html
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
