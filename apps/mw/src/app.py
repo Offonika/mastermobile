@@ -38,6 +38,10 @@ from apps.mw.src.observability import (
 )
 from apps.mw.src.services.cleanup import StorageCleanupRunner
 from apps.mw.src.services.storage import StorageService
+from apps.mw.src.web import (
+    AssistantSecurityHeadersMiddleware,
+    DEFAULT_ASSISTANT_CSP,
+)
 
 logging_lifespan: Callable[[FastAPI], AbstractAsyncContextManager[None]] = create_logging_lifespan()
 
@@ -75,6 +79,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="MasterMobile MW", lifespan=lifespan)
 app.add_middleware(RequestContextMiddleware)
 app.add_middleware(RequestMetricsMiddleware)
+app.add_middleware(
+    AssistantSecurityHeadersMiddleware,
+    csp=DEFAULT_ASSISTANT_CSP,
+)
 register_metrics(app)
 
 settings = get_settings()
