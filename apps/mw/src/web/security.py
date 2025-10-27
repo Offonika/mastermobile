@@ -10,13 +10,16 @@ from starlette.responses import Response
 from starlette.types import ASGIApp
 
 ASSISTANT_PATH_PREFIX: Final[str] = "/assistant"
+ALLOWED_ASSISTANT_FRAME_ANCESTORS: Final[str] = (
+    "https://*.bitrix24.ru https://*.bitrix24.com"
+)
 DEFAULT_ASSISTANT_CSP: Final[str] = (
     "default-src 'none'; "
     "base-uri 'self'; "
     "connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; "
     "font-src 'self' https://fonts.gstatic.com; "
     "form-action 'self'; "
-    "frame-ancestors 'none'; "
+    f"frame-ancestors {ALLOWED_ASSISTANT_FRAME_ANCESTORS}; "
     "img-src 'self' data:; "
     "manifest-src 'self'; "
     "script-src 'self' 'unsafe-inline'; "
@@ -47,7 +50,8 @@ class AssistantSecurityHeadersMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         path = request.url.path
         if self._matches_prefix(path):
-            response.headers.setdefault("Content-Security-Policy", self._csp)
+            self._remove_existing_csp(response)
+            response.headers["Content-Security-Policy"] = self._csp
             response.headers["Cache-Control"] = self._cache_control
         return response
 
@@ -56,3 +60,11 @@ class AssistantSecurityHeadersMiddleware(BaseHTTPMiddleware):
         if prefix == "/":
             return True
         return path == prefix or path.startswith(f"{prefix}/")
+
+    @staticmethod
+    def _remove_existing_csp(response: Response) -> None:
+        if not response.headers:
+            return
+        for header_name in list(response.headers.keys()):
+            if header_name.lower() == "content-security-policy":
+                response.headers.pop(header_name, None)
