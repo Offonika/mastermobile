@@ -4,7 +4,6 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager, suppress
-from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -12,7 +11,6 @@ from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 
 from apps.mw.src.api.dependencies import (
     ProblemDetailException,
@@ -77,6 +75,23 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="MasterMobile MW", lifespan=lifespan)
+
+# === ассистент (статика) ===
+from pathlib import Path
+from starlette.staticfiles import StaticFiles
+
+STATIC_DIR = Path(__file__).parent / "web" / "static"
+ASSISTANT_DIR = STATIC_DIR / "assistant"
+
+if ASSISTANT_DIR.exists():
+    app.mount(
+        "/assistant",
+        StaticFiles(directory=str(ASSISTANT_DIR), html=True),
+        name="assistant",
+    )
+else:
+    print(f"[WARN] Assistant static directory not found: {ASSISTANT_DIR}")
+
 app.add_middleware(RequestContextMiddleware)
 app.add_middleware(RequestMetricsMiddleware)
 app.add_middleware(
@@ -86,15 +101,6 @@ app.add_middleware(
 register_metrics(app)
 
 settings = get_settings()
-
-app.mount(
-    "/assistant",
-    StaticFiles(
-        directory=Path(__file__).resolve().parent / "web" / "static" / "assistant",
-        html=True,
-    ),
-    name="assistant",
-)
 
 app.add_middleware(
     CORSMiddleware,
