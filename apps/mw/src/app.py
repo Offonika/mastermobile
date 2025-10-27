@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager, suppress
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -11,6 +12,7 @@ from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.staticfiles import StaticFiles
 
 from apps.mw.src.api.dependencies import (
     ProblemDetailException,
@@ -77,8 +79,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="MasterMobile MW", lifespan=lifespan)
 
 # === ассистент (статика) ===
-from pathlib import Path
-from starlette.staticfiles import StaticFiles
 
 STATIC_DIR = Path(__file__).parent / "web" / "static"
 ASSISTANT_DIR = STATIC_DIR / "assistant"
