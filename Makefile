@@ -1,4 +1,5 @@
 .PHONY: init up down logs lint typecheck test fmt openapi db-upgrade db-downgrade run seed worker \
+        deploy-assistant check-assistant \
         docs-markdownlint docs-links docs-spellcheck docs-ci docs-ci-smoke \
         1c-verify 1c-pack-kmp4 1c-dump-txt alerts-inject alerts-reset
 
@@ -116,6 +117,14 @@ seed:
 
 worker:
 	docker compose up stt-worker
+
+deploy-assistant:
+	sudo systemctl restart mm-assistant
+	sudo apachectl configtest && sudo systemctl reload apache2
+
+check-assistant:
+	curl -I https://mm.offonika.ru/assistant/ || true
+	curl -s -X POST https://mm.offonika.ru/api/v1/chatkit/session | jq .
 
 # Usage:
 #   make alerts-inject rule=<slug> [duration=<minutes>] [alertmanager_url=<url>]
