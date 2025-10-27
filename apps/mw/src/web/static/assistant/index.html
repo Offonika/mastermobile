@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MasterMobile Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+          sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
+        display: flex;
+        justify-content: center;
+        min-height: 100vh;
+      }
+
+      main {
+        width: 100%;
+        max-width: 980px;
+        padding: 48px 24px 64px;
+      }
+
+      h1 {
+        font-size: 28px;
+        font-weight: 600;
+        margin: 0 0 16px;
+        color: #f8fafc;
+      }
+
+      p.description {
+        margin: 0 0 32px;
+        line-height: 1.6;
+        color: #cbd5f5;
+      }
+
+      .card {
+        background: rgba(15, 23, 42, 0.75);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.45);
+      }
+
+      #my-chat {
+        margin-top: 24px;
+        height: 640px;
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        overflow: hidden;
+      }
+
+      .loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        font-size: 16px;
+        color: #94a3b8;
+        letter-spacing: 0.02em;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="card">
+        <h1>Ассистент MasterMobile</h1>
+        <p class="description">
+          Этот прототип подключается к middleware по относительным URL в пространстве
+          <code>/api/v1/chatkit</code>. Получите сессию и секрет, а затем отрисуйте чат в
+          контейнере ниже.
+        </p>
+        <div id="my-chat">
+          <div class="loading" id="chat-loading">Загружаем ассистента…</div>
+        </div>
+      </div>
+    </main>
+    <script src="vendor/chatkit.js"></script>
+    <script>
+      window.addEventListener('DOMContentLoaded', async () => {
+        const container = document.getElementById('my-chat');
+        const loading = document.getElementById('chat-loading');
+
+        try {
+          const widget = new window.ChatKitWidget({
+            container,
+            onReady: () => {
+              loading?.remove();
+            },
+            onError: (error) => {
+              console.error(error);
+              loading.textContent = 'Не удалось загрузить ассистента';
+            },
+          });
+
+          await widget.initialize();
+        } catch (error) {
+          console.error(error);
+          if (loading) {
+            loading.textContent = 'Ошибка инициализации ассистента';
+          }
+        }
+      });
+    </script>
+  </body>
+</html>
