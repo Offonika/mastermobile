@@ -122,6 +122,46 @@
 - `make docs-links`
 - `make docs-spellcheck`
 
+## Assistant
+
+### Структура ассистента
+
+- `apps/mw/src/api/routers/chatkit.py` — REST-контракт для ChatKit (`/api/v1/chatkit/session`, `/api/v1/chatkit/widget-action`) и rate limiting. 【F:apps/mw/src/api/routers/chatkit.py†L22-L211】
+- `apps/mw/src/services/chatkit.py` — HTTP-клиент OpenAI, выдаёт `client_secret` для виджета; `apps/mw/src/services/chatkit_state.py` хранит флаги ожидания запроса. 【F:apps/mw/src/services/chatkit.py†L10-L74】【F:apps/mw/src/services/chatkit_state.py†L1-L39】
+- `apps/mw/src/web/static/assistant/index.html` — статическая демо-страница, раздаётся по `/assistant`. 【F:apps/mw/src/app.py†L75-L106】【F:apps/mw/src/web/static/assistant/index.html†L1-L122】
+- `apps/mw/src/web/static/assistant/vendor/chatkit.js` — компактная версия виджета без React, подключается на демо-странице. 【F:apps/mw/src/web/static/assistant/vendor/chatkit.js†L1-L209】
+- `frontend/src/components/B24Assistant.tsx` — основная интеграция ассистента в Bitrix24 через `@openai/chatkit-react`. 【F:frontend/src/components/B24Assistant.tsx†L1-L156】
+- `scripts/smoke_chatkit.sh` — shell-smoke, проверяет `/health`, выдачу `client_secret` и подтверждение `widget-action`. 【F:scripts/smoke_chatkit.sh†L1-L89】
+- Тесты: `tests/api/test_chatkit.py`, `tests/services/test_chatkit.py`, `tests/test_chatkit_widget_action.py` — покрывают ручки, сервис и обработку действий виджета. 【F:tests/api/test_chatkit.py†L1-L125】【F:tests/services/test_chatkit.py†L1-L154】【F:tests/test_chatkit_widget_action.py†L1-L80】
+
+### Как обновить `chatkit.js`
+
+`apps/mw/src/web/static/assistant/vendor/chatkit.js` — артефакт, который хранится в репозитории, чтобы показать работу ассистента без React. При смене API нужно держать его в актуальном состоянии:
+
+1. Обновите зависимости фронтенда до нужной версии ChatKit: скорректируйте `@openai/chatkit-react` в `frontend/package.json` и выполните `npm install`. 【F:frontend/package.json†L8-L23】
+2. Проверьте основную интеграцию в Bitrix24: `npm run build` в `frontend/` должен пройти без ошибок и собрать production-бандл в `dist/`. 【F:frontend/package.json†L5-L11】
+3. Синхронизируйте поведение статического виджета:
+   - Сверьтесь с актуальной логикой получения `client_secret` и отправки `widget-action` в `B24Assistant.tsx` и `chatkit.py`.
+   - Обновите функции `requestSession`, `sendWidgetAction` и разметку внутри `ChatKitWidget` в `vendor/chatkit.js`, чтобы поля и заголовки совпадали с API. 【F:apps/mw/src/web/static/assistant/vendor/chatkit.js†L1-L209】【F:frontend/src/components/B24Assistant.tsx†L25-L122】【F:apps/mw/src/api/routers/chatkit.py†L124-L211】
+   - Убедитесь, что файл по-прежнему экспортирует глобальный `ChatKitWidget` (в конце файла). 【F:apps/mw/src/web/static/assistant/vendor/chatkit.js†L189-L209】
+4. Откройте `http://localhost:8000/assistant/` после запуска стека и убедитесь, что виджет инициализируется (при необходимости — с реальным `OPENAI_API_KEY`). 【F:apps/mw/src/app.py†L82-L88】
+
+### Команды деплоя
+
+1. Скопируйте `.env.example` → `.env` и заполните `OPENAI_API_KEY`, `OPENAI_WORKFLOW_ID`, `OPENAI_VECTOR_STORE_ID`, параметры Bitrix24. 【F:.env.example†L25-L36】【F:apps/mw/src/config/settings.py†L40-L57】
+2. Соберите Python-зависимости и инфраструктуру: `make init && make up`. Команда поднимет `app`, `db`, `redis` и пробросит `/assistant`. 【F:Makefile†L24-L40】【F:docker-compose.yml†L1-L73】
+3. Для фронтенда выполните `npm install && npm run build` в `frontend/`, затем опубликуйте `dist/` в хостинге Bitrix24 или подключите через reverse-proxy. 【F:frontend/package.json†L5-L23】
+4. При выкладке в стоящую среду используйте `docker compose build app && docker compose up -d app` (или пайплайн из `docs/runbooks/deploy.md`) и следите за health-check `http://<host>:8000/health`. 【F:docs/runbooks/deploy.md†L9-L43】【F:docker-compose.yml†L5-L36】
+5. После деплоя прогоните smoke-скрипт: `./scripts/smoke_chatkit.sh --base-url http://<host>:8000`. Он проверит health, выдачу сессии и подтверждение действия. 【F:scripts/smoke_chatkit.sh†L1-L89】
+
+### Чек-лист тестов
+
+- `make lint` — статический анализ Python. 【F:Makefile†L42-L46】
+- `make typecheck` — mypy по `apps/`. 【F:Makefile†L48-L49】
+- `make test` или `pytest tests/api/test_chatkit.py tests/services/test_chatkit.py tests/test_chatkit_widget_action.py` — функциональные проверки ассистента. 【F:Makefile†L51-L52】【F:tests/api/test_chatkit.py†L1-L125】【F:tests/services/test_chatkit.py†L1-L154】【F:tests/test_chatkit_widget_action.py†L1-L80】
+- `npm run build` в `frontend/` — сборка React-виджета. 【F:frontend/package.json†L5-L11】
+- `./scripts/smoke_chatkit.sh --base-url http://localhost:8000` — end-to-end smoke. 【F:scripts/smoke_chatkit.sh†L1-L89】
+
 ## Документация
 
 ### Walking Warehouse
