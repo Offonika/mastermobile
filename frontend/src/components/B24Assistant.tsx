@@ -1,6 +1,7 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ChatKit, useChatKit, type StartScreenPrompt } from '@openai/chatkit-react';
 
+import { assistantDebug } from '../utils/debug';
 import styles from './B24Assistant.module.css';
 
 const prompts: StartScreenPrompt[] = [
@@ -66,19 +67,30 @@ function parseClientSecret(payload: unknown) {
 export default function B24Assistant() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  useEffect(() => {
+    assistantDebug('Инициализация ChatKit для Bitrix24 ассистента');
+  }, []);
+
   const chat = useChatKit({
     api: {
       async getClientSecret(existing?: unknown) {
         const existingSecret = extractExistingSecret(existing);
 
         if (existingSecret) {
+          assistantDebug('Используем уже имеющийся client_secret');
           setLoadError(null);
           return existingSecret;
         }
 
+        assistantDebug('Запрашиваем client_secret у API /api/v1/chatkit/session');
         try {
           const response = await fetch('/api/v1/chatkit/session', {
             method: 'POST',
+          });
+
+          assistantDebug('Ответ от /api/v1/chatkit/session получен', {
+            ok: response.ok,
+            status: response.status,
           });
 
           if (!response.ok) {
@@ -87,9 +99,11 @@ export default function B24Assistant() {
 
           const payload: unknown = await response.json();
           const secret = parseClientSecret(payload);
+          assistantDebug('client_secret успешно получен от API');
           setLoadError(null);
           return secret;
         } catch (error) {
+          assistantDebug('Ошибка при запросе client_secret', error instanceof Error ? error.message : error);
           setLoadError(normaliseError(error));
           throw error;
         }
@@ -110,6 +124,10 @@ export default function B24Assistant() {
         const payload = action?.payload && typeof action.payload === 'object' ? action.payload : {};
 
         try {
+          assistantDebug('Отправляем событие виджета', {
+            type: action?.type,
+            hasPayload: Object.keys(payload).length > 0,
+          });
           const response = await fetch('/api/v1/chatkit/widget-action', {
             method: 'POST',
             headers: {
@@ -121,12 +139,18 @@ export default function B24Assistant() {
             }),
           });
 
+          assistantDebug('Ответ от /api/v1/chatkit/widget-action получен', {
+            ok: response.ok,
+            status: response.status,
+          });
+
           if (!response.ok) {
             throw new Error('Не удалось обработать действие виджета');
           }
 
           setLoadError(null);
         } catch (error) {
+          assistantDebug('Ошибка при обработке события виджета', error instanceof Error ? error.message : error);
           console.error('Не удалось обработать действие виджета', error);
           setLoadError('Не удалось обработать действие виджета. Попробуйте обновить страницу.');
           throw error;
