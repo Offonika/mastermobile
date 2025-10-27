@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager, suppress
 from typing import Any
@@ -11,6 +12,7 @@ from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from apps.mw.src.api.dependencies import (
     ProblemDetailException,
@@ -76,6 +78,15 @@ app.add_middleware(RequestMetricsMiddleware)
 register_metrics(app)
 
 settings = get_settings()
+
+app.mount(
+    "/assistant",
+    StaticFiles(
+        directory=Path(__file__).resolve().parent / "web" / "static" / "assistant",
+        html=True,
+    ),
+    name="assistant",
+)
 
 app.add_middleware(
     CORSMiddleware,
