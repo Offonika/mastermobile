@@ -77,7 +77,7 @@ export default function B24Assistant() {
         }
 
         try {
-          const response = await fetch('/api/chatkit/session', {
+          const response = await fetch('/api/v1/chatkit/session', {
             method: 'POST',
           });
 
@@ -104,6 +104,34 @@ export default function B24Assistant() {
       colorScheme: 'dark',
       radius: 'round',
       density: 'compact',
+    },
+    widgets: {
+      async onAction(action) {
+        const payload = action?.payload && typeof action.payload === 'object' ? action.payload : {};
+
+        try {
+          const response = await fetch('/api/v1/chatkit/widget-action', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              ...action,
+              payload,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Не удалось обработать действие виджета');
+          }
+
+          setLoadError(null);
+        } catch (error) {
+          console.error('Не удалось обработать действие виджета', error);
+          setLoadError('Не удалось обработать действие виджета. Попробуйте обновить страницу.');
+          throw error;
+        }
+      },
     },
   });
 
