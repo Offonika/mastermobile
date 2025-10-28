@@ -47,8 +47,9 @@ async def test_widget_action_new_format_search_docs(monkeypatch: pytest.MonkeyPa
     captured: dict[str, str] = {}
     forward_calls: list[dict[str, Any]] = []
 
-    async def _forward(**kwargs: Any) -> None:
+    async def _forward(**kwargs: Any) -> str | None:
         forward_calls.append(kwargs)
+        return "  "
 
     def _mark(identifier: str) -> None:
         captured["identifier"] = identifier
@@ -76,7 +77,7 @@ async def test_widget_action_new_format_search_docs(monkeypatch: pytest.MonkeyPa
         )
 
     assert response.status_code == 200
-    assert response.json() == {"ok": True, "awaiting_query": True}
+    assert response.json() == {"ok": True, "awaiting_query": True, "message": None}
     assert captured.get("identifier") == "thread-abc"
     assert forward_calls, "Expected widget action to be forwarded to workflow"
     assert forward_calls[0]["tool_name"] == "search-docs"
@@ -89,8 +90,9 @@ async def test_widget_action_legacy_format_search_docs(monkeypatch: pytest.Monke
     captured: dict[str, str] = {}
     forward_calls: list[dict[str, Any]] = []
 
-    async def _forward(**kwargs: Any) -> None:
+    async def _forward(**kwargs: Any) -> str | None:
         forward_calls.append(kwargs)
+        return "\n"
 
     def _mark(identifier: str) -> None:
         captured["identifier"] = identifier
@@ -116,7 +118,7 @@ async def test_widget_action_legacy_format_search_docs(monkeypatch: pytest.Monke
         )
 
     assert response.status_code == 200
-    assert response.json() == {"ok": True, "awaiting_query": True}
+    assert response.json() == {"ok": True, "awaiting_query": True, "message": None}
     assert captured.get("identifier") == "session-xyz"
     assert forward_calls, "Expected widget action to be forwarded to workflow"
     assert forward_calls[0]["tool_name"] == "search-docs"
@@ -134,9 +136,13 @@ async def test_widget_action_unknown_tool_returns_false(monkeypatch: pytest.Monk
         called = True
 
     monkeypatch.setattr("apps.mw.src.api.routers.chatkit.mark_awaiting_query", _mark)
+    async def _noop_forward(**kwargs: Any) -> str | None:
+        forward_calls.append(kwargs)
+        return None
+
     monkeypatch.setattr(
         "apps.mw.src.api.routers.chatkit.forward_widget_action_to_workflow",
-        lambda **_: forward_calls.append({}),
+        _noop_forward,
     )
 
     payload = {
@@ -152,6 +158,6 @@ async def test_widget_action_unknown_tool_returns_false(monkeypatch: pytest.Monk
     )
 
     assert response.status_code == 200
-    assert response.json() == {"ok": False, "awaiting_query": None}
+    assert response.json() == {"ok": False, "awaiting_query": None, "message": None}
     assert not called
     assert not forward_calls, "Unexpected workflow invocation for unsupported tool"

@@ -165,10 +165,13 @@ paths:
                   value:
                     ok: true
                     awaiting_query: true
+                    message: null
                 defaultTool:
                   summary: Generic acknowledgement for other tools
                   value:
                     ok: true
+                    awaiting_query: null
+                    message: "Выполняю запрос…"
           headers:
             X-Request-Id:
               $ref: '#/components/headers/XRequestId'
@@ -1370,6 +1373,11 @@ components:
           nullable: true
           description: When true, the widget should prompt the user for a follow-up query.
           example: true
+        message:
+          type: string
+          nullable: true
+          description: Optional assistant reply extracted from the workflow output.
+          example: "Готов помочь с вашими вопросами."
     B24CallRecord:
       type: object
       required:

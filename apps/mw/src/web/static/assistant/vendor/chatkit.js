@@ -357,7 +357,10 @@ class ChatKitWidget {
         },
       });
 
-      if (response.awaiting_query) {
+      const replyText = typeof response.message === 'string' ? response.message.trim() : '';
+      if (replyText) {
+        this.appendMessage('Ассистент', replyText);
+      } else if (response.awaiting_query) {
         this.appendMessage('Ассистент', 'Ожидает уточнения запроса…');
       } else {
         this.appendMessage('Ассистент', 'Сообщение принято.');

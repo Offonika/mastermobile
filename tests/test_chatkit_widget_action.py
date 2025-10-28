@@ -14,8 +14,8 @@ from apps.mw.src.services.chatkit_state import (
 
 @pytest.fixture(autouse=True)
 def _patch_workflow(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def _noop(**_: Any) -> None:
-        return None
+    async def _noop(**_: Any) -> str | None:
+        return "   "
 
     monkeypatch.setattr(
         "apps.mw.src.api.routers.chatkit.forward_widget_action_to_workflow",
@@ -53,10 +53,21 @@ async def test_search_docs_action_prefers_thread_header() -> None:
     assert response.awaiting_query is True
     assert is_awaiting_query("header-thread")
     assert not is_awaiting_query("payload-thread")
+    assert response.message is None
 
 
 @pytest.mark.asyncio
-async def test_other_tool_action_returns_simple_ack() -> None:
+async def test_other_tool_action_returns_simple_ack(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def _reply(**_: Any) -> str | None:
+        return "  Ответ "
+
+    monkeypatch.setattr(
+        "apps.mw.src.api.routers.chatkit.forward_widget_action_to_workflow",
+        _reply,
+    )
+
     action = WidgetActionRequest(
         type="tool",
         name="handbook",
@@ -68,6 +79,7 @@ async def test_other_tool_action_returns_simple_ack() -> None:
     assert response.ok is True
     assert response.awaiting_query is None
     assert not is_awaiting_query("thread-xyz")
+    assert response.message == "Ответ"
 
 
 @pytest.mark.asyncio
@@ -82,6 +94,7 @@ async def test_legacy_tool_name_format_is_supported() -> None:
     assert response.ok is True
     assert response.awaiting_query is True
     assert is_awaiting_query("session-789")
+    assert response.message is None
 
 
 @pytest.mark.asyncio
@@ -97,3 +110,4 @@ async def test_search_docs_action_falls_back_to_payload_identifier() -> None:
     assert response.ok is True
     assert response.awaiting_query is True
     assert is_awaiting_query("payload-thread")
+    assert response.message is None
