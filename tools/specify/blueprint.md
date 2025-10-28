@@ -23,7 +23,7 @@
 5. **Техподсказки.** `/howto замена стекла камеры A52` выдаёт 4–6 шагов, инструменты и риски, а также кнопку «Заказать комплект».
 
 ## 4. Архитектура решения
-```
+```text
 Telegram Bot API ──(webhook)──► FastAPI backend ──► Bitrix REST (поиск/цены/остатки/заказы/RMA)
                                       │
                                       ├─► Prompt NLU (extract intent/entities)

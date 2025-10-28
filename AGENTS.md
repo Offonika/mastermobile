@@ -80,7 +80,7 @@
 
 ### Источники истины и зависимость
 
-```
+```text
 PRD / SRS  →  ER / DDL  →  API Contracts  →  ONE-PAGER / UX
 ```
 
@@ -201,7 +201,7 @@ PRD / SRS  →  ER / DDL  →  API Contracts  →  ONE-PAGER / UX
 
 Целевая структура (когда появится код):
 
-```
+```text
 /apps/mw/       # FastAPI-приложение
 /contracts/     # OpenAPI / JSON Schema
 /db/migrations/ # SQL-миграции (ER v0.6.x → …)
