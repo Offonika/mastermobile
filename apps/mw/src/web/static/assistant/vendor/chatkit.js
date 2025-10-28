@@ -20,14 +20,61 @@
     return response.json();
   }
 
+  function isPlainObject(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  function normaliseWidgetAction(raw) {
+    if (isPlainObject(raw) && typeof raw.type === 'string') {
+      const result = {
+        type: raw.type,
+        payload: isPlainObject(raw.payload) ? raw.payload : {},
+      };
+
+      if (typeof raw.name === 'string' && raw.name.trim()) {
+        result.name = raw.name.trim();
+      }
+
+      return result;
+    }
+
+    if (isPlainObject(raw) && typeof raw.action === 'string') {
+      const actionName = raw.action.trim();
+      if (!actionName) {
+        return {
+          type: 'tool.unknown',
+          name: 'unknown',
+          payload: {},
+        };
+      }
+
+      const type = actionName.includes('.') ? actionName : `tool.${actionName}`;
+      const [, suffix = actionName] = type.split('.', 2);
+
+      return {
+        type,
+        name: suffix,
+        payload: isPlainObject(raw.data) ? raw.data : {},
+      };
+    }
+
+    return {
+      type: 'tool.unknown',
+      name: 'unknown',
+      payload: {},
+    };
+  }
+
   async function sendWidgetAction(payload) {
+    const normalisedPayload = normaliseWidgetAction(payload);
+
     const response = await fetch('/api/v1/chatkit/widget-action', {
       method: 'POST',
       headers: {
         ...DEFAULT_HEADERS,
         'x-chatkit-widget-action': 'open',
       },
-      body: JSON.stringify(payload ?? {}),
+      body: JSON.stringify(normalisedPayload),
     });
 
     if (!response.ok) {
