@@ -69,6 +69,11 @@ class WidgetActionResponse(BaseModel):
 
     ok: bool = True
     awaiting_query: bool | None = None
+    message: str | None = Field(
+        default=None,
+        description="Optional assistant reply extracted from the workflow output.",
+        min_length=1,
+    )
 
 
 def resolve_tool(action: WidgetActionRequest) -> str | None:
@@ -199,6 +204,7 @@ async def handle_widget_action(
     tool_name = resolve_tool(action)
 
     awaiting_query: bool | None = None
+    assistant_message: str | None = None
     identifier_to_mark: str | None = None
     should_forward = tool_name is not None
     response_ok = True
@@ -251,7 +257,7 @@ async def handle_widget_action(
             required=("openai_api_key", "openai_workflow_id"),
         )
         try:
-            await forward_widget_action_to_workflow(
+            workflow_result = await forward_widget_action_to_workflow(
                 settings=settings,
                 action=action.model_dump(mode="json"),
                 request_id=request_id,
@@ -260,6 +266,9 @@ async def handle_widget_action(
                 conversation_identifier=conversation_identifier,
                 origin=origin_header,
             )
+            if isinstance(workflow_result, str):
+                cleaned = workflow_result.strip()
+                assistant_message = cleaned or None
         except WorkflowInvocationError as exc:
             _emit("workflow_error", status_code=status.HTTP_502_BAD_GATEWAY, level="error")
             raise ProblemDetailException(
@@ -280,7 +289,11 @@ async def handle_widget_action(
             log_level = "warning"
 
     _emit(log_result, status_code=status.HTTP_200_OK, level=log_level)
-    return WidgetActionResponse(ok=response_ok, awaiting_query=awaiting_query)
+    return WidgetActionResponse(
+        ok=response_ok,
+        awaiting_query=awaiting_query,
+        message=assistant_message,
+    )
 
 
 @router.post(
