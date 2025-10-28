@@ -1,10 +1,10 @@
 """OpenAI integrations used by the middleware."""
 
-from apps.mw.src.services.chatkit import create_chatkit_service_session
 from apps.mw.src.integrations.openai.workflows import (
     WorkflowInvocationError,
     forward_widget_action_to_workflow,
 )
+from apps.mw.src.services.chatkit import create_chatkit_service_session
 
 __all__ = [
     "WorkflowInvocationError",
