@@ -11,7 +11,7 @@ from uuid import uuid4
 from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from starlette.staticfiles import StaticFiles
 
 from apps.mw.src.api.dependencies import (
@@ -82,6 +82,17 @@ app = FastAPI(title="MasterMobile MW", lifespan=lifespan)
 
 STATIC_DIR = Path(__file__).parent / "web" / "static"
 ASSISTANT_DIR = STATIC_DIR / "assistant"
+ASSISTANT_HTML = ASSISTANT_DIR / "index.html"
+
+
+@app.api_route("/assistant/", methods=["GET", "HEAD", "POST"], include_in_schema=False)
+async def assistant_entry(request: Request) -> Response:
+    """Serve the Assistant SPA entrypoint for Bitrix24 initialisation requests."""
+
+    if request.method == "POST":
+        return HTMLResponse(ASSISTANT_HTML.read_text(encoding="utf-8"))
+
+    return FileResponse(ASSISTANT_HTML, media_type="text/html")
 
 if ASSISTANT_DIR.exists():
     app.mount(
