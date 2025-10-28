@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MasterMobile Assistant</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; connect-src 'self' https://mm.offonika.ru; frame-ancestors https://*.bitrix24.ru; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self'"
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -75,6 +79,10 @@
         color: #94a3b8;
         letter-spacing: 0.02em;
       }
+
+      .loading.error {
+        color: #f97316;
+      }
     </style>
   </head>
   <body>
@@ -91,32 +99,6 @@
         </div>
       </div>
     </main>
-    <script src="vendor/chatkit.js"></script>
-    <script>
-      window.addEventListener('DOMContentLoaded', async () => {
-        const container = document.getElementById('my-chat');
-        const loading = document.getElementById('chat-loading');
-
-        try {
-          const widget = new window.ChatKitWidget({
-            container,
-            onReady: () => {
-              loading?.remove();
-            },
-            onError: (error) => {
-              console.error(error);
-              loading.textContent = 'Не удалось загрузить ассистента';
-            },
-          });
-
-          await widget.initialize();
-        } catch (error) {
-          console.error(error);
-          if (loading) {
-            loading.textContent = 'Ошибка инициализации ассистента';
-          }
-        }
-      });
-    </script>
+    <script type="module" src="/assistant/app.js"></script>
   </body>
 </html>
