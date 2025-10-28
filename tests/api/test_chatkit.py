@@ -9,6 +9,7 @@ import pytest
 
 from apps.mw.src.app import app
 from apps.mw.src.config.settings import get_settings
+from apps.mw.src.integrations.openai import WorkflowInvocationError
 
 BASE_URL = "http://testserver"
 
@@ -161,3 +162,74 @@ async def test_widget_action_unknown_tool_returns_false(monkeypatch: pytest.Monk
     assert response.json() == {"ok": False, "awaiting_query": None, "message": None}
     assert not called
     assert not forward_calls, "Unexpected workflow invocation for unsupported tool"
+
+
+@pytest.mark.asyncio
+async def test_widget_action_missing_configuration_returns_negative_ack(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When ChatKit settings are missing, the endpoint should still ack the widget."""
+
+    captured: dict[str, str] = {}
+
+    def _mark(identifier: str) -> None:
+        captured["identifier"] = identifier
+
+    monkeypatch.setattr("apps.mw.src.api.routers.chatkit.mark_awaiting_query", _mark)
+
+    payload = {
+        "type": "tool",
+        "name": "search-docs",
+        "payload": {"session_id": "session-123"},
+    }
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url=BASE_URL) as client:
+        response = await client.post(
+            "/api/v1/chatkit/widget-action",
+            json=payload,
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": False, "awaiting_query": True, "message": None}
+    assert captured.get("identifier") == "session-123"
+
+
+@pytest.mark.asyncio
+async def test_widget_action_workflow_error_returns_negative_ack(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Failures during workflow invocation should not surface as 5xx errors."""
+
+    captured: dict[str, str] = {}
+
+    def _mark(identifier: str) -> None:
+        captured["identifier"] = identifier
+
+    async def _raise_workflow_error(**_: Any) -> str | None:
+        raise WorkflowInvocationError("boom")
+
+    monkeypatch.setattr("apps.mw.src.api.routers.chatkit.mark_awaiting_query", _mark)
+    monkeypatch.setattr(
+        "apps.mw.src.api.routers.chatkit.forward_widget_action_to_workflow",
+        _raise_workflow_error,
+    )
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_WORKFLOW_ID", "workflow-id")
+
+    payload = {
+        "type": "tool",
+        "name": "search-docs",
+        "payload": {"conversation_id": "conv-456"},
+    }
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url=BASE_URL) as client:
+        response = await client.post(
+            "/api/v1/chatkit/widget-action",
+            json=payload,
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": False, "awaiting_query": True, "message": None}
+    assert captured.get("identifier") == "conv-456"

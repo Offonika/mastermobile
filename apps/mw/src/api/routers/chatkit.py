@@ -251,12 +251,12 @@ async def handle_widget_action(
 
     if should_forward:
         settings = get_settings()
-        _ensure_configuration(
-            settings,
-            request_id,
-            required=("openai_api_key", "openai_workflow_id"),
-        )
         try:
+            _ensure_configuration(
+                settings,
+                request_id,
+                required=("openai_api_key", "openai_workflow_id"),
+            )
             workflow_result = await forward_widget_action_to_workflow(
                 settings=settings,
                 action=action.model_dump(mode="json"),
@@ -269,17 +269,20 @@ async def handle_widget_action(
             if isinstance(workflow_result, str):
                 cleaned = workflow_result.strip()
                 assistant_message = cleaned or None
-        except WorkflowInvocationError as exc:
-            _emit("workflow_error", status_code=status.HTTP_502_BAD_GATEWAY, level="error")
-            raise ProblemDetailException(
-                build_error(
-                    status.HTTP_502_BAD_GATEWAY,
-                    title="ChatKit workflow invocation failed",
-                    detail="OpenAI workflow invocation failed.",
-                    request_id=request_id,
-                    type_="https://api.mastermobile.app/errors/openai",
-                )
-            ) from exc
+        except ProblemDetailException as exc:
+            response_ok = False
+            log_result = "configuration_error"
+            log_level = "error"
+            bound_logger.bind(error=exc.error.model_dump()).error(
+                "ChatKit widget action cannot be forwarded due to configuration error",
+            )
+        except WorkflowInvocationError:
+            response_ok = False
+            log_result = "workflow_error"
+            log_level = "error"
+            bound_logger.exception(
+                "Failed to forward ChatKit widget action to workflow",
+            )
 
     if awaiting_query:
         if identifier_to_mark:
