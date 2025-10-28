@@ -4,10 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MasterMobile Assistant</title>
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self'; connect-src 'self' https://mm.offonika.ru; frame-ancestors https://*.bitrix24.ru; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self'"
-    />
+    <!--
+      CSP заголовок выставляется на уровне middleware (`AssistantSecurityHeadersMiddleware`).
+      Удаляем meta-тег, чтобы браузер не ругался на недопустимую директиву `frame-ancestors`
+      в <meta http-equiv>, которая всё равно игнорируется и засоряет консоль предупреждениями.
+    -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
