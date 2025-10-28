@@ -121,9 +121,11 @@ paths:
         - chatkit
       summary: Accept actions emitted by the widget
       description: |
-        Accepts ChatKit widget actions to keep the integration responsive and update middleware state.
+        Accepts ChatKit widget actions, records state for the middleware and forwards each
+        supported action to the configured OpenAI Agent Builder workflow.
 
-        Supports both modern payloads (`{"type":"tool","name":"search-docs"}`) and legacy payloads (`{"type":"tool.search-docs"}`).
+        Supports both modern payloads (`{"type":"tool","name":"search-docs"}`) and legacy
+        payloads (`{"type":"tool.search-docs"}`).
       operationId: handleChatkitWidgetAction
       security: []
       parameters:
@@ -172,6 +174,15 @@ paths:
               $ref: '#/components/headers/XRequestId'
         '422':
           description: Validation error.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+        '502':
+          description: Failed to invoke the configured OpenAI workflow.
           content:
             application/problem+json:
               schema:

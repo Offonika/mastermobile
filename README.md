@@ -128,6 +128,7 @@
 
 - `apps/mw/src/api/routers/chatkit.py` — REST-контракт для ChatKit (`/api/v1/chatkit/session`, `/api/v1/chatkit/widget-action`) и rate limiting. 【F:apps/mw/src/api/routers/chatkit.py†L22-L211】
 - `apps/mw/src/services/chatkit.py` — HTTP-клиент OpenAI, выдаёт `client_secret` для виджета; `apps/mw/src/services/chatkit_state.py` хранит флаги ожидания запроса. 【F:apps/mw/src/services/chatkit.py†L10-L74】【F:apps/mw/src/services/chatkit_state.py†L1-L39】
+- `apps/mw/src/integrations/openai/workflows.py` — проксирует события виджета в workflow Agent Builder и обогащает метаданными. 【F:apps/mw/src/integrations/openai/workflows.py†L1-L125】
 - `apps/mw/src/web/static/assistant/index.html` — статическая демо-страница, раздаётся по `/assistant`. 【F:apps/mw/src/app.py†L75-L106】【F:apps/mw/src/web/static/assistant/index.html†L1-L122】
 - `apps/mw/src/web/static/assistant/vendor/chatkit.js` — компактная версия виджета без React, подключается на демо-странице. 【F:apps/mw/src/web/static/assistant/vendor/chatkit.js†L1-L209】
 - `frontend/src/components/B24Assistant.tsx` — основная интеграция ассистента в Bitrix24 через `@openai/chatkit-react`. 【F:frontend/src/components/B24Assistant.tsx†L1-L156】
