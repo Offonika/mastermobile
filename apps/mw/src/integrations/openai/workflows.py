@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -128,10 +129,10 @@ def _get_async_openai_client(settings: Settings) -> AsyncOpenAI:
     return client
 
 
-def _build_metadata(entries: Mapping[str, str | None]) -> Dict[str, str]:
+def _build_metadata(entries: Mapping[str, str | None]) -> dict[str, str]:
     """Construct metadata respecting OpenAI requirements."""
 
-    metadata: Dict[str, str] = {}
+    metadata: dict[str, str] = {}
     for key, value in entries.items():
         if value is None:
             continue
