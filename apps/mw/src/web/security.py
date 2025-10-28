@@ -67,4 +67,6 @@ class AssistantSecurityHeadersMiddleware(BaseHTTPMiddleware):
             return
         for header_name in list(response.headers.keys()):
             if header_name.lower() == "content-security-policy":
-                response.headers.pop(header_name, None)
+                # ``MutableHeaders`` exposes ``__delitem__`` instead of ``pop``
+                # which keeps mypy satisfied while achieving the same effect.
+                del response.headers[header_name]
