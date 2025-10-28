@@ -1,12 +1,31 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from apps.mw.src.api.routers.chatkit import WidgetActionRequest, handle_widget_action
+from apps.mw.src.config.settings import get_settings
 from apps.mw.src.services.chatkit_state import (
     is_awaiting_query,
     reset_awaiting_query_state,
 )
+
+
+@pytest.fixture(autouse=True)
+def _patch_workflow(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def _noop(**_: Any) -> None:
+        return None
+
+    monkeypatch.setattr(
+        "apps.mw.src.api.routers.chatkit.forward_widget_action_to_workflow",
+        _noop,
+    )
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_WORKFLOW_ID", "workflow-id")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 @pytest.fixture(autouse=True)

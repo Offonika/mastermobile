@@ -11,6 +11,10 @@ from pydantic import BaseModel, Field, model_validator
 
 from apps.mw.src.api.dependencies import ProblemDetailException, build_error, provide_request_id
 from apps.mw.src.config import Settings, get_settings
+from apps.mw.src.integrations.openai import (
+    WorkflowInvocationError,
+    forward_widget_action_to_workflow,
+)
 from apps.mw.src.services.chatkit import create_chatkit_service_session
 from apps.mw.src.services.chatkit_state import mark_awaiting_query
 from apps.mw.src.services.state import build_store
@@ -183,7 +187,8 @@ async def handle_widget_action(
     bound_logger = logger.bind(request_id=request_id)
     client = request.client if request else None
     client_ip = client.host if client else None
-    conversation_identifier = thread_id or _extract_conversation_identifier(action.payload)
+    payload_identifier = _extract_conversation_identifier(action.payload)
+    conversation_identifier = thread_id or payload_identifier
     rate_limit_key = _rate_limit_key(conversation_identifier, client_ip)
     origin_header = request.headers.get("origin") if request else None
 
@@ -192,6 +197,13 @@ async def handle_widget_action(
         ttl=RATE_LIMIT_WINDOW_SECONDS,
     )
     tool_name = resolve_tool(action)
+
+    awaiting_query: bool | None = None
+    identifier_to_mark: str | None = None
+    should_forward = tool_name is not None
+    response_ok = True
+    log_result = "acknowledged"
+    log_level = "info"
 
     def _emit(result: str, *, status_code: int, level: str = "info") -> None:
         latency_ms = (perf_counter() - started) * 1000
@@ -218,23 +230,57 @@ async def handle_widget_action(
         )
 
     if tool_name is None:
-        _emit("unsupported_tool", status_code=status.HTTP_200_OK, level="warning")
-        return WidgetActionResponse(ok=False)
-
-    if tool_name == "search-docs":
+        response_ok = False
+        should_forward = False
+        log_result = "unsupported_tool"
+        log_level = "warning"
+    elif tool_name == "search-docs":
+        awaiting_query = True
+        log_result = "awaiting_query"
         if conversation_identifier:
-            mark_awaiting_query(conversation_identifier)
-            _emit("awaiting_query", status_code=status.HTTP_200_OK)
+            identifier_to_mark = conversation_identifier
         else:
-            _emit(
-                "awaiting_query_missing_identifier",
-                status_code=status.HTTP_200_OK,
-                level="warning",
-            )
-        return WidgetActionResponse(awaiting_query=True)
+            log_result = "awaiting_query_missing_identifier"
+            log_level = "warning"
 
-    _emit("acknowledged", status_code=status.HTTP_200_OK)
-    return WidgetActionResponse()
+    if should_forward:
+        settings = get_settings()
+        _ensure_configuration(
+            settings,
+            request_id,
+            required=("openai_api_key", "openai_workflow_id"),
+        )
+        try:
+            await forward_widget_action_to_workflow(
+                settings=settings,
+                action=action.model_dump(mode="json"),
+                request_id=request_id,
+                tool_name=tool_name,
+                thread_id=thread_id,
+                conversation_identifier=conversation_identifier,
+                origin=origin_header,
+            )
+        except WorkflowInvocationError as exc:
+            _emit("workflow_error", status_code=status.HTTP_502_BAD_GATEWAY, level="error")
+            raise ProblemDetailException(
+                build_error(
+                    status.HTTP_502_BAD_GATEWAY,
+                    title="ChatKit workflow invocation failed",
+                    detail="OpenAI workflow invocation failed.",
+                    request_id=request_id,
+                    type_="https://api.mastermobile.app/errors/openai",
+                )
+            ) from exc
+
+    if awaiting_query:
+        if identifier_to_mark:
+            mark_awaiting_query(identifier_to_mark)
+        else:
+            log_result = "awaiting_query_missing_identifier"
+            log_level = "warning"
+
+    _emit(log_result, status_code=status.HTTP_200_OK, level=log_level)
+    return WidgetActionResponse(ok=response_ok, awaiting_query=awaiting_query)
 
 
 @router.post(

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import httpx
 import pytest
 
@@ -43,11 +45,21 @@ async def test_widget_action_new_format_search_docs(monkeypatch: pytest.MonkeyPa
     """New format tools should mark awaiting search queries using the thread id."""
 
     captured: dict[str, str] = {}
+    forward_calls: list[dict[str, Any]] = []
+
+    async def _forward(**kwargs: Any) -> None:
+        forward_calls.append(kwargs)
 
     def _mark(identifier: str) -> None:
         captured["identifier"] = identifier
 
     monkeypatch.setattr("apps.mw.src.api.routers.chatkit.mark_awaiting_query", _mark)
+    monkeypatch.setattr(
+        "apps.mw.src.api.routers.chatkit.forward_widget_action_to_workflow",
+        _forward,
+    )
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_WORKFLOW_ID", "workflow-id")
 
     payload = {
         "type": "tool",
@@ -66,6 +78,8 @@ async def test_widget_action_new_format_search_docs(monkeypatch: pytest.MonkeyPa
     assert response.status_code == 200
     assert response.json() == {"ok": True, "awaiting_query": True}
     assert captured.get("identifier") == "thread-abc"
+    assert forward_calls, "Expected widget action to be forwarded to workflow"
+    assert forward_calls[0]["tool_name"] == "search-docs"
 
 
 @pytest.mark.asyncio
@@ -73,11 +87,21 @@ async def test_widget_action_legacy_format_search_docs(monkeypatch: pytest.Monke
     """Legacy tool type should still be accepted and mark awaiting queries."""
 
     captured: dict[str, str] = {}
+    forward_calls: list[dict[str, Any]] = []
+
+    async def _forward(**kwargs: Any) -> None:
+        forward_calls.append(kwargs)
 
     def _mark(identifier: str) -> None:
         captured["identifier"] = identifier
 
     monkeypatch.setattr("apps.mw.src.api.routers.chatkit.mark_awaiting_query", _mark)
+    monkeypatch.setattr(
+        "apps.mw.src.api.routers.chatkit.forward_widget_action_to_workflow",
+        _forward,
+    )
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_WORKFLOW_ID", "workflow-id")
 
     payload = {
         "type": "tool.search-docs",
@@ -94,6 +118,8 @@ async def test_widget_action_legacy_format_search_docs(monkeypatch: pytest.Monke
     assert response.status_code == 200
     assert response.json() == {"ok": True, "awaiting_query": True}
     assert captured.get("identifier") == "session-xyz"
+    assert forward_calls, "Expected widget action to be forwarded to workflow"
+    assert forward_calls[0]["tool_name"] == "search-docs"
 
 
 @pytest.mark.asyncio
@@ -101,12 +127,17 @@ async def test_widget_action_unknown_tool_returns_false(monkeypatch: pytest.Monk
     """Unsupported tool actions should return a negative acknowledgement."""
 
     called = False
+    forward_calls: list[dict[str, Any]] = []
 
     def _mark(_: str) -> None:  # pragma: no cover - defensive guard
         nonlocal called
         called = True
 
     monkeypatch.setattr("apps.mw.src.api.routers.chatkit.mark_awaiting_query", _mark)
+    monkeypatch.setattr(
+        "apps.mw.src.api.routers.chatkit.forward_widget_action_to_workflow",
+        lambda **_: forward_calls.append({}),
+    )
 
     payload = {
         "type": "tool",
@@ -118,8 +149,9 @@ async def test_widget_action_unknown_tool_returns_false(monkeypatch: pytest.Monk
         response = await client.post(
             "/api/v1/chatkit/widget-action",
             json=payload,
-        )
+    )
 
     assert response.status_code == 200
     assert response.json() == {"ok": False, "awaiting_query": None}
     assert not called
+    assert not forward_calls, "Unexpected workflow invocation for unsupported tool"
