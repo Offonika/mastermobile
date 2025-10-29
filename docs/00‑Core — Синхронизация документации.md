@@ -526,7 +526,7 @@ nsi_counterparty
 - 02.10.2025 — Уточнены требования авторизации для чтения возвратов: README.md и API‑Contracts теперь фиксируют обязательный заголовок `Authorization: Bearer <JWT>` с ролями `1c`/`admin`; обновлены инструкции по проверке API.
 - 01.10.2025 — Заменена устаревшая схема `limit`/`offset` на фактическую пагинацию `page`/`page_size`, добавлены дефолтные значения и описание структуры ответов. Ссылки выровнены с API‑Contracts v1.1.0 и `openapi.yaml`.
 - 30.09.2025 — Выравнены цели p95 (чтение 250 мс, запись 400 мс) по итогам синка с NFR/Observability; обновлён раздел 2.7, добавлена ссылка на [ADR-0002](adr/0002-latency-slo.md). Уведомлены команды Core Sync и Walking Warehouse в `#mm-observability`.
-- 28.09.2025 — Подтверждено отсутствие ER Freeze v0.6.5; Version Map и ссылочный пакет возвращены к ER Freeze v0.6.4. [#PR TBD](https://github.com/mastermobile/mastermobile/pull/TBD)
+- 28.09.2025 — Подтверждено отсутствие ER Freeze v0.6.5; Version Map и ссылочный пакет возвращены к ER Freeze v0.6.4. #PR TBD (запланировано)
 - 27.09.2025 — Version Map обновлён: Core Sync переведён на API‑Contracts v1.1.0 и ER Freeze v0.6.4; ссылки раздела 1 приведены к актуальному baseline.
 - 26.09.2025 — Актуализирована карта версий и ссылки на API‑Contracts: подтверждено использование v1.1.0 вместо упоминаний v1.1.3.
 
