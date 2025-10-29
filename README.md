@@ -149,7 +149,7 @@
 
 ### Команды деплоя
 
-1. Скопируйте `.env.example` → `.env` и заполните `OPENAI_API_KEY`, `OPENAI_WORKFLOW_ID`, `OPENAI_VECTOR_STORE_ID`, параметры Bitrix24. 【F:.env.example†L25-L36】【F:apps/mw/src/config/settings.py†L40-L57】
+1. Скопируйте `.env.example` → `.env` и заполните `OPENAI_API_KEY`, `OPENAI_PROJECT`, `OPENAI_BASE_URL`, `OPENAI_WORKFLOW_ID`, `OPENAI_VECTOR_STORE_ID`, параметры Bitrix24. 【F:.env.example†L25-L36】【F:apps/mw/src/config/settings.py†L40-L57】
 2. Соберите Python-зависимости и инфраструктуру: `make init && make up`. Команда поднимет `app`, `db`, `redis` и пробросит `/assistant`. 【F:Makefile†L24-L40】【F:docker-compose.yml†L1-L73】
 3. Для фронтенда выполните `npm install && npm run build` в `frontend/`, затем опубликуйте `dist/` в хостинге Bitrix24 или подключите через reverse-proxy. 【F:frontend/package.json†L5-L23】
 4. При выкладке в стоящую среду используйте `docker compose build app && docker compose up -d app` (или пайплайн из `docs/runbooks/deploy.md`) и следите за health-check `http://<host>:8000/health`. 【F:docs/runbooks/deploy.md†L9-L43】【F:docker-compose.yml†L5-L36】
@@ -163,21 +163,21 @@
 ./scripts/openai_workflow_smoke.sh --env-file .env "ping"
 ```
 
-Скрипт берёт `OPENAI_API_KEY`, `OPENAI_WORKFLOW_ID`, `OPENAI_PROJECT`, `OPENAI_ORG` и `OPENAI_BASE_URL` либо из текущих переменных окружения, либо из указанного `.env`. В ответ ожидается JSON с результатами выполнения workflow. Если нужно отправить запрос вручную через `curl`, следите за тем, чтобы не заключать идентификатор в кавычки и передавать корректный заголовок `Content-Type`:
+Скрипт берёт `OPENAI_API_KEY`, `OPENAI_WORKFLOW_ID`, `OPENAI_PROJECT`, `OPENAI_ORG` и `OPENAI_BASE_URL` либо из текущих переменных окружения, либо из указанного `.env`. В ответ ожидается JSON с результатами выполнения workflow. Если нужно отправить запрос вручную через `curl`, обязательно добавляйте бета-заголовок и передавайте идентификатор в теле запроса:
 
 ```bash
-curl "https://api.openai.com/v1/workflows/${OPENAI_WORKFLOW_ID}/runs" \
+curl "https://api.openai.com/v1/workflows/runs" \
   -H "Authorization: Bearer ${OPENAI_API_KEY}" \
   -H "Content-Type: application/json" \
+  -H "OpenAI-Beta: workflows=v1" \
   ${OPENAI_PROJECT:+-H "OpenAI-Project: ${OPENAI_PROJECT}"} \
   ${OPENAI_ORG:+-H "OpenAI-Organization: ${OPENAI_ORG}"} \
-  -d '{"input":{"message":"ping"}}'
+  -d '{"workflow_id":"'"${OPENAI_WORKFLOW_ID}"'","inputs":{"message":"ping"}}'
 ```
 
-> Типичная ошибка: если в ответ приходит `{ "error": { "message": "Invalid URL (POST /v1/workflows/runs)" } }`,
-> значит, идентификатор workflow не попал в путь запроса. Убедитесь, что вызываете
-> `https://api.openai.com/v1/workflows/${OPENAI_WORKFLOW_ID}/runs` и **не** передаёте поле
-> `workflow_id` в теле запроса.
+> Типичная ошибка: если в ответ приходит `{ "error": { "message": "Missing workflow_id" } }`,
+> значит, идентификатор не был передан в теле или переменная `OPENAI_WORKFLOW_ID`
+> пуста. Проверьте `.env` и аргументы запроса перед повторной попыткой.
 
 > Обратите внимание: `source .env` не подойдёт для загрузки переменных с пробелами. Используйте вспомогательный скрипт или экспортируйте только нужные `OPENAI_*` значения вручную.
 

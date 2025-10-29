@@ -7,9 +7,11 @@ from typing import Any
 
 import httpx
 from loguru import logger
-from openai import AsyncOpenAI, OpenAIError
+from openai import APIStatusError, AsyncOpenAI, OpenAIError
 
 from apps.mw.src.config import Settings
+from apps.mw.src.integrations.openai.constants import DEFAULT_OPENAI_HEADERS
+from apps.mw.src.observability.metrics import WORKFLOWS_ERRORS_TOTAL
 
 __all__ = [
     "WorkflowInvocationError",
@@ -124,6 +126,7 @@ def _get_async_openai_client(settings: Settings) -> AsyncOpenAI:
             base_url=cache_key[1],
             organization=cache_key[2],
             project=cache_key[3],
+            default_headers=DEFAULT_OPENAI_HEADERS,
         )
         _CLIENT_CACHE[cache_key] = client
     return client
@@ -190,23 +193,30 @@ async def forward_widget_action_to_workflow(
         }
     )
 
+    workflow_inputs: dict[str, Any] = {
+        "message": message_text,
+        "payload": payload,
+    }
+    if metadata:
+        workflow_inputs["metadata"] = metadata
+
     try:
-        response = await client.responses.create(
-            model=workflow_id,
-            input=[
-                {
-                    "type": "message",
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "input_text",
-                            "text": message_text,
-                        }
-                    ],
-                }
-            ],
-            metadata=metadata or None,
+        response = await client.post(
+            "/workflows/runs",
+            body={
+                "workflow_id": workflow_id,
+                "inputs": workflow_inputs,
+            },
+            cast_to=dict[str, Any],
         )
+    except APIStatusError as exc:
+        status_code = getattr(exc, "status_code", None)
+        reason = f"status_{status_code}" if status_code else "status_error"
+        WORKFLOWS_ERRORS_TOTAL.labels(reason=reason).inc()
+        logger.bind(request_id=request_id, tool_name=tool_name, status_code=status_code).exception(
+            "OpenAI workflow invocation returned non-success status",
+        )
+        raise WorkflowInvocationError("Failed to invoke OpenAI workflow") from exc
     except (OpenAIError, httpx.HTTPError) as exc:  # pragma: no cover - network errors
         logger.bind(request_id=request_id, tool_name=tool_name).exception(
             "Failed to forward ChatKit widget action to OpenAI workflow",
@@ -219,6 +229,7 @@ async def forward_widget_action_to_workflow(
     logger.bind(request_id=request_id, tool_name=tool_name).debug(
         "Forwarded ChatKit widget action to OpenAI workflow",
         has_response=bool(extracted_text),
+        status=response_payload.get("status"),
     )
 
     return extracted_text

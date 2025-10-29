@@ -105,10 +105,19 @@ fi
 OPENAI_BASE_URL="${OPENAI_BASE_URL:-https://api.openai.com/v1}"
 OPENAI_BASE_URL="${OPENAI_BASE_URL%/}"
 
-PAYLOAD=$(WORKFLOW_MESSAGE="$MESSAGE" python - <<'PY'
+PAYLOAD=$(OPENAI_WORKFLOW_ID="$OPENAI_WORKFLOW_ID" WORKFLOW_MESSAGE="$MESSAGE" python - <<'PY'
 import json
 import os
-print(json.dumps({"input": {"message": os.environ.get("WORKFLOW_MESSAGE", "ping")}}, ensure_ascii=False))
+
+workflow_id = os.environ["OPENAI_WORKFLOW_ID"].strip()
+message = os.environ.get("WORKFLOW_MESSAGE", "ping")
+payload = {
+    "workflow_id": workflow_id,
+    "inputs": {
+        "message": message,
+    },
+}
+print(json.dumps(payload, ensure_ascii=False))
 PY
 )
 
@@ -120,9 +129,10 @@ fi
 curl_args=(
     -sS
     -X POST
-    "${OPENAI_BASE_URL}/workflows/${OPENAI_WORKFLOW_ID}/runs"
+    "${OPENAI_BASE_URL}/workflows/runs"
     -H "Authorization: Bearer ${OPENAI_API_KEY}"
     -H "Content-Type: application/json"
+    -H "OpenAI-Beta: workflows=v1"
     -d "$PAYLOAD"
 )
 

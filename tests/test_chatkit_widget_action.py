@@ -22,6 +22,7 @@ def _patch_workflow(monkeypatch: pytest.MonkeyPatch) -> None:
         _noop,
     )
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_PROJECT", "project-id")
     monkeypatch.setenv("OPENAI_WORKFLOW_ID", "workflow-id")
     get_settings.cache_clear()
     yield

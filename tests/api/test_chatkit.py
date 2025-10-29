@@ -61,6 +61,7 @@ async def test_widget_action_new_format_search_docs(monkeypatch: pytest.MonkeyPa
         _forward,
     )
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_PROJECT", "project-id")
     monkeypatch.setenv("OPENAI_WORKFLOW_ID", "workflow-id")
 
     payload = {
@@ -104,6 +105,7 @@ async def test_widget_action_legacy_format_search_docs(monkeypatch: pytest.Monke
         _forward,
     )
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_PROJECT", "project-id")
     monkeypatch.setenv("OPENAI_WORKFLOW_ID", "workflow-id")
 
     payload = {
@@ -215,6 +217,7 @@ async def test_widget_action_workflow_error_returns_negative_ack(
         _raise_workflow_error,
     )
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_PROJECT", "project-id")
     monkeypatch.setenv("OPENAI_WORKFLOW_ID", "workflow-id")
 
     payload = {
