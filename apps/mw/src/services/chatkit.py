@@ -1,23 +1,17 @@
 """Service helpers for creating ChatKit sessions."""
 from __future__ import annotations
 
-import os
+from secrets import token_urlsafe
 from typing import Any, cast
 
 import httpx
 from loguru import logger
 
+from apps.mw.src.config import get_settings
+
 __all__ = ["create_chatkit_service_session", "create_chatkit_session"]
 
-
-def _env(name: str, default: str | None = None) -> str | None:
-    """Return a normalised environment value."""
-
-    value = os.getenv(name, default)
-    if isinstance(value, str):
-        stripped = value.strip()
-        return stripped or None
-    return value
+_LOCAL_SECRET_PREFIX = "chatkit-local-secret-"
 
 
 def _beta_headers(api_key: str) -> dict[str, str]:
@@ -30,18 +24,30 @@ def _beta_headers(api_key: str) -> dict[str, str]:
     }
 
 
+def _generate_local_secret() -> str:
+    """Create a deterministic-looking secret for local development."""
+
+    # token_urlsafe already includes randomness and base64 characters which
+    # resemble the format returned by OpenAI. Prefix the value to make it clear
+    # in logs that this secret is synthetic.
+    return f"{_LOCAL_SECRET_PREFIX}{token_urlsafe(24)}"
+
+
 def create_chatkit_service_session() -> str:
     """Create a ChatKit session using the Chat Completions Sessions API."""
 
-    api_key = _env("OPENAI_API_KEY")
+    settings = get_settings()
+    api_key = (settings.openai_api_key or "").strip()
 
     if not api_key:
-        raise RuntimeError("OPENAI_API_KEY is not set")
+        logger.warning(
+            "OPENAI_API_KEY is not set; returning a stub ChatKit secret for local use",
+        )
+        return _generate_local_secret()
 
-    base_url = (_env("OPENAI_BASE_URL", "https://api.openai.com/v1") or "").rstrip("/")
+    base_url = (settings.openai_base_url or "https://api.openai.com/v1").rstrip("/")
     sessions_url = f"{base_url}/realtime/sessions"
     headers = _beta_headers(api_key)
-
 
     with httpx.Client(timeout=20.0) as http:
         payload: dict[str, Any] = {}

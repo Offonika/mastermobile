@@ -22,6 +22,7 @@ from apps.mw.src.services.state import build_store
 RATE_LIMIT_MAX_REQUESTS = 5
 RATE_LIMIT_WINDOW_SECONDS = 10
 _RATE_LIMIT_STORE = build_store("chatkit:rate-limit")
+_OPTIONAL_IN_LOCAL = {"openai_api_key", "openai_workflow_id", "openai_vector_store_id"}
 
 router = APIRouter(prefix="/api/v1/chatkit", tags=["chatkit"])
 __all__ = ["router"]
@@ -109,9 +110,15 @@ def _ensure_configuration(settings: Settings, request_id: str, *, required: tupl
     """Verify that mandatory ChatKit settings are present."""
 
     missing: list[str] = []
+    app_env = getattr(settings, "app_env", "local")
     for attr in required:
         value = getattr(settings, attr, "")
         if not isinstance(value, str) or not value.strip():
+            if app_env == "local" and attr in _OPTIONAL_IN_LOCAL:
+                logger.bind(request_id=request_id).debug(
+                    "ChatKit configuration missing in local environment", missing=attr
+                )
+                continue
             missing.append(attr.upper())
     if not missing:
         return
