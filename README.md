@@ -174,6 +174,11 @@ curl "https://api.openai.com/v1/workflows/${OPENAI_WORKFLOW_ID}/runs" \
   -d '{"input":{"message":"ping"}}'
 ```
 
+> Типичная ошибка: если в ответ приходит `{ "error": { "message": "Invalid URL (POST /v1/workflows/runs)" } }`,
+> значит, идентификатор workflow не попал в путь запроса. Убедитесь, что вызываете
+> `https://api.openai.com/v1/workflows/${OPENAI_WORKFLOW_ID}/runs` и **не** передаёте поле
+> `workflow_id` в теле запроса.
+
 > Обратите внимание: `source .env` не подойдёт для загрузки переменных с пробелами. Используйте вспомогательный скрипт или экспортируйте только нужные `OPENAI_*` значения вручную.
 
 ### Чек-лист тестов
