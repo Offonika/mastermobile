@@ -155,6 +155,27 @@
 4. При выкладке в стоящую среду используйте `docker compose build app && docker compose up -d app` (или пайплайн из `docs/runbooks/deploy.md`) и следите за health-check `http://<host>:8000/health`. 【F:docs/runbooks/deploy.md†L9-L43】【F:docker-compose.yml†L5-L36】
 5. После деплоя прогоните smoke-скрипт: `./scripts/smoke_chatkit.sh --base-url http://<host>:8000`. Он проверит health, выдачу сессии и подтверждение действия. 【F:scripts/smoke_chatkit.sh†L1-L89】
 
+### Smoke-тест OpenAI workflow
+
+Для проверки доступности Agent Builder workflow можно воспользоваться вспомогательным скриптом:
+
+```bash
+./scripts/openai_workflow_smoke.sh --env-file .env "ping"
+```
+
+Скрипт берёт `OPENAI_API_KEY`, `OPENAI_WORKFLOW_ID`, `OPENAI_PROJECT`, `OPENAI_ORG` и `OPENAI_BASE_URL` либо из текущих переменных окружения, либо из указанного `.env`. В ответ ожидается JSON с результатами выполнения workflow. Если нужно отправить запрос вручную через `curl`, следите за тем, чтобы не заключать идентификатор в кавычки и передавать корректный заголовок `Content-Type`:
+
+```bash
+curl "https://api.openai.com/v1/workflows/${OPENAI_WORKFLOW_ID}/runs" \
+  -H "Authorization: Bearer ${OPENAI_API_KEY}" \
+  -H "Content-Type: application/json" \
+  ${OPENAI_PROJECT:+-H "OpenAI-Project: ${OPENAI_PROJECT}"} \
+  ${OPENAI_ORG:+-H "OpenAI-Organization: ${OPENAI_ORG}"} \
+  -d '{"input":{"message":"ping"}}'
+```
+
+> Обратите внимание: `source .env` не подойдёт для загрузки переменных с пробелами. Используйте вспомогательный скрипт или экспортируйте только нужные `OPENAI_*` значения вручную.
+
 ### Чек-лист тестов
 
 - `make lint` — статический анализ Python. 【F:Makefile†L42-L46】
