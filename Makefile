@@ -35,6 +35,19 @@ ALERTS_ANNOTATION_ARGS :=
 ALERTS_EXTRA_ARGS :=
 ALERTMANAGER_TARGET_URL :=
 ALERTS_GLOBAL_ARGS :=
+ENV_FILE := .env
+ENV_EXAMPLE := .env.example
+
+ensure-env:
+	@if [ ! -f "$(ENV_FILE)" ]; then \
+		if [ -f "$(ENV_EXAMPLE)" ]; then \
+			cp "$(ENV_EXAMPLE)" "$(ENV_FILE)"; \
+				echo "Created $(ENV_FILE) from $(ENV_EXAMPLE)."; \
+		else \
+			echo "Missing $(ENV_EXAMPLE); cannot populate $(ENV_FILE)." >&2; \
+			exit 1; \
+		fi; \
+	fi
 
 init: $(VENV_SENTINEL)
 
@@ -44,13 +57,13 @@ $(VENV_SENTINEL): pyproject.toml
 	$(PIP) install -e ".[dev]"
 	touch $(VENV_SENTINEL)
 
-up:
+up: ensure-env
 	docker compose up -d --build
 
-down:
+down: ensure-env
 	docker compose down -v
 
-logs:
+logs: ensure-env
 	docker compose logs -f app
 
 lint: $(VENV_SENTINEL)
@@ -109,13 +122,13 @@ db-upgrade: $(VENV_SENTINEL)
 db-downgrade: $(VENV_SENTINEL)
 	$(VENV_BIN)/alembic -c apps/mw/migrations/alembic.ini downgrade -1
 
-run:
+run: ensure-env
 	docker compose up app
 
 seed:
 	@echo "TODO: seed script"
 
-worker:
+worker: ensure-env
 	docker compose up stt-worker
 
 deploy-assistant:
