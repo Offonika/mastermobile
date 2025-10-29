@@ -12,6 +12,7 @@ from openai import OpenAIError
 from apps.mw.src.api.dependencies import ProblemDetailException, build_error, provide_request_id
 from apps.mw.src.api.schemas import VectorStoreMetadata, VectorStoreUploadResponse
 from apps.mw.src.config import Settings, get_settings
+from apps.mw.src.integrations.openai.constants import DEFAULT_OPENAI_HEADERS
 
 if TYPE_CHECKING:
     from openai import OpenAI
@@ -51,7 +52,10 @@ def _ensure_configuration(settings: Settings, request_id: str | None, *, require
 def _create_openai_client(settings: Settings) -> OpenAI:
     from openai import OpenAI
 
-    client_kwargs: dict[str, Any] = {"api_key": settings.openai_api_key}
+    client_kwargs: dict[str, Any] = {
+        "api_key": settings.openai_api_key,
+        "default_headers": DEFAULT_OPENAI_HEADERS,
+    }
     if settings.openai_base_url:
         client_kwargs["base_url"] = settings.openai_base_url
     if settings.openai_org:

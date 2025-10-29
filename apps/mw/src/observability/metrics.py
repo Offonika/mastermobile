@@ -10,6 +10,13 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response as StarletteResponse
 
+WORKFLOWS_ERRORS_TOTAL: Final[Counter] = Counter(
+    "workflows_errors_total",
+    "Total number of OpenAI workflow invocation errors grouped by reason.",
+    labelnames=("reason",),
+)
+"""Counter tracking OpenAI workflow invocation errors grouped by failure reason."""
+
 STT_JOBS_TOTAL: Final[Counter] = Counter(
     "stt_jobs_total",
     "Total number of STT jobs handled by the worker, labelled by final status.",
@@ -160,6 +167,7 @@ def register_metrics(app: FastAPI) -> None:
 
 
 __all__ = [
+    "WORKFLOWS_ERRORS_TOTAL",
     "HTTP_REQUESTS_TOTAL",
     "HTTP_REQUEST_DURATION_SECONDS",
     "RequestMetricsMiddleware",

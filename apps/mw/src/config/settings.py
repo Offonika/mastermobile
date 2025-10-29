@@ -139,6 +139,31 @@ class Settings(BaseSettings):
                 data["pii_masking_enabled"] = True
         return data
 
+    @model_validator(mode="after")
+    def validate_openai_workflow_configuration(self) -> "Settings":
+        """Ensure workflow integration has all required settings configured."""
+
+        workflow_id = (self.openai_workflow_id or "").strip()
+        if not workflow_id:
+            return self
+
+        missing: list[str] = []
+        if not (self.openai_api_key or "").strip():
+            missing.append("OPENAI_API_KEY")
+        if not (self.openai_project or "").strip():
+            missing.append("OPENAI_PROJECT")
+        if not (self.openai_base_url or "").strip():
+            missing.append("OPENAI_BASE_URL")
+
+        if missing:
+            joined = ", ".join(sorted(missing))
+            raise ValueError(
+                "OPENAI_WORKFLOW_ID requires the following settings to be provided: "
+                f"{joined}."
+            )
+
+        return self
+
     @property
     def sqlalchemy_database_uri(self) -> str:
         """Return a SQLAlchemy-compatible database URL."""

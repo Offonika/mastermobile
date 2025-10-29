@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import httpx
 import pytest
-from openai import OpenAIError
+from pytest_httpx import HTTPXMock
 
 from apps.mw.src.config.settings import Settings
 from apps.mw.src.integrations.openai import workflows
@@ -12,22 +13,7 @@ from apps.mw.src.integrations.openai.workflows import (
     WorkflowInvocationError,
     forward_widget_action_to_workflow,
 )
-
-
-class _ResponsesStub:
-    def __init__(self, calls: list[dict[str, Any]], *, should_fail: bool = False) -> None:
-        self._calls = calls
-        self._should_fail = should_fail
-
-    async def create(self, **kwargs: Any) -> None:
-        self._calls.append(kwargs)
-        if self._should_fail:
-            raise OpenAIError("simulated failure")
-
-
-class _AsyncClientStub:
-    def __init__(self, calls: list[dict[str, Any]], *, should_fail: bool = False) -> None:
-        self.responses = _ResponsesStub(calls, should_fail=should_fail)
+from apps.mw.src.observability.metrics import WORKFLOWS_ERRORS_TOTAL
 
 
 @pytest.fixture(autouse=True)
@@ -38,22 +24,43 @@ def _clear_cache() -> None:
 
 
 @pytest.mark.asyncio
-async def test_forward_widget_action_to_workflow_builds_payload(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[dict[str, Any]] = []
+async def test_forward_widget_action_to_workflow_builds_payload(
+    httpx_mock: HTTPXMock,
+) -> None:
+    recorded: dict[str, Any] = {}
 
-    monkeypatch.setattr(
-        workflows,
-        "_get_async_openai_client",
-        lambda settings: _AsyncClientStub(calls),
+    def _handler(request: httpx.Request) -> httpx.Response:
+        recorded["headers"] = dict(request.headers)
+        recorded["json"] = json.loads(request.content.decode("utf-8"))
+        return httpx.Response(
+            status_code=200,
+            json={
+                "id": "wr_123",
+                "status": "completed",
+                "outputs": [
+                    {
+                        "content": [
+                            {"type": "output_text", "text": "Workflow reply"},
+                        ]
+                    }
+                ],
+            },
+        )
+
+    httpx_mock.add_callback(
+        _handler,
+        method="POST",
+        url="https://example.com/v1/workflows/runs",
     )
 
     settings = Settings(
         OPENAI_API_KEY="test-key",
+        OPENAI_PROJECT="project-1",
+        OPENAI_BASE_URL="https://example.com/v1",
         OPENAI_WORKFLOW_ID="workflow-123",
-        OPENAI_BASE_URL="https://api.openai.com/v1",
     )
 
-    await forward_widget_action_to_workflow(
+    result = await forward_widget_action_to_workflow(
         settings=settings,
         action={"type": "tool", "name": "search-docs", "payload": {"thread_id": "thread-1"}},
         request_id="req-1",
@@ -63,26 +70,21 @@ async def test_forward_widget_action_to_workflow_builds_payload(monkeypatch: pyt
         origin="https://example.com",
     )
 
-    assert len(calls) == 1
-    payload = json.loads(calls[0]["input"][0]["content"][0]["text"])
-    assert payload["event"] == "chatkit.widget_action"
-    assert payload["action"]["name"] == "search-docs"
-    assert payload["context"]["thread_id"] == "thread-1"
-    assert calls[0]["model"] == "workflow-123"
-    assert calls[0]["metadata"]["request_id"] == "req-1"
+    assert recorded["json"]["workflow_id"] == "workflow-123"
+    assert recorded["json"]["inputs"]["payload"]["action"]["name"] == "search-docs"
+    assert recorded["json"]["inputs"]["metadata"]["request_id"] == "req-1"
+    assert recorded["headers"].get("openai-beta") == "workflows=v1"
+    assert result == "Workflow reply"
 
 
 @pytest.mark.asyncio
-async def test_forward_widget_action_requires_workflow_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[dict[str, Any]] = []
-
-    monkeypatch.setattr(
-        workflows,
-        "_get_async_openai_client",
-        lambda settings: _AsyncClientStub(calls),
+async def test_forward_widget_action_requires_workflow_id() -> None:
+    settings = Settings(
+        OPENAI_API_KEY="test-key",
+        OPENAI_PROJECT="project-1",
+        OPENAI_BASE_URL="https://example.com/v1",
+        OPENAI_WORKFLOW_ID="",
     )
-
-    settings = Settings(OPENAI_API_KEY="test-key", OPENAI_WORKFLOW_ID="")
 
     with pytest.raises(WorkflowInvocationError):
         await forward_widget_action_to_workflow(
@@ -97,23 +99,66 @@ async def test_forward_widget_action_requires_workflow_id(monkeypatch: pytest.Mo
 
 
 @pytest.mark.asyncio
-async def test_forward_widget_action_wraps_openai_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        workflows,
-        "_get_async_openai_client",
-        lambda settings: _AsyncClientStub([], should_fail=True),
+async def test_forward_widget_action_records_metrics_for_status_error(
+    httpx_mock: HTTPXMock,
+) -> None:
+    httpx_mock.add_response(
+        method="POST",
+        url="https://example.com/v1/workflows/runs",
+        status_code=400,
+        json={"error": {"message": "bad request"}},
     )
 
     settings = Settings(
         OPENAI_API_KEY="test-key",
+        OPENAI_PROJECT="project-1",
+        OPENAI_BASE_URL="https://example.com/v1",
         OPENAI_WORKFLOW_ID="workflow-456",
     )
+
+    counter = WORKFLOWS_ERRORS_TOTAL.labels(reason="status_400")
+    before = counter._value.get()
 
     with pytest.raises(WorkflowInvocationError):
         await forward_widget_action_to_workflow(
             settings=settings,
             action={"type": "tool", "name": "noop", "payload": {}},
             request_id="req-3",
+            tool_name="noop",
+            thread_id=None,
+            conversation_identifier=None,
+            origin=None,
+        )
+
+    assert counter._value.get() == before + 1
+
+
+@pytest.mark.asyncio
+async def test_forward_widget_action_wraps_network_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _Client:
+        async def post(self, *args: Any, **kwargs: Any) -> dict[str, Any]:  # pragma: no cover - stub
+            raise httpx.ConnectError("boom")
+
+    monkeypatch.setattr(
+        workflows,
+        "_get_async_openai_client",
+        lambda settings: _Client(),
+    )
+
+    settings = Settings(
+        OPENAI_API_KEY="test-key",
+        OPENAI_PROJECT="project-1",
+        OPENAI_BASE_URL="https://example.com/v1",
+        OPENAI_WORKFLOW_ID="workflow-789",
+    )
+
+    with pytest.raises(WorkflowInvocationError):
+        await forward_widget_action_to_workflow(
+            settings=settings,
+            action={"type": "tool", "name": "noop", "payload": {}},
+            request_id="req-4",
             tool_name="noop",
             thread_id=None,
             conversation_identifier=None,
