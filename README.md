@@ -30,7 +30,7 @@
 Для локального запуска docs-проверок доступны команды Makefile:
 
 - `make docs-markdownlint` — проверка Markdown по правилам из `.markdownlint.yml` (использует контейнер `ghcr.io/igorshubovych/markdownlint-cli`).
-- `make docs-links` — сканирование ссылок через `lychee` с конфигом `.lychee.toml` (контейнер `ghcr.io/lycheeverse/lychee`).
+- `make docs-links` — сканирование ссылок через `lychee` с конфигом `.lychee.toml` (контейнер `lycheeverse/lychee`).
 - `make docs-spellcheck` — орфография через `codespell` c параметрами из `.codespellrc`.
 - `make docs-ci` — последовательный запуск всех проверок.
 - `make docs-ci-smoke` — временно создаёт тестовый markdown с «битой» ссылкой и убеждается, что `lychee` падает с ошибкой.
